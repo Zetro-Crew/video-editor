@@ -1,0 +1,6 @@
+dist/
+/node_modules
+.turbo/
+test-results/
+playwright-report/
+.playwright-cli/

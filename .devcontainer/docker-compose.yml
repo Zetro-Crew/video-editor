@@ -1,0 +1,15 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - ../:/workspaces/react-video-editor:cached
+    command: sleep infinity
+    environment:
+      HOST: "0.0.0.0"
+      REDIS_HOST: redis
+      S3_ENDPOINT: http://minio:9000
+    depends_on:
+      - redis
+      - minio

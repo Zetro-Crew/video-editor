@@ -1,0 +1,12 @@
+packages:
+  - "apps/**"
+  - "packages/**"
+patchedDependencies:
+  '@designcombo/frames@0.0.3': patches/@designcombo__frames@0.0.3.patch
+catalog:
+  '@biomejs/biome': 2.4.15
+  '@types/node': ^25.9.1
+  fastify: ^5.1.0
+  typescript: ^6.0.3
+  vitest: ^3.2.4
+  zod: ^4.4.3

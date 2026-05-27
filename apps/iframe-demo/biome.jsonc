@@ -1,0 +1,32 @@
+// This app is a demo/showcase harness, not production code.
+// Rules that are errors elsewhere are intentionally downgraded here to avoid
+// blocking iteration on demo features. Do not use this config as a template
+// for production apps in this repo.
+{
+	"$schema": "https://biomejs.dev/schemas/2.4.15/schema.json",
+	"root": false,
+	"extends": "//",
+	"files": {
+		"includes": ["!**/node_modules", "!**/dist"]
+	},
+	"overrides": [
+		{
+			"includes": ["src/**"],
+			"linter": {
+				"rules": {
+					"correctness": {
+						"noUnusedVariables": "warn",
+						"useExhaustiveDependencies": "warn"
+					},
+					"suspicious": {
+						"noExplicitAny": "warn",
+						"noImplicitAnyLet": "warn"
+					},
+					"style": {
+						"noNonNullAssertion": "warn"
+					}
+				}
+			}
+		}
+	]
+}

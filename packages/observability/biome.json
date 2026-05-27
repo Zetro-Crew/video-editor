@@ -1,0 +1,17 @@
+{
+	"$schema": "https://biomejs.dev/schemas/2.4.15/schema.json",
+	"root": false,
+	"extends": "//",
+	"linter": {
+		"rules": {
+			"performance": {
+				"noBarrelFile": "off",
+				"noReExportAll": "off"
+			},
+			"suspicious": {
+				"noConsole": "off",
+				"noExplicitAny": "off"
+			}
+		}
+	}
+}

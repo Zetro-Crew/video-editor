@@ -1,0 +1,32 @@
+{
+	"name": "React Video Editor",
+	"dockerComposeFile": ["../docker-compose.yml", "docker-compose.yml"],
+	"service": "app",
+	"workspaceFolder": "/workspaces/react-video-editor",
+	"forwardPorts": [3000, 4001, 8080, 9000, 9001],
+	"portsAttributes": {
+		"3000": { "label": "Frontend (Vite)", "onAutoForward": "notify" },
+		"4001": { "label": "Server (Fastify)", "onAutoForward": "notify" },
+		"8080": { "label": "iframe-demo (Angular)", "onAutoForward": "notify" },
+		"9001": { "label": "MinIO Console", "onAutoForward": "notify" }
+	},
+	"postCreateCommand": "test -f apps/server/.env || cp apps/server/.env.example apps/server/.env; pnpm install",
+	"customizations": {
+		"vscode": {
+			"extensions": [
+				"biomejs.biome",
+				"ms-vscode.vscode-typescript-next",
+				"eamodio.gitlens",
+				"angular.ng-template",
+				"vitest.explorer"
+			],
+			"settings": {
+				"editor.defaultFormatter": "biomejs.biome",
+				"editor.formatOnSave": true,
+				"[typescript]": { "editor.defaultFormatter": "biomejs.biome" },
+				"[typescriptreact]": { "editor.defaultFormatter": "biomejs.biome" }
+			}
+		}
+	},
+	"remoteUser": "node"
+}

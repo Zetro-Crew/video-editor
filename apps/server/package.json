@@ -1,0 +1,39 @@
+{
+	"name": "@video-editor/server",
+	"version": "1.0.0",
+	"description": "",
+	"main": "src/index.ts",
+	"scripts": {
+		"dev": "node --env-file=.env --watch-path=./src src/index.ts",
+		"start": "node src/index.ts",
+		"test": "vitest run",
+		"type-check": "tsc --noEmit",
+		"lint": "biome check .  --write && node -e \"console.log('\\n✓ All server files pass Biome checks.')\""
+	},
+	"keywords": [],
+	"author": "",
+	"license": "ISC",
+	"type": "module",
+	"dependencies": {
+		"@ztube/observability": "workspace:*",
+		"@aws-sdk/client-s3": "3.429.0",
+		"@aws-sdk/lib-storage": "3.429.0",
+		"@aws-sdk/s3-request-presigner": "3.429.0",
+		"@fastify/cors": "^11.2.0",
+		"@fastify/multipart": "^10.0.0",
+		"@ffmpeg-installer/ffmpeg": "^1.1.0",
+		"fast-xml-parser": "^5.7.3",
+		"fastify": "catalog:",
+		"fastify-type-provider-zod": "^6.1.0",
+		"ffprobe-static": "^3.0.0",
+		"redis": "^5.11.0",
+		"sharp": "^0.34.5",
+		"zod": "catalog:"
+	},
+	"devDependencies": {
+		"@types/ffprobe-static": "^2.0.0",
+		"@types/node": "catalog:",
+		"typescript": "catalog:",
+		"vitest": "catalog:"
+	}
+}

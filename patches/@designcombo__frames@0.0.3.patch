@@ -1,0 +1,13 @@
+diff --git a/dist/frames.js b/dist/frames.js
+index c1b384e1d5e53ec5687e8608e74e21d65e17d29f..bcafc014afa5caee2a557a53bd259ea90b96bc01 100644
+--- a/dist/frames.js
++++ b/dist/frames.js
+@@ -468,7 +468,7 @@ let me = !1;
+ async function ti() {
+   if (globalThis.localStorage == null) return;
+   const l = "OPFS_TOOLS_EXPIRES_TMP_FILES";
+-  me || (me = !0, globalThis.addEventListener("unload", () => {
++  me || (me = !0, globalThis.addEventListener("pagehide", () => {
+     re.length !== 0 && localStorage.setItem(
+       l,
+       `${localStorage.getItem(l) ?? ""},${re.join(",")}`

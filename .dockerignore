@@ -1,0 +1,9 @@
+**/node_modules
+**/.turbo
+**/dist
+**/.git
+**/*.log
+apps/iframe-demo
+.env
+.env.*
+!.env.production

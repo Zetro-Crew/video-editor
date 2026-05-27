@@ -1,0 +1,203 @@
+import { z } from "zod";
+
+export const MAX_PREVIEW_DURATION_MS = 1000 * 60 * 60 * 1;
+
+const positiveNumber = z.number().finite().min(0);
+const positiveDuration = z.number().finite().positive();
+const nonEmptyString = z.string().trim().min(1);
+const requestIdSchema = z.string().trim().min(1).optional();
+
+const safeMediaUrl = (src: string) => /^https?:\/\//i.test(src);
+const likelyAudioSrc = (src: string) => /\.(m3u8|mp3|wav|m4a|aac|ogg)(\?|$)/i.test(src);
+const safeSrc = nonEmptyString.refine(safeMediaUrl, {
+	message: "src must be an http/https URL",
+});
+
+export const hlsPlaybackSchema = z.strictObject({
+	kind: z.literal("hls"),
+	src: safeSrc,
+});
+
+export const mediaPlaybackSchema = z.strictObject({
+	kind: z.union([z.literal("mp4"), z.literal("hls")]),
+	src: safeSrc,
+});
+
+export const audioPlaybackSchema = z.strictObject({
+	kind: z.union([z.literal("audio"), z.literal("hls")]),
+	src: safeSrc,
+});
+
+export const recordingRangePayloadSchema = z
+	.strictObject({
+		kind: z.literal("recording-range"),
+		channelId: nonEmptyString,
+		startTimeMs: positiveNumber,
+		endTimeMs: positiveNumber,
+		durationMs: positiveDuration,
+		playback: hlsPlaybackSchema.optional(),
+		sourceOffsetMs: positiveNumber.optional(),
+		posterSrc: nonEmptyString.optional(),
+		name: z.string().optional(),
+	})
+	.superRefine((value, ctx) => {
+		if (value.endTimeMs <= value.startTimeMs) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				message: "endTimeMs must be greater than startTimeMs",
+				path: ["endTimeMs"],
+			});
+		}
+
+		if (value.sourceOffsetMs !== undefined && value.sourceOffsetMs > value.durationMs) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				message: "sourceOffsetMs must be less than or equal to durationMs",
+				path: ["sourceOffsetMs"],
+			});
+		}
+	})
+	.refine((p) => p.durationMs <= MAX_PREVIEW_DURATION_MS, {
+		message: "durationMs exceeds the maximum supported preview duration",
+		path: ["durationMs"],
+	});
+
+export const mediaPayloadSchema = z
+	.strictObject({
+		kind: z.literal("media"),
+		mediaId: nonEmptyString,
+		durationMs: positiveNumber.optional(),
+		playback: mediaPlaybackSchema,
+		posterSrc: nonEmptyString.optional(),
+		name: z.string().optional(),
+	})
+	.refine((p) => (p.durationMs ?? 0) <= MAX_PREVIEW_DURATION_MS, {
+		message: "durationMs exceeds the maximum supported preview duration",
+		path: ["durationMs"],
+	});
+
+export const audioRangePayloadSchema = z
+	.strictObject({
+		kind: z.literal("audio-range"),
+		audioId: nonEmptyString,
+		startTimeMs: positiveNumber.optional(),
+		endTimeMs: positiveNumber.optional(),
+		durationMs: positiveDuration,
+		playback: audioPlaybackSchema,
+		sourceOffsetMs: positiveNumber.optional(),
+		name: z.string().optional(),
+	})
+	.superRefine((value, ctx) => {
+		if (
+			value.startTimeMs !== undefined &&
+			value.endTimeMs !== undefined &&
+			value.endTimeMs <= value.startTimeMs
+		) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				message: "endTimeMs must be greater than startTimeMs",
+				path: ["endTimeMs"],
+			});
+		}
+
+		if (value.sourceOffsetMs !== undefined && value.sourceOffsetMs > value.durationMs) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				message: "sourceOffsetMs must be less than or equal to durationMs",
+				path: ["sourceOffsetMs"],
+			});
+		}
+
+		if (value.playback.kind !== "hls" && !likelyAudioSrc(value.playback.src)) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				message: "audio-range src must point to audio or HLS media",
+				path: ["playback", "src"],
+			});
+		}
+	})
+	.refine((p) => p.durationMs <= MAX_PREVIEW_DURATION_MS, {
+		message: "durationMs exceeds the maximum supported preview duration",
+		path: ["durationMs"],
+	});
+
+export const previewItemPayloadSchema = z.union([
+	recordingRangePayloadSchema,
+	mediaPayloadSchema,
+	audioRangePayloadSchema,
+]);
+
+export const editorAddPreviewItemMessageSchema = z.strictObject({
+	type: z.literal("EDITOR_ADD_PREVIEW_ITEM"),
+	requestId: requestIdSchema,
+	payload: previewItemPayloadSchema,
+});
+
+export const editorClearProjectMessageSchema = z.strictObject({
+	type: z.literal("EDITOR_CLEAR_PROJECT"),
+	requestId: requestIdSchema,
+});
+
+export const editorSetAuthMessageSchema = z.strictObject({
+	type: z.literal("EDITOR_SET_AUTH"),
+	token: nonEmptyString,
+});
+
+export const parentToEditorMessageSchema = z.union([
+	editorAddPreviewItemMessageSchema,
+	editorClearProjectMessageSchema,
+	editorSetAuthMessageSchema,
+]);
+
+export const editorPreviewItemAddedMessageSchema = z.strictObject({
+	type: z.literal("EDITOR_PREVIEW_ITEM_ADDED"),
+	requestId: requestIdSchema,
+	itemId: nonEmptyString,
+});
+
+export const editorPreviewItemRejectedMessageSchema = z.strictObject({
+	type: z.literal("EDITOR_PREVIEW_ITEM_REJECTED"),
+	requestId: requestIdSchema,
+	reason: nonEmptyString,
+});
+
+export const editorProjectClearedMessageSchema = z.strictObject({
+	type: z.literal("EDITOR_PROJECT_CLEARED"),
+	requestId: requestIdSchema,
+});
+
+const savedMediaItemSchema = z.discriminatedUnion("type", [
+	z.strictObject({ type: z.literal("image"), id: nonEmptyString }),
+	z.strictObject({ type: z.literal("clip"), id: nonEmptyString }),
+	z.strictObject({
+		type: z.literal("recording"),
+		id: nonEmptyString,
+		from: positiveNumber,
+		to: positiveNumber,
+	}),
+	z.strictObject({
+		type: z.literal("audio"),
+		id: nonEmptyString,
+		from: positiveNumber,
+		to: positiveNumber,
+	}),
+]);
+
+export const editorMediaSavedMessageSchema = z.strictObject({
+	type: z.literal("EDITOR_MEDIA_SAVED"),
+	mediaId: nonEmptyString,
+	mediaName: nonEmptyString,
+	downloadToComputer: z.boolean(),
+	saveToPersonalChannel: z.boolean(),
+	selectedUnitChannelIds: z.array(z.string()),
+	url: safeSrc,
+	exportType: z.union([z.literal("mp4"), z.literal("webp")]),
+	items: z.array(savedMediaItemSchema),
+});
+
+export const editorToParentMessageSchema = z.union([
+	editorPreviewItemAddedMessageSchema,
+	editorPreviewItemRejectedMessageSchema,
+	editorProjectClearedMessageSchema,
+	editorMediaSavedMessageSchema,
+]);

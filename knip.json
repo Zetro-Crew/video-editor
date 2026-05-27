@@ -1,0 +1,30 @@
+{
+  "$schema": "https://unpkg.com/knip@latest/schema.json",
+  "ignoreDependencies": [
+    "@remotion/shapes",
+    "tailwindcss",
+    "tw-animate-css"
+  ],
+  "workspaces": {
+    ".": {
+      "entry": [],
+      "project": []
+    },
+    "apps/frontend": {
+      "entry": [],
+      "project": ["src/**/*.{ts,tsx}"]
+    },
+    "apps/server": {
+      "entry": [],
+      "project": ["src/**/*.ts"]
+    },
+    "apps/iframe-demo": {
+      "entry": [],
+      "project": ["src/**/*.ts"]
+    },
+    "packages/editor-contract": {
+      "entry": [],
+      "project": ["src/**/*.ts"]
+    }
+  }
+}

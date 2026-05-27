@@ -1,0 +1,76 @@
+import { type Control, Pattern, Resizable, type ResizableProps, util } from "@designcombo/timeline";
+import { createResizeControls } from "../controls/controls";
+
+interface ShapeProps extends ResizableProps {
+	src: string;
+}
+
+class Shape extends Resizable {
+	static type = "Shape";
+	public src: string;
+	public hasSrc = true;
+
+	static createControls(): { controls: Record<string, Control> } {
+		return { controls: createResizeControls() };
+	}
+
+	constructor(props: ShapeProps) {
+		super(props);
+		this.id = props.id;
+		this.src = props.src;
+		this.display = props.display;
+		this.tScale = props.tScale;
+		this.loadImage();
+	}
+
+	public _render(ctx: CanvasRenderingContext2D) {
+		super._render(ctx);
+		this.updateSelected(ctx);
+	}
+
+	public loadImage() {
+		util.loadImage(this.src).then((img) => {
+			const imgHeight = img.height;
+			const rectHeight = this.height;
+			const scaleY = rectHeight / imgHeight;
+			const pattern = new Pattern({
+				source: img,
+				repeat: "repeat-x",
+				patternTransform: [scaleY, 0, 0, scaleY, 0, 0],
+			});
+			this.set("fill", pattern);
+			this.canvas?.requestRenderAll();
+		});
+	}
+
+	public setSrc(src: string) {
+		this.src = src;
+		this.loadImage();
+		this.canvas?.requestRenderAll();
+	}
+
+	public updateSelected(ctx: CanvasRenderingContext2D) {
+		const borderColor = this.isSelected ? "rgba(255, 255, 255,1.0)" : "rgba(255, 255, 255,0.1)";
+		const borderWidth = 2;
+		const innerRadius = 4;
+
+		ctx.save();
+		ctx.fillStyle = borderColor;
+
+		ctx.beginPath();
+		ctx.rect(-this.width / 2, -this.height / 2, this.width, this.height);
+
+		ctx.roundRect(
+			-this.width / 2 + borderWidth,
+			-this.height / 2 + borderWidth,
+			this.width - borderWidth * 2,
+			this.height - borderWidth * 2,
+			innerRadius,
+		);
+
+		ctx.fill("evenodd");
+		ctx.restore();
+	}
+}
+
+export default Shape;

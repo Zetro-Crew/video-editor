@@ -1,0 +1,125 @@
+<div class="page">
+  <!-- Free area for iframe -->
+  <div class="iframe-area">
+    <div
+      class="iframe-window"
+      [class.iframe-window--full]="fullMode()"
+      [style.left.px]="fullMode() ? null : box().x"
+      [style.top.px]="fullMode() ? null : box().y"
+      [style.width.px]="fullMode() ? null : box().w"
+      [style.height.px]="fullMode() ? null : box().h"
+    >
+
+      <iframe
+        #iframeEl
+        title="עורך"
+        [src]="editorUrl()"
+        class="editor-iframe"
+        (load)="onIframeLoad()"
+      ></iframe>
+
+      <!-- Resize handles (resizable mode only) -->
+      @if (!fullMode()) {
+        @for (dir of corners; track dir) {
+          <div [style]="cornerStyle(dir)" (mousedown)="startResize(dir, $event)"></div>
+        }
+        @for (dir of edges; track dir) {
+          <div [style]="edgeStyle(dir)" (mousedown)="startResize(dir, $event)"></div>
+        }
+      }
+    </div>
+  </div>
+
+  <!-- Right panel -->
+  <aside class="panel">
+    <header class="panel-header">
+      <h1 class="panel-title">הדגמת מסגרת</h1>
+      <p class="panel-desc">
+        שלח הודעות postMessage לעורך המוטמע.
+        פריטים שנוספו מדף המדיה נשלחים אוטומטית עם ההגעה.
+      </p>
+    </header>
+
+    <!-- Recording range form -->
+    <form class="form-section" (submit)="$event.preventDefault(); addRecordingRange()">
+      <fieldset>
+        <legend class="section-title">טווח הקלטה</legend>
+
+        <div class="field">
+          <label for="name">שם</label>
+          <input
+            id="name"
+            type="text"
+            autocomplete="off"
+            [value]="name()"
+            (input)="name.set($any($event.target).value)"
+          />
+        </div>
+
+        <div class="field">
+          <label for="channelId">מזהה ערוץ</label>
+          <input
+            id="channelId"
+            type="text"
+            inputmode="numeric"
+            autocomplete="off"
+            [value]="channelId()"
+            (input)="channelId.set($any($event.target).value)"
+          />
+        </div>
+
+        <div class="field">
+          <label for="startTimeMs">זמן התחלה (ms)</label>
+          <input
+            id="startTimeMs"
+            type="number"
+            min="0"
+            autocomplete="off"
+            [value]="startTimeMs()"
+            (input)="startTimeMs.set(+$any($event.target).value)"
+          />
+        </div>
+
+        <div class="field">
+          <label for="endTimeMs">זמן סיום (ms)</label>
+          <input
+            id="endTimeMs"
+            type="number"
+            min="0"
+            autocomplete="off"
+            [value]="endTimeMs()"
+            (input)="endTimeMs.set(+$any($event.target).value)"
+          />
+        </div>
+      </fieldset>
+
+      <div class="actions">
+        <button type="submit" class="btn-primary">הוסף הקלטה</button>
+        <button type="button" class="btn-secondary" (click)="clearProject()">נקה פרויקט</button>
+      </div>
+    </form>
+
+    <div class="mode-toggle">
+      <span class="section-title">מצב מסגרת</span>
+      <div class="toggle-row" role="group" aria-label="מצב מסגרת">
+        <button
+          type="button"
+          class="btn-mode"
+          [class.active]="!fullMode()"
+          (click)="fullMode.set(false)"
+        >ניתן לשינוי גודל</button>
+        <button
+          type="button"
+          class="btn-mode"
+          [class.active]="fullMode()"
+          (click)="fullMode.set(true)"
+        >מסך מלא</button>
+      </div>
+    </div>
+
+    <div class="json-section">
+      <span class="section-title">תגובה / שליחה</span>
+      <pre class="json-display">{{ stringify({ outgoing: outgoingPayload(), lastResponse: lastResponse() }) }}</pre>
+    </div>
+  </aside>
+</div>

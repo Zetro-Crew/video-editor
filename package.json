@@ -1,0 +1,19 @@
+{
+	"name": "video-editor",
+	"version": "0.1.0",
+	"private": true,
+	"scripts": {
+		"dev": "turbo run dev",
+		"build": "turbo run build",
+		"lint": "turbo run lint",
+		"type-check": "turbo run type-check",
+		"test": "turbo run test",
+		"knip": "knip"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "catalog:",
+		"knip": "^6.14.2",
+		"turbo": "^2.9.14"
+	},
+	"packageManager": "pnpm@10.13.1"
+}

@@ -1,0 +1,31 @@
+{
+	"compilerOptions": {
+		"strict": true,
+		"verbatimModuleSyntax": true,
+		"noImplicitOverride": false,
+		"noPropertyAccessFromIndexSignature": false,
+		"noImplicitReturns": false,
+		"noFallthroughCasesInSwitch": true,
+		"skipLibCheck": true,
+		"outDir": "./dist",
+		"esModuleInterop": true,
+		"sourceMap": true,
+		"declaration": false,
+		"noUnusedLocals": true,
+		"useUnknownInCatchVariables": true,
+		"moduleResolution": "bundler",
+		"importHelpers": false,
+		"target": "ES2022",
+		"module": "ES2022",
+		"useDefineForClassFields": false,
+		"lib": ["ES2022", "DOM", "DOM.Iterable"],
+		"jsx": "react-jsx",
+		"types": ["vite/client", "node"],
+		"paths": {
+			"@/*": ["./src/*"],
+			"@app/*": ["./src/app/*"]
+		}
+	},
+	"include": ["src/**/*.ts", "src/**/*.tsx", "e2e/**/*.ts", "scripts/**/*.ts"],
+	"exclude": ["node_modules", "dist", "src/app/**/*"]
+}
