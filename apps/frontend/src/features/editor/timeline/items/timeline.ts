@@ -35,6 +35,11 @@ class Timeline extends TimelineBase {
 	};
 
 	public purge(): void {
+		for (const obj of this.getObjects()) {
+			if (obj instanceof Video) {
+				obj.destroy();
+			}
+		}
 		super.purge();
 
 		// Cleanup event listener for Shift key

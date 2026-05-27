@@ -23,13 +23,11 @@ export default function useUpdateAnsestors({
 	}, [playing, trackItemIds, activeIds]);
 
 	useEffect(() => {
-		if (playerRef?.current) {
-			playerRef.current.addEventListener("seeked", updateAnsestorsPointerEvents);
-		}
+		const el = playerRef?.current;
+		if (!el) return;
+		el.addEventListener("seeked", updateAnsestorsPointerEvents);
 		return () => {
-			if (playerRef?.current) {
-				playerRef.current.removeEventListener("seeked", updateAnsestorsPointerEvents);
-			}
+			el.removeEventListener("seeked", updateAnsestorsPointerEvents);
 		};
 	}, [playerRef]);
 

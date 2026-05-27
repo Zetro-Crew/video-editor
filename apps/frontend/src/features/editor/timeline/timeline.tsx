@@ -94,7 +94,20 @@ const Timeline = ({ stateManager }: { stateManager: StateManager }) => {
 		return () => ro.disconnect();
 	}, [timelineContainerRef]);
 
+	const trackItemIds = useCompositionStore((s) => s.trackItemIds);
+
 	useStateManagerEvents(stateManager);
+
+	useEffect(() => {
+		const canvas = canvasRef.current;
+		if (!canvas) return;
+		for (const obj of canvas.getObjects()) {
+			if (obj instanceof Video && !trackItemIds.includes(obj.id)) {
+				obj.destroy();
+			}
+		}
+	}, [trackItemIds]);
+
 	usePlayheadAutoScroll({
 		currentFrame,
 		fps,

@@ -367,8 +367,17 @@ class Video extends Trimmable {
 		this.prevDuration = duration;
 	}
 
+	public destroy(): void {
+		this.clip?.destroy();
+		this.clip = null;
+		this.offscreenCanvas = null;
+		this.offscreenCtx = null;
+		this.thumbnailCache.clearCache();
+	}
+
 	public async setSrc(src: string) {
 		super.setSrc(src);
+		this.clip?.destroy();
 		this.clip = null;
 		await this.initialize();
 		await this.prepareAssets();
