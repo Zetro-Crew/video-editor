@@ -65,7 +65,7 @@ export class FfmpegVideoProcessingAdapter implements VideoRenderPort {
 						this.config,
 						job.signal,
 					),
-					prepareWatermarkLogo(tempDir),
+					prepareWatermarkLogo(),
 				]);
 			Logger.logInfo("[ffmpeg] overlays+audio prepared", {
 				hasOverlays,
