@@ -2,6 +2,9 @@ import styled from "@emotion/styled";
 /** @jsxImportSource @emotion/react */
 import { type FC, type MouseEvent, type TouchEvent, useEffect, useRef } from "react";
 
+type AnyMouseHandler = (e: any) => void;
+type VoidHandler = () => void;
+
 import TinyColor from "../utils/color";
 import type { TCoords, TPropsComp } from "./types";
 
@@ -66,19 +69,33 @@ const Overlay = styled.div`
 
 const Board: FC<TPropsComp> = ({ color, onChange, setChange }) => {
 	const node = useRef<HTMLDivElement>(null);
+	const mouseMoveRef = useRef<AnyMouseHandler | null>(null);
+	const mouseUpRef = useRef<AnyMouseHandler | null>(null);
+	const touchMoveRef = useRef<AnyMouseHandler | null>(null);
+	const touchEndRef = useRef<VoidHandler | null>(null);
 
 	const removeListeners = () => {
 		setChange(false);
-
-		window.removeEventListener("mousemove", onBoardDrag);
-		window.removeEventListener("mouseup", onBoardDragEnd);
+		if (mouseMoveRef.current) {
+			window.removeEventListener("mousemove", mouseMoveRef.current);
+			mouseMoveRef.current = null;
+		}
+		if (mouseUpRef.current) {
+			window.removeEventListener("mouseup", mouseUpRef.current);
+			mouseUpRef.current = null;
+		}
 	};
 
 	const removeTouchListeners = () => {
 		setChange(false);
-
-		window.removeEventListener("touchmove", onBoardTouchMove);
-		window.removeEventListener("touchend", onBoardTouchEnd);
+		if (touchMoveRef.current) {
+			window.removeEventListener("touchmove", touchMoveRef.current);
+			touchMoveRef.current = null;
+		}
+		if (touchEndRef.current) {
+			window.removeEventListener("touchend", touchEndRef.current);
+			touchEndRef.current = null;
+		}
 	};
 
 	useEffect(() => {
@@ -96,10 +113,20 @@ const Board: FC<TPropsComp> = ({ color, onChange, setChange }) => {
 
 		removeListeners();
 
-		const x = e.clientX;
-		const y = e.clientY;
-		pointMoveTo({ x, y });
+		pointMoveTo({ x: e.clientX, y: e.clientY });
 
+		const onBoardDrag: AnyMouseHandler = (ev) => {
+			ev.preventDefault();
+			pointMoveTo({ x: ev.clientX, y: ev.clientY });
+		};
+		const onBoardDragEnd: AnyMouseHandler = (ev) => {
+			ev.preventDefault();
+			pointMoveTo({ x: ev.clientX, y: ev.clientY });
+			removeListeners();
+		};
+
+		mouseMoveRef.current = onBoardDrag;
+		mouseUpRef.current = onBoardDragEnd;
 		window.addEventListener("mousemove", onBoardDrag);
 		window.addEventListener("mouseup", onBoardDragEnd);
 	};
@@ -115,54 +142,22 @@ const Board: FC<TPropsComp> = ({ color, onChange, setChange }) => {
 
 		removeTouchListeners();
 
-		const x = e.targetTouches[0].clientX;
-		const y = e.targetTouches[0].clientY;
+		pointMoveTo({ x: e.targetTouches[0].clientX, y: e.targetTouches[0].clientY });
 
-		pointMoveTo({ x, y });
+		const onBoardTouchMove: AnyMouseHandler = (ev) => {
+			if (ev.cancelable) {
+				ev.preventDefault();
+			}
+			pointMoveTo({ x: ev.targetTouches[0].clientX, y: ev.targetTouches[0].clientY });
+		};
+		const onBoardTouchEnd: VoidHandler = () => {
+			removeTouchListeners();
+		};
 
+		touchMoveRef.current = onBoardTouchMove;
+		touchEndRef.current = onBoardTouchEnd;
 		window.addEventListener("touchmove", onBoardTouchMove, { passive: false });
 		window.addEventListener("touchend", onBoardTouchEnd, { passive: false });
-	};
-
-	const onBoardTouchMove = (e: any) => {
-		if (e.cancelable) {
-			e.preventDefault();
-		}
-
-		const x = e.targetTouches[0].clientX;
-		const y = e.targetTouches[0].clientY;
-
-		pointMoveTo({
-			x,
-			y,
-		});
-	};
-
-	const onBoardTouchEnd = () => {
-		removeTouchListeners();
-	};
-
-	const onBoardDrag = (e: any) => {
-		e.preventDefault();
-		const x = e.clientX;
-		const y = e.clientY;
-
-		pointMoveTo({
-			x,
-			y,
-		});
-	};
-
-	const onBoardDragEnd = (e: any) => {
-		e.preventDefault();
-		const x = e.clientX;
-		const y = e.clientY;
-
-		pointMoveTo({
-			x,
-			y,
-		});
-		removeListeners();
 	};
 
 	const pointMoveTo = (pos: TCoords) => {

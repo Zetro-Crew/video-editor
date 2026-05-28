@@ -43,6 +43,12 @@
       "skillPath": "skills/engineering/improve-codebase-architecture/SKILL.md",
       "computedHash": "ef32aea0a8fab9b365ff9e08a95f8d353e20ca21ea46ec2e73587c86dd341351"
     },
+    "memory-leak-audit": {
+      "source": "microsoft/vscode",
+      "sourceType": "github",
+      "skillPath": ".github/skills/memory-leak-audit/SKILL.md",
+      "computedHash": "3989959b9c743b20e6eb0ab3e7dc8191909b583b95174f9f9304bf21f6e1ef91"
+    },
     "modern-web-guidance": {
       "source": "GoogleChrome/modern-web-guidance",
       "sourceType": "github",

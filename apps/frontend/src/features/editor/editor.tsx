@@ -76,7 +76,7 @@ const SHAPES_DIRECT = [
 		height: 72,
 		icon: (
 			<MoveUpRight size={22} />
-		
+
 			// <svg
 			// 	viewBox="0 0 100 60"
 			// 	width="18"
@@ -174,44 +174,44 @@ const RightSideMenu = () => {
 		<div className="absolute right-2 top-2 z-[60] flex flex-col items-center gap-1">
 			<span className="text-s font-medium text-muted-foreground">כלים</span>
 			<div className="flex flex-col gap-1.5 p-2 bg-card border border-border/80 rounded-xl shadow-lg">
-			<input
-				ref={fileInputRef}
-				type="file"
-				multiple
-				accept="video/*,image/*,audio/*"
-				className="hidden"
-				aria-label="בחר קבצי מדיה"
-				onChange={handleFileChange}
-			/>
-			<button
-				type="button"
-				aria-label="טקסט"
-				onClick={addText}
-				className="flex h-9 w-9 items-center justify-center rounded-lg transition-all duration-150 text-muted-foreground hover:bg-secondary hover:text-foreground font-bold text-lg"
-			>
-				T
-			</button>
-			<div className="flex flex-col gap-0.5">
-				{SHAPES_DIRECT.map((shape) => (
-					<button
-						key={shape.id}
-						type="button"
-						aria-label={shape.label}
-						onClick={() => addShape(shape)}
-						className="flex h-9 w-9 items-center justify-center rounded-lg transition-all duration-150 text-muted-foreground hover:bg-secondary hover:text-foreground"
-					>
-						{shape.icon}
-					</button>
-				))}
-			</div>
+				<input
+					ref={fileInputRef}
+					type="file"
+					multiple
+					accept="video/*,image/*,audio/*"
+					className="hidden"
+					aria-label="בחר קבצי מדיה"
+					onChange={handleFileChange}
+				/>
+				<button
+					type="button"
+					aria-label="טקסט"
+					onClick={addText}
+					className="flex h-9 w-9 items-center justify-center rounded-lg transition-all duration-150 text-muted-foreground hover:bg-secondary hover:text-foreground font-bold text-lg"
+				>
+					T
+				</button>
+				<div className="flex flex-col gap-0.5">
+					{SHAPES_DIRECT.map((shape) => (
 						<button
-				type="button"
-				aria-label="העלאה"
-				onClick={() => fileInputRef.current?.click()}
-				className="flex h-9 w-9 items-center justify-center rounded-lg transition-all duration-150 text-muted-foreground hover:bg-secondary hover:text-foreground"
-			>
-				<Upload size={18} />
-			</button>
+							key={shape.id}
+							type="button"
+							aria-label={shape.label}
+							onClick={() => addShape(shape)}
+							className="flex h-9 w-9 items-center justify-center rounded-lg transition-all duration-150 text-muted-foreground hover:bg-secondary hover:text-foreground"
+						>
+							{shape.icon}
+						</button>
+					))}
+				</div>
+				<button
+					type="button"
+					aria-label="העלאה"
+					onClick={() => fileInputRef.current?.click()}
+					className="flex h-9 w-9 items-center justify-center rounded-lg transition-all duration-150 text-muted-foreground hover:bg-secondary hover:text-foreground"
+				>
+					<Upload size={18} />
+				</button>
 			</div>
 		</div>
 	);

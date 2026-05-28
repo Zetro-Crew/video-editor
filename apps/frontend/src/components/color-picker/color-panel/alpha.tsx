@@ -1,4 +1,5 @@
 import styled from "@emotion/styled";
+
 /** @jsxImportSource @emotion/react */
 import { type FC, type MouseEvent, type TouchEvent, useEffect, useRef } from "react";
 
@@ -7,6 +8,10 @@ import type { TCoords, TPropsCompAlpha } from "./types";
 const rgbaColor = (r: number, g: number, b: number, a: number) => {
 	return `rgba(${[r, g, b, a / 100].join(",")})`;
 };
+
+type MouseHandler = (e: globalThis.MouseEvent) => void;
+type TouchHandler = (e: globalThis.TouchEvent) => void;
+type VoidHandler = () => void;
 
 // Styled components
 const Container = styled.div`
@@ -53,17 +58,32 @@ const Overlay = styled.div`
 
 const Alpha: FC<TPropsCompAlpha> = ({ color, alpha, onChange, setChange }) => {
 	const node = useRef<HTMLDivElement>(null);
+	const mouseMoveRef = useRef<MouseHandler | null>(null);
+	const mouseUpRef = useRef<MouseHandler | null>(null);
+	const touchMoveRef = useRef<TouchHandler | null>(null);
+	const touchEndRef = useRef<VoidHandler | null>(null);
 
 	const removeListeners = () => {
-		window.removeEventListener("mousemove", onDrag);
-		window.removeEventListener("mouseup", onDragEnd);
+		if (mouseMoveRef.current) {
+			window.removeEventListener("mousemove", mouseMoveRef.current);
+			mouseMoveRef.current = null;
+		}
+		if (mouseUpRef.current) {
+			window.removeEventListener("mouseup", mouseUpRef.current);
+			mouseUpRef.current = null;
+		}
 	};
 
 	const removeTouchListeners = () => {
 		setChange(false);
-
-		window.removeEventListener("touchmove", onTouchMove);
-		window.removeEventListener("touchend", onTouchEnd);
+		if (touchMoveRef.current) {
+			window.removeEventListener("touchmove", touchMoveRef.current);
+			touchMoveRef.current = null;
+		}
+		if (touchEndRef.current) {
+			window.removeEventListener("touchend", touchEndRef.current);
+			touchEndRef.current = null;
+		}
 	};
 
 	useEffect(() => {
@@ -74,40 +94,23 @@ const Alpha: FC<TPropsCompAlpha> = ({ color, alpha, onChange, setChange }) => {
 	}, []);
 
 	const onMouseDown = (e: MouseEvent) => {
-		const x = e.clientX;
-		const y = e.clientY;
+		removeListeners();
 
-		pointMoveTo({
-			x,
-			y,
-		});
+		pointMoveTo({ x: e.clientX, y: e.clientY });
 
+		const onDrag: MouseHandler = (ev) => {
+			pointMoveTo({ x: ev.clientX, y: ev.clientY });
+		};
+		const onDragEnd: MouseHandler = (ev) => {
+			pointMoveTo({ x: ev.clientX, y: ev.clientY });
+			setChange(false);
+			removeListeners();
+		};
+
+		mouseMoveRef.current = onDrag;
+		mouseUpRef.current = onDragEnd;
 		window.addEventListener("mousemove", onDrag);
 		window.addEventListener("mouseup", onDragEnd);
-	};
-
-	const onDrag = (e: globalThis.MouseEvent) => {
-		const x = e.clientX;
-		const y = e.clientY;
-
-		pointMoveTo({
-			x,
-			y,
-		});
-	};
-
-	const onDragEnd = (event: globalThis.MouseEvent) => {
-		const x = event.clientX;
-		const y = event.clientY;
-
-		pointMoveTo({
-			x,
-			y,
-		});
-
-		setChange(false);
-
-		removeListeners();
 	};
 
 	const onTouchStart = (e: TouchEvent) => {
@@ -121,31 +124,22 @@ const Alpha: FC<TPropsCompAlpha> = ({ color, alpha, onChange, setChange }) => {
 
 		removeTouchListeners();
 
-		const x = e.targetTouches[0].clientX;
-		const y = e.targetTouches[0].clientY;
+		pointMoveTo({ x: e.targetTouches[0].clientX, y: e.targetTouches[0].clientY });
 
-		pointMoveTo({ x, y });
+		const onTouchMove: TouchHandler = (ev) => {
+			if (ev.cancelable) {
+				ev.preventDefault();
+			}
+			pointMoveTo({ x: ev.targetTouches[0].clientX, y: ev.targetTouches[0].clientY });
+		};
+		const onTouchEnd: VoidHandler = () => {
+			removeTouchListeners();
+		};
 
+		touchMoveRef.current = onTouchMove;
+		touchEndRef.current = onTouchEnd;
 		window.addEventListener("touchmove", onTouchMove, { passive: false });
 		window.addEventListener("touchend", onTouchEnd, { passive: false });
-	};
-
-	const onTouchMove = (e: globalThis.TouchEvent) => {
-		if (e.cancelable) {
-			e.preventDefault();
-		}
-
-		const x = e.targetTouches[0].clientX;
-		const y = e.targetTouches[0].clientY;
-
-		pointMoveTo({
-			x,
-			y,
-		});
-	};
-
-	const onTouchEnd = () => {
-		removeTouchListeners();
 	};
 
 	const getBackground = () => {

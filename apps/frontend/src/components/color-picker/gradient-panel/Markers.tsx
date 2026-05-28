@@ -1,6 +1,10 @@
 import styled from "@emotion/styled";
 /** @jsxImportSource @emotion/react */
 import { type FC, type MouseEvent, type TouchEvent, useEffect, useRef, useState } from "react";
+
+type AnyHandler = (e: any) => void;
+type VoidHandler = () => void;
+
 import tinycolor from "tinycolor2";
 import getGradient from "../utils/getGradient";
 import rgbaToArray from "../utils/rgbaToArray";
@@ -70,6 +74,10 @@ const Markers: FC<IPropsPanel> = ({
 	allowAddGradientStops = true,
 }) => {
 	const node = useRef<HTMLDivElement>(null);
+	const mouseMoveRef = useRef<AnyHandler | null>(null);
+	const mouseUpRef = useRef<AnyHandler | null>(null);
+	const touchMoveRef = useRef<AnyHandler | null>(null);
+	const touchEndRef = useRef<VoidHandler | null>(null);
 
 	const [needDeleteActive, setNeedDeleteActive] = useState<boolean>(false);
 	const [hideStop, setHideStop] = useState<boolean>(false);
@@ -111,13 +119,25 @@ const Markers: FC<IPropsPanel> = ({
 	};
 
 	const removeListeners = () => {
-		window.removeEventListener("mousemove", onDrag);
-		window.removeEventListener("mouseup", onDragEnd);
+		if (mouseMoveRef.current) {
+			window.removeEventListener("mousemove", mouseMoveRef.current);
+			mouseMoveRef.current = null;
+		}
+		if (mouseUpRef.current) {
+			window.removeEventListener("mouseup", mouseUpRef.current);
+			mouseUpRef.current = null;
+		}
 	};
 
 	const removeTouchListeners = () => {
-		window.removeEventListener("touchmove", onTouchMove);
-		window.removeEventListener("touchend", onTouchEnd);
+		if (touchMoveRef.current) {
+			window.removeEventListener("touchmove", touchMoveRef.current);
+			touchMoveRef.current = null;
+		}
+		if (touchEndRef.current) {
+			window.removeEventListener("touchend", touchEndRef.current);
+			touchEndRef.current = null;
+		}
 	};
 
 	const onMouseDown = (e: MouseEvent, color: any) => {
@@ -141,54 +161,36 @@ const Markers: FC<IPropsPanel> = ({
 			index: color[2],
 		});
 
-		const x = e.clientX;
-		const y = e.clientY;
-
-		pointMoveTo({
-			x,
-			y,
-		});
-
-		window.addEventListener("mousemove", onDrag);
-		window.addEventListener("mouseup", onDragEnd);
-	};
-
-	const onDrag = (e: any) => {
-		const x = e.clientX;
-		const y = e.clientY;
-
-		const rect = node?.current?.getBoundingClientRect();
-		if (!rect) return;
-		const rootDistance = y - rect.y;
-		if (rootDistance > 80 && stops.length > 2) {
-			setHideStop(true);
-			return;
-		}
-		setHideStop(false);
-
-		pointMoveTo({
-			x,
-			y,
-		});
-	};
-
-	const onDragEnd = (e: any) => {
-		const x = e.clientX;
-		const y = e.clientY;
-
-		const rect = node?.current?.getBoundingClientRect();
-		if (!rect) return;
-		const rootDistance = y - rect.y;
-		if (rootDistance > 80 && stops.length > 2) {
-			setNeedDeleteActive(true);
-		}
-
-		pointMoveTo({
-			x,
-			y,
-		});
+		pointMoveTo({ x: e.clientX, y: e.clientY });
 
 		removeListeners();
+
+		const onDrag: AnyHandler = (ev) => {
+			const rect = node?.current?.getBoundingClientRect();
+			if (!rect) return;
+			const rootDistance = ev.clientY - rect.y;
+			if (rootDistance > 80 && stops.length > 2) {
+				setHideStop(true);
+				return;
+			}
+			setHideStop(false);
+			pointMoveTo({ x: ev.clientX, y: ev.clientY });
+		};
+		const onDragEnd: AnyHandler = (ev) => {
+			const rect = node?.current?.getBoundingClientRect();
+			if (!rect) return;
+			const rootDistance = ev.clientY - rect.y;
+			if (rootDistance > 80 && stops.length > 2) {
+				setNeedDeleteActive(true);
+			}
+			pointMoveTo({ x: ev.clientX, y: ev.clientY });
+			removeListeners();
+		};
+
+		mouseMoveRef.current = onDrag;
+		mouseUpRef.current = onDragEnd;
+		window.addEventListener("mousemove", onDrag);
+		window.addEventListener("mouseup", onDragEnd);
 	};
 
 	const onTouchStart = (e: TouchEvent, color: any) => {
@@ -212,40 +214,30 @@ const Markers: FC<IPropsPanel> = ({
 			index: color[2],
 		});
 
-		const x = e.targetTouches[0].clientX;
-		const y = e.targetTouches[0].clientY;
+		pointMoveTo({ x: e.targetTouches[0].clientX, y: e.targetTouches[0].clientY });
 
-		pointMoveTo({ x, y });
+		const onTouchMove: AnyHandler = (ev) => {
+			if (ev.cancelable) {
+				ev.preventDefault();
+			}
+			const rect = node?.current?.getBoundingClientRect();
+			if (!rect) return;
+			const rootDistance = ev.targetTouches[0].clientY - rect.y;
+			if (rootDistance > 80 && stops.length > 2) {
+				setHideStop(true);
+				return;
+			}
+			setHideStop(false);
+			pointMoveTo({ x: ev.targetTouches[0].clientX, y: ev.targetTouches[0].clientY });
+		};
+		const onTouchEnd: VoidHandler = () => {
+			removeTouchListeners();
+		};
 
+		touchMoveRef.current = onTouchMove;
+		touchEndRef.current = onTouchEnd;
 		window.addEventListener("touchmove", onTouchMove, { passive: false });
 		window.addEventListener("touchend", onTouchEnd, { passive: false });
-	};
-
-	const onTouchMove = (e: any) => {
-		if (e.cancelable) {
-			e.preventDefault();
-		}
-
-		const x = e.targetTouches[0].clientX;
-		const y = e.targetTouches[0].clientY;
-
-		const rect = node?.current?.getBoundingClientRect();
-		if (!rect) return;
-		const rootDistance = y - rect.y;
-		if (rootDistance > 80 && stops.length > 2) {
-			setHideStop(true);
-			return;
-		}
-		setHideStop(false);
-
-		pointMoveTo({
-			x,
-			y,
-		});
-	};
-
-	const onTouchEnd = () => {
-		removeTouchListeners();
 	};
 
 	const pointMoveTo = (coords: TCoords) => {

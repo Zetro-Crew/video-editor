@@ -10,6 +10,10 @@ import {
 	useRef,
 	useState,
 } from "react";
+
+type AnyHandler = (e: any) => void;
+type VoidHandler = () => void;
+
 import { RADIALS_POS } from "../constants";
 import { arraysEqual, shallowEqual } from "../helper";
 import getGradient from "../utils/getGradient";
@@ -28,6 +32,10 @@ const GradientPanel: FC<IPropsPanel> = ({
 	allowAddGradientStops = true,
 }) => {
 	const angleNode = useRef<HTMLDivElement>(null);
+	const mouseMoveRef = useRef<AnyHandler | null>(null);
+	const mouseUpRef = useRef<AnyHandler | null>(null);
+	const touchMoveRef = useRef<AnyHandler | null>(null);
+	const touchEndRef = useRef<VoidHandler | null>(null);
 
 	const { stops, gradient, type, modifier } = color;
 
@@ -91,13 +99,25 @@ const GradientPanel: FC<IPropsPanel> = ({
 	};
 
 	const removeListeners = () => {
-		window.removeEventListener("mousemove", onDrag);
-		window.removeEventListener("mouseup", onDragEnd);
+		if (mouseMoveRef.current) {
+			window.removeEventListener("mousemove", mouseMoveRef.current);
+			mouseMoveRef.current = null;
+		}
+		if (mouseUpRef.current) {
+			window.removeEventListener("mouseup", mouseUpRef.current);
+			mouseUpRef.current = null;
+		}
 	};
 
 	const removeTouchListeners = () => {
-		window.removeEventListener("touchmove", onTouchMove);
-		window.removeEventListener("touchend", onTouchEnd);
+		if (touchMoveRef.current) {
+			window.removeEventListener("touchmove", touchMoveRef.current);
+			touchMoveRef.current = null;
+		}
+		if (touchEndRef.current) {
+			window.removeEventListener("touchend", touchEndRef.current);
+			touchEndRef.current = null;
+		}
 	};
 
 	const onMouseDown = (e: any) => {
@@ -107,52 +127,39 @@ const GradientPanel: FC<IPropsPanel> = ({
 
 		if (e.button !== 0) return;
 
-		const x = e.clientX;
-		const y = e.clientY;
-		const shiftKey = e.shiftKey;
-		const ctrlKey = e.ctrlKey * 2;
-
 		if (e.target.className !== "gradient-mode" && type === "linear") {
 			pointMoveTo({
-				x,
-				y,
-				shiftKey,
-				ctrlKey,
+				x: e.clientX,
+				y: e.clientY,
+				shiftKey: e.shiftKey,
+				ctrlKey: e.ctrlKey * 2,
 			});
 
+			removeListeners();
+
+			const onDrag: AnyHandler = (ev) => {
+				pointMoveTo({
+					x: ev.clientX,
+					y: ev.clientY,
+					shiftKey: ev.shiftKey,
+					ctrlKey: ev.ctrlKey * 2,
+				});
+			};
+			const onDragEnd: AnyHandler = (ev) => {
+				pointMoveTo({
+					x: ev.clientX,
+					y: ev.clientY,
+					shiftKey: ev.shiftKey,
+					ctrlKey: ev.ctrlKey * 2,
+				});
+				removeListeners();
+			};
+
+			mouseMoveRef.current = onDrag;
+			mouseUpRef.current = onDragEnd;
 			window.addEventListener("mousemove", onDrag);
 			window.addEventListener("mouseup", onDragEnd);
 		}
-	};
-
-	const onDrag = (e: any) => {
-		const x = e.clientX;
-		const y = e.clientY;
-		const shiftKey = e.shiftKey;
-		const ctrlKey = e.ctrlKey * 2;
-
-		pointMoveTo({
-			x,
-			y,
-			shiftKey,
-			ctrlKey,
-		});
-	};
-
-	const onDragEnd = (e: any) => {
-		const x = e.clientX;
-		const y = e.clientY;
-		const shiftKey = e.shiftKey;
-		const ctrlKey = e.ctrlKey * 2;
-
-		pointMoveTo({
-			x,
-			y,
-			shiftKey,
-			ctrlKey,
-		});
-
-		removeListeners();
 	};
 
 	const onTouchStart = (e: TouchEvent) => {
@@ -168,37 +175,32 @@ const GradientPanel: FC<IPropsPanel> = ({
 
 		removeTouchListeners();
 
-		const x = e.targetTouches[0].clientX;
-		const y = e.targetTouches[0].clientY;
-		const shiftKey = false;
-		const ctrlKey = 0;
+		pointMoveTo({
+			x: e.targetTouches[0].clientX,
+			y: e.targetTouches[0].clientY,
+			shiftKey: false,
+			ctrlKey: 0,
+		});
 
-		pointMoveTo({ x, y, shiftKey, ctrlKey });
+		const onTouchMove: AnyHandler = (ev) => {
+			if (ev.cancelable) {
+				ev.preventDefault();
+			}
+			pointMoveTo({
+				x: ev.targetTouches[0].clientX,
+				y: ev.targetTouches[0].clientY,
+				shiftKey: false,
+				ctrlKey: 0,
+			});
+		};
+		const onTouchEnd: VoidHandler = () => {
+			removeTouchListeners();
+		};
 
+		touchMoveRef.current = onTouchMove;
+		touchEndRef.current = onTouchEnd;
 		window.addEventListener("touchmove", onTouchMove, { passive: false });
 		window.addEventListener("touchend", onTouchEnd, { passive: false });
-	};
-
-	const onTouchMove = (e: any) => {
-		if (e.cancelable) {
-			e.preventDefault();
-		}
-
-		const x = e.targetTouches[0].clientX;
-		const y = e.targetTouches[0].clientY;
-		const shiftKey = false;
-		const ctrlKey = 0;
-
-		pointMoveTo({
-			x,
-			y,
-			shiftKey,
-			ctrlKey,
-		});
-	};
-
-	const onTouchEnd = () => {
-		removeTouchListeners();
 	};
 
 	const pointMoveTo = (coords: TCoords) => {
