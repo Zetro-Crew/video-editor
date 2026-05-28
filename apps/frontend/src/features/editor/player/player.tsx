@@ -24,6 +24,7 @@ const Player = () => {
 			fps={fps}
 			style={{ backgroundColor: background.value }}
 			overflowVisible
+			acknowledgeRemotionLicense
 		/>
 	);
 };
