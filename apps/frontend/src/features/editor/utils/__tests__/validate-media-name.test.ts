@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { validateMediaName } from "./validate-media-name";
+import { validateMediaName } from "../validate-media-name";
 
 describe("validateMediaName", () => {
 	it("returns null for a valid name", () => {

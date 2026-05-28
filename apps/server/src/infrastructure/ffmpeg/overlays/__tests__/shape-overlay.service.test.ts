@@ -3,7 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import sharp from "sharp";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { buildShapeOverlayFilter, prepareShapeOverlay } from "./shape-overlay.service.ts";
+import { buildShapeOverlayFilter, prepareShapeOverlay } from "../shape-overlay.service.ts";
 
 const MINIMAL_SVG =
 	'<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><rect width="100" height="100" fill="red"/></svg>';

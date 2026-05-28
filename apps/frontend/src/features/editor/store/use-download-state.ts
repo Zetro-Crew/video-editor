@@ -1,95 +1,68 @@
-import type { IDesign } from "@designcombo/types";
+import type { IDesign, ITrackItem } from "@designcombo/types";
 import { create } from "zustand";
+import { extractSavedItems } from "../utils/extract-saved-items";
 import { getSafeCurrentFrame } from "../utils/time";
 import useCompositionStore from "./use-composition-store";
 import useEditorRefs from "./use-editor-refs";
 
-interface Output {
-	url: string;
-	type: "mp4" | "webp";
+interface SaveMetadata {
+	mediaName: string;
+	mediaId: string;
+	downloadToComputer: boolean;
+	saveToPersonalChannel: boolean;
+	selectedChannelIds: string[];
 }
 
 interface DownloadState {
 	projectId: string;
-	jobId: string;
 	exporting: boolean;
-	exportAborted: boolean;
+	submitted: boolean;
+	retryCount: number;
 	exportType: "mp4" | "webp";
-	progress: number;
-	output?: Output;
 	payload?: IDesign;
 	error?: string;
 	displayProgressModal: boolean;
+	saveMetadata?: SaveMetadata;
 	actions: {
 		setProjectId: (projectId: string) => void;
 		setExporting: (exporting: boolean) => void;
 		setExportType: (exportType: "mp4" | "webp") => void;
-		setProgress: (progress: number) => void;
-		setState: (state: Partial<DownloadState>) => void;
-		setOutput: (output: Output) => void;
-		startExport: () => void;
-		cancelExport: () => void;
+		setPayload: (payload: IDesign) => void;
+		setSubmitted: () => void;
+		setError: (error: string) => void;
+		incrementRetryCount: () => void;
+		resetToForm: () => void;
+		startExport: (params: { copyWatchLink: boolean }) => Promise<void>;
 		setDisplayProgressModal: (displayProgressModal: boolean) => void;
+		setSaveMetadata: (metadata: SaveMetadata) => void;
 	};
 }
 
-const IN_PROGRESS_EXPORT_STATUSES = new Set([
-	"PENDING",
-	"PROCESSING",
-	"PROGRESS",
-	"IN_PROGRESS",
-	"QUEUED",
-]);
-
-//const baseUrl = "https://api.combo.sh/v1";
-
 export const useDownloadState = create<DownloadState>((set, get) => ({
 	projectId: "",
-	jobId: "",
 	exporting: false,
-	exportAborted: false,
+	submitted: false,
+	retryCount: 0,
 	exportType: "mp4",
-	progress: 0,
 	displayProgressModal: false,
 	actions: {
 		setProjectId: (projectId) => set({ projectId }),
 		setExporting: (exporting) => set({ exporting }),
-		setExportType: (exportType: "mp4" | "webp") => set({ exportType }),
-		setProgress: (progress) => set({ progress }),
-		setState: (state) => set({ ...state }),
-		setOutput: (output) => set({ output }),
+		setExportType: (exportType) => set({ exportType }),
+		setPayload: (payload) => set({ payload }),
+		setSubmitted: () => set({ submitted: true, exporting: false, error: undefined }),
+		setError: (error) => set({ error, exporting: false }),
+		incrementRetryCount: () => set((s) => ({ retryCount: s.retryCount + 1 })),
+		resetToForm: () => set({ error: undefined, submitted: false, exporting: false, retryCount: 0 }),
 		setDisplayProgressModal: (displayProgressModal) => set({ displayProgressModal }),
-		cancelExport: () => {
-			const { jobId } = get();
-			if (jobId) {
-				void fetch(`/render?id=${encodeURIComponent(jobId)}`, { method: "DELETE" });
-			}
-			set({
-				exportAborted: true,
-				exporting: false,
-				displayProgressModal: false,
-				progress: 0,
-				output: undefined,
-				error: undefined,
-				jobId: "",
-			});
-		},
-		startExport: async () => {
-			set({ exportAborted: false });
+		setSaveMetadata: (metadata) => set({ saveMetadata: metadata }),
+		startExport: async ({ copyWatchLink }) => {
 			try {
-				const { payload, exportType } = get();
+				const { payload, exportType, saveMetadata } = get();
 
 				if (!payload) throw new Error("Payload is not defined");
 
-				set({
-					error: undefined,
-					exporting: true,
-					displayProgressModal: true,
-					progress: 0,
-					output: undefined,
-					jobId: "",
-					exportAborted: false,
-				});
+				set({ error: undefined, exporting: true, submitted: false, displayProgressModal: true });
 
 				const { playerRef } = useEditorRefs.getState();
 				const { fps } = useCompositionStore.getState();
@@ -99,105 +72,33 @@ export const useDownloadState = create<DownloadState>((set, get) => ({
 
 				const response = await fetch("/render", {
 					method: "POST",
-					headers: {
-						"Content-Type": "application/json",
-					},
+					headers: { "Content-Type": "application/json" },
 					body: JSON.stringify({
 						design: payload,
-						options: {
-							fps: 30,
-							size: payload.size,
-							format: exportType,
-							frameTimeMs,
-						},
+						options: { fps: 30, size: payload.size, format: exportType, frameTimeMs },
+						saveMetadata: saveMetadata
+							? {
+									...saveMetadata,
+									items: extractSavedItems(
+										(payload.trackItemsMap ?? {}) as Record<string, ITrackItem>,
+									),
+								}
+							: undefined,
 					}),
 				});
 
-				if (!response.ok) throw new Error("Failed to submit export request.");
+				if (!response.ok) throw new Error("שגיאה בשליחת בקשת הייצוא.");
 
-				const jobInfo = await response.json();
-				const jobId = jobInfo?.render?.id || jobInfo?.renderId || jobInfo?.id || "";
-
-				if (!jobId) {
-					throw new Error("Export request succeeded without a render job id.");
+				if (copyWatchLink && saveMetadata?.mediaId) {
+					void navigator.clipboard.writeText(
+						`${window.location.origin}/watch/${saveMetadata.mediaId}`,
+					);
 				}
 
-				set({ jobId });
-
-				const pollUntilComplete = async (): Promise<void> => {
-					const statusResponse = await fetch(
-						`/render?id=${encodeURIComponent(jobId)}&type=${get().exportType}`,
-						{
-							headers: {
-								"Content-Type": "application/json",
-							},
-						},
-					);
-
-					if (!statusResponse.ok) {
-						const errorText = await statusResponse.text();
-						throw new Error(
-							`Failed to fetch export status (${statusResponse.status}): ${errorText}`,
-						);
-					}
-
-					const statusInfo = await statusResponse.json();
-					const render = statusInfo?.render ?? statusInfo;
-					const status = String(render?.status ?? "").toUpperCase();
-					const renderError = typeof render?.error === "string" ? render.error : undefined;
-					const progressValue =
-						typeof render?.progress === "number"
-							? render.progress
-							: typeof render?.percentage === "number"
-								? render.percentage
-								: undefined;
-					const url = render?.presigned_url || render?.url || render?.download_url || "";
-
-					if (typeof progressValue === "number") {
-						set({ progress: progressValue });
-					}
-
-					if (status === "CANCELLED") {
-						return;
-					}
-
-					if (status === "COMPLETED") {
-						if (!url) {
-							throw new Error("Export completed without a download URL.");
-						}
-
-						set({
-							error: undefined,
-							exporting: false,
-							progress: 100,
-							output: { url, type: get().exportType },
-							jobId: "",
-						});
-						return;
-					}
-
-					if (IN_PROGRESS_EXPORT_STATUSES.has(status)) {
-						await new Promise((resolve) => setTimeout(resolve, 250));
-						if (get().exportAborted) return;
-						await pollUntilComplete();
-						return;
-					}
-
-					throw new Error(
-						renderError
-							? `Export failed with status: ${status || "UNKNOWN"} - ${renderError}`
-							: `Export failed with status: ${status || "UNKNOWN"}`,
-					);
-				};
-
-				await pollUntilComplete();
+				get().actions.setSubmitted();
 			} catch (error) {
 				console.error(error);
-				set({
-					error: error instanceof Error ? error.message : "Export failed",
-					exporting: false,
-					displayProgressModal: true,
-				});
+				get().actions.setError(error instanceof Error ? error.message : "שגיאה בייצוא");
 			}
 		},
 	},

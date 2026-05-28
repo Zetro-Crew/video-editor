@@ -84,7 +84,7 @@ Per-app commands are documented in each app's README.
 - **Remotion Player** — frame-accurate preview in the browser
 - **FFmpeg processing** — server-side HLS/DASH ingest, overlay composition
 - **S3 storage** — upload assets to MinIO (local) or any S3-compatible store
-- **Export pipeline** — Remotion renders final video on the server
+- **Export pipeline** — FFmpeg (via raw `spawn`) renders and processes video on the server
 - **iframe embedding** — embed the editor in any page via postMessage API
 
 ## iframe Integration

@@ -70,7 +70,7 @@ Source processors (HLS, DASH, image, audio, `internal://blank`):
 ### render
 | Method | Path | Description |
 |--------|------|-------------|
-| POST | `/render` | Start render job; returns `{ id }` |
+| POST | `/render` | Start render job; returns `{ id }`. If `saveMetadata` present, publishes `export.started` to RabbitMQ |
 | GET | `/render` | Poll render job status |
 | DELETE | `/render` | Cancel render job — kills FFmpeg via AbortSignal, marks Redis state CANCELLED |
 
@@ -97,9 +97,10 @@ Controller: `src/features/editor-export/adapters/inbound/http/editor-export.cont
 | File | Purpose |
 |------|---------|
 | `src/infrastructure/storage/S3StorageAdapter.ts` | AWS SDK v3 S3 client (MinIO locally) |
+| `src/infrastructure/messaging/RabbitMQPublisher.ts` | RabbitMQ AMQP publisher — exchange `video-editor` (topic), routing keys: `export.started`, `export.completed`, `export.failed` |
+| `src/infrastructure/ffmpeg/FfmpegVideoProcessor.ts` | FFmpeg video processing via raw `spawn` |
 | `src/features/render/adapters/outbound/redis/RedisRenderJobStateAdapter.ts` | Render job state in Redis |
-| `src/features/edit-video/adapters/outbound/redis/RedisJobProgressAdapter.ts` | Edit job progress in Redis |
-| `src/features/edit-video/adapters/outbound/ffmpeg/FfmpegVideoProcessor.ts` | FFmpeg video processing |
+| `src/features/edit-video/adapters/outbound/redis/RedisEditVideoJobStateAdapter.ts` | Edit-video job progress in Redis |
 | `src/infrastructure/fastify/fastify.ts` | Typed Fastify instance factory |
 
 ## Shared Domain (`src/shared/`)
@@ -129,6 +130,7 @@ All validated by Zod in `src/config/env.ts`. Key vars:
 | `FFMPEG_CRF` | `20` | FFmpeg CRF quality |
 | `CHANNEL_PLAY_API_BASE_URL` | `""` | External preview source API (leave empty for demo mode) |
 | `SERVER_BASE_URL` | `http://localhost:4001` | Public server URL (used in signed segment URLs) |
+| `RABBITMQ_URL` | required | AMQP connection URL — service won't start without this |
 
 ## Tests
 
@@ -140,10 +142,10 @@ pnpm test   # vitest run
 
 ## Key Dependencies
 
+- `amqplib` v2 — AMQP client for RabbitMQ event publishing
 - `fastify` v5 — HTTP framework
-- `@ffmpeg-installer/ffmpeg` + `ffprobe-static` — bundled FFmpeg/ffprobe binaries (no system install needed)
-- `ioredis` v5 — Redis client
+- `@ffmpeg-installer/ffmpeg` + `ffprobe-static` — bundled FFmpeg/ffprobe binaries; server invokes FFmpeg via raw `spawn`
+- `redis` v5 — Redis client (node-redis)
 - `@aws-sdk/*` — S3 interactions (MinIO in production)
-- `@sinclair/typebox` — HTTP schema validation
 - `zod` — Env schema validation
 - `sharp` — Image processing (SVG→PNG for overlays)

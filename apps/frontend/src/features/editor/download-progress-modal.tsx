@@ -1,8 +1,6 @@
 import type StateManager from "@designcombo/state";
-import type { ITrackItem } from "@designcombo/types";
-import { createMediaSavedMessage } from "@video-editor/iframe-contract";
 import { ChevronDown, CircleCheckIcon, Info } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
@@ -11,22 +9,21 @@ import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { download, getExportFilename } from "@/utils/download";
 import { fetchCore } from "@/utils/fetch-core";
 import { clearProject } from "./external-preview/payload-intake";
-import { sendToParent } from "./external-preview/send-to-parent";
 import { useDownloadState } from "./store/use-download-state";
-import { extractSavedItems } from "./utils/extract-saved-items";
 import { validateMediaName } from "./utils/validate-media-name";
 
 type Channel = { _id: string; name: string };
 
 const DownloadProgressModal = ({ stateManager }: { stateManager: StateManager }) => {
-	const { progress, displayProgressModal, output, exporting, error, actions, payload } =
+	const { displayProgressModal, exporting, submitted, retryCount, error, actions, exportType } =
 		useDownloadState();
 	const navigate = useNavigate();
 
-	const [animatedProgress, setAnimatedProgress] = useState(0);
+	const [analysisProgress, setAnalysisProgress] = useState(0);
+
+	// Form phase state
 	const [mediaName, setMediaName] = useState("");
 	const [nameError, setNameError] = useState<string | null>(null);
 	const [downloadToComputer, setDownloadToComputer] = useState(false);
@@ -39,29 +36,24 @@ const DownloadProgressModal = ({ stateManager }: { stateManager: StateManager })
 	const [channelsLoading, setChannelsLoading] = useState(false);
 	const [displayName, setDisplayName] = useState<string | null>(null);
 
-	const progressRef = useRef(progress);
-	const exportingRef = useRef(exporting);
-	progressRef.current = progress;
-	exportingRef.current = exporting;
+	const isFormPhase = !exporting && !submitted && !error;
+	const isAnalyzingPhase = exporting;
+	const isSubmittedPhase = submitted;
+	const isErrorPhase = !!error && !exporting && !submitted;
 
-	const baseFilename = output?.type ? getExportFilename(output.type).replace(/\.[^.]+$/, "") : "";
+	// Animate 0→90% while POST is in-flight, snap to 100 on submitted
+	useEffect(() => {
+		if (!exporting) return;
+		setAnalysisProgress(0);
+		const id = setInterval(() => {
+			setAnalysisProgress((prev) => (prev < 90 ? prev + 2 : prev));
+		}, 200);
+		return () => clearInterval(id);
+	}, [exporting]);
 
 	useEffect(() => {
-		const id = setInterval(() => {
-			setAnimatedProgress((prev) => {
-				const target = progressRef.current;
-				if (prev < target) {
-					const step = Math.max(1, Math.round((target - prev) * 0.15));
-					return Math.min(prev + step, target);
-				}
-				if (exportingRef.current && prev < 95) {
-					return prev + 1;
-				}
-				return prev;
-			});
-		}, 150);
-		return () => clearInterval(id);
-	}, []);
+		if (submitted) setAnalysisProgress(100);
+	}, [submitted]);
 
 	useEffect(() => {
 		if (!displayProgressModal) return;
@@ -94,40 +86,26 @@ const DownloadProgressModal = ({ stateManager }: { stateManager: StateManager })
 		);
 	};
 
-	const isCompleted = Boolean(output?.url) && !exporting;
-	const isFailed = Boolean(error) && !exporting && !isCompleted;
-
-	const handleSave = async () => {
-		if (!output?.url || !isNameValid) return;
-		const filename = mediaName.trim();
+	const handleExport = () => {
+		if (!isNameValid) return;
 		const mediaId = crypto.randomUUID();
+		actions.setSaveMetadata({
+			mediaName: mediaName.trim(),
+			mediaId,
+			downloadToComputer,
+			saveToPersonalChannel,
+			selectedChannelIds: saveToUnitChannel ? selectedChannelIds : [],
+		});
+		void actions.startExport({ copyWatchLink });
+	};
 
-		if (copyWatchLink) {
-			await navigator.clipboard.writeText(`${window.location.origin}/watch/${mediaId}`);
-		}
-		if (downloadToComputer) {
-			const ext = output.type === "webp" ? "webp" : "mp4";
-			await download(output.url, `${filename}.${ext}`);
-		}
-		const items = extractSavedItems((payload?.trackItemsMap ?? {}) as Record<string, ITrackItem>);
-		sendToParent(
-			createMediaSavedMessage(
-				filename,
-				downloadToComputer,
-				saveToPersonalChannel,
-				output.url,
-				output.type,
-				items,
-				mediaId,
-				saveToUnitChannel ? selectedChannelIds : [],
-			),
-		);
+	const handleRetry = () => {
+		actions.incrementRetryCount();
+		void actions.startExport({ copyWatchLink });
 	};
 
 	const handleReturnHome = () => {
-		if (isCompleted) {
-			clearProject(stateManager);
-		}
+		clearProject(stateManager);
 		actions.setDisplayProgressModal(false);
 		navigate("/");
 	};
@@ -143,23 +121,18 @@ const DownloadProgressModal = ({ stateManager }: { stateManager: StateManager })
 				<DialogTitle className="flex h-16 items-center border-b px-4 font-medium text-base">
 					שמירה
 				</DialogTitle>
-				<DialogDescription className="sr-only">Export progress dialog</DialogDescription>
-				{isCompleted ? (
-					<div className="flex flex-1 flex-col items-center justify-center gap-6 px-8 overflow-y-auto py-6">
-						<div className="flex flex-col items-center gap-1 text-center">
-							<CircleCheckIcon className="text-primary mb-1 h-8 w-8" aria-hidden="true" />
-							<p className="font-bold">הייצוא הושלם</p>
-							<p className="text-muted-foreground text-sm">בחר כיצד לשמור את הקובץ</p>
-						</div>
+				<DialogDescription className="sr-only">תיבת דו-שיח להתקדמות השמירה</DialogDescription>
 
-						<div className="w-full max-w-sm space-y-4">
+				{isFormPhase ? (
+					<div className="flex flex-1 flex-col items-center justify-start gap-0 overflow-y-auto">
+						<div className="w-full max-w-sm space-y-4 py-6">
 							<div className="space-y-1">
 								<Label htmlFor="media-name">שם המדיה</Label>
 								<Input
 									id="media-name"
 									value={mediaName}
 									onChange={(e) => handleNameChange(e.target.value)}
-									placeholder={baseFilename || "הזן שם לקובץ"}
+									placeholder="הזן שם לקובץ"
 									dir="rtl"
 									maxLength={75}
 								/>
@@ -193,7 +166,7 @@ const DownloadProgressModal = ({ stateManager }: { stateManager: StateManager })
 										className="h-4 w-4 cursor-pointer rounded border-border accent-primary"
 									/>
 									<Label htmlFor="copy-watch-link" className="cursor-pointer font-normal">
-										העתקת קישור
+										העתקת קישור צפייה
 									</Label>
 								</div>
 
@@ -302,56 +275,75 @@ const DownloadProgressModal = ({ stateManager }: { stateManager: StateManager })
 								</div>
 							</div>
 
-							<div className="flex flex-col gap-2">
-								<Button onClick={handleSave} className="w-full" disabled={!isNameValid}>
-									שמור
-								</Button>
-								<Button variant="outline" onClick={handleReturnHome} className="w-full">
-									חזרה לדף הבית
-								</Button>
+							<div className="space-y-2">
+								<Label>פורמט ייצוא</Label>
+								<div className="flex flex-col gap-2">
+									<button
+										type="button"
+										onClick={() => actions.setExportType("mp4")}
+										className={`flex flex-col gap-0.5 rounded-lg border px-3 py-2.5 text-right transition-colors hover:bg-secondary ${
+											exportType === "mp4" ? "border-primary bg-secondary" : "border-border"
+										}`}
+									>
+										<span className="text-sm font-medium">סרטון</span>
+										<span className="text-muted-foreground text-xs">קובץ MP4 באיכות גבוהה</span>
+									</button>
+									<button
+										type="button"
+										onClick={() => actions.setExportType("webp")}
+										className={`flex flex-col gap-0.5 rounded-lg border px-3 py-2.5 text-right transition-colors hover:bg-secondary ${
+											exportType === "webp" ? "border-primary bg-secondary" : "border-border"
+										}`}
+									>
+										<span className="text-sm font-medium">תמונה</span>
+										<span className="text-muted-foreground text-xs">תמונה של הפריים הנוכחי</span>
+									</button>
+								</div>
 							</div>
+
+							<Button onClick={handleExport} className="w-full" disabled={!isNameValid}>
+								ייצא
+							</Button>
 						</div>
 					</div>
-				) : isFailed ? (
-					<div className="flex flex-1 flex-col items-center justify-center gap-4 px-8 text-center">
-						<div className="font-bold">הייצוא נכשל</div>
-						<div className="text-sm text-zinc-500">{error}</div>
-						<Button variant="outline" onClick={handleReturnHome}>
-							חזרה לדף הבית
-						</Button>
-					</div>
-				) : (
+				) : isAnalyzingPhase ? (
 					<div
 						className="flex flex-1 flex-col items-center justify-center gap-4"
 						aria-live="polite"
 						aria-atomic="true"
 					>
-						<div
-							role="progressbar"
-							aria-valuenow={animatedProgress}
-							aria-valuemin={0}
-							aria-valuemax={100}
-							aria-label="Export progress"
-							className="text-5xl font-semibold tabular-nums"
-						>
-							{animatedProgress}%
-						</div>
 						<div className="h-2 w-64 rounded-full bg-muted">
 							<div
 								className="h-2 rounded-full bg-primary duration-300 motion-safe:transition-[width]"
-								style={{ width: `${animatedProgress}%` }}
+								style={{ width: `${analysisProgress}%` }}
 							/>
 						</div>
-						<div className="font-bold">מייצא…</div>
 						<div className="text-center text-zinc-500">
-							<div>סגירת הדפדפן לא תבטל את הייצוא.</div>
-							<div>הסרטון יישמר במרחב שלך.</div>
+							<div>מנתחים את הנתונים, אנא המתן...</div>
 						</div>
-						<Button variant="outline" onClick={actions.cancelExport}>
-							ביטול
+					</div>
+				) : isSubmittedPhase ? (
+					<div className="flex flex-1 flex-col items-center justify-center gap-6 px-8 overflow-y-auto py-6">
+						<div className="flex flex-col items-center gap-1 text-center">
+							<CircleCheckIcon className="text-primary mb-1 h-8 w-8" aria-hidden="true" />
+							<p className="font-bold">אנחנו עובדים על הסרטון שלך</p>
+							<p className="text-sm text-zinc-500">נעדכן אותך כשהסרטון יהיה מוכן</p>
+						</div>
+						<Button variant="outline" onClick={handleReturnHome} className="w-full max-w-sm">
+							חזרה לעמוד הראשי
 						</Button>
 					</div>
-				)}
+				) : isErrorPhase ? (
+					<div className="flex flex-1 flex-col items-center justify-center gap-4 px-8 text-center">
+						<div className="font-bold">שגיאה בשמירה</div>
+						<div className="text-sm text-zinc-500">{error}</div>
+						{retryCount < 2 && (
+							<Button variant="outline" onClick={handleRetry}>
+								נסה שנית
+							</Button>
+						)}
+					</div>
+				) : null}
 			</DialogContent>
 		</Dialog>
 	);

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { designPayloadSchema } from "../adapters/inbound/http/design-payload.schema.ts";
-import type { IDesign, ITrackItemBase } from "./DesignToRenderJobTranslator.ts";
-import { translate } from "./DesignToRenderJobTranslator.ts";
+import { designPayloadSchema } from "../../adapters/inbound/http/design-payload.schema.ts";
+import type { IDesign, ITrackItemBase } from "../DesignToRenderJobTranslator.ts";
+import { translate } from "../DesignToRenderJobTranslator.ts";
 
 function baseDesign(overrides: Partial<IDesign> = {}): IDesign {
 	return {

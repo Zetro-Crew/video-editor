@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildTextOverlayFilter } from "./text-overlay.service.ts";
+import { buildTextOverlayFilter } from "../text-overlay.service.ts";
 
 const makeOverlay = (overrides: Record<string, unknown> = {}) => ({
 	id: "t1",
