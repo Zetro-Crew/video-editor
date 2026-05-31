@@ -6,6 +6,10 @@ on:
   pull_request:
     branches: [main]
 
+env:
+  TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
+  TURBO_TEAM: ${{ vars.TURBO_TEAM }}
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -33,6 +37,11 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Check Turbo env
+        run: |
+          test -n "$TURBO_TOKEN" && echo "TURBO_TOKEN exists" || echo "TURBO_TOKEN missing"
+          test -n "$TURBO_TEAM" && echo "TURBO_TEAM exists: $TURBO_TEAM" || echo "TURBO_TEAM missing"
 
       - name: Lint
         run: pnpm lint
@@ -66,6 +75,11 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Check Turbo env
+        run: |
+          test -n "$TURBO_TOKEN" && echo "TURBO_TOKEN exists" || echo "TURBO_TOKEN missing"
+          test -n "$TURBO_TEAM" && echo "TURBO_TEAM exists: $TURBO_TEAM" || echo "TURBO_TEAM missing"
 
       - name: Test
         run: pnpm test
