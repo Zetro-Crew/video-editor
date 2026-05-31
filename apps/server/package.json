@@ -37,6 +37,8 @@
 		"@types/amqplib": "^0.10.8",
 		"@types/ffprobe-static": "^2.0.0",
 		"@types/node": "catalog:",
+		"@video-editor/core-mock": "workspace:*",
+		"@video-editor/mock-vod": "workspace:*",
 		"typescript": "catalog:",
 		"vitest": "catalog:"
 	}

@@ -1,17 +1,10 @@
-import { promises as fsp } from "node:fs";
-import path from "node:path";
 import type { FastifyPluginAsync } from "fastify";
 import type { EnvConfig } from "../../../../../config/env.ts";
 import type { StoragePort } from "../../../../../shared/application/ports/outbound/StoragePort.ts";
 import { HttpStatus } from "../../../../../shared/utils/http-status.ts";
-import type { ChannelPlayApiPort } from "../../../application/ports/outbound/ChannelPlayApiPort.ts";
-import {
-	DEMO_PREVIEW_CHANNEL_ID,
-	getDemoPreviewAssetsDir,
-} from "../../../application/services/demo-preview.fixture.ts";
+import { verifyUrlSignature } from "../../../application/services/url-signing.ts";
 import { GeneratePreviewUseCase } from "../../../application/use-cases/GeneratePreviewUseCase.ts";
-import { DemoChannelPlayApiAdapter } from "../../outbound/demo/DemoChannelPlayApiAdapter.ts";
-import { HttpChannelPlayApiAdapter } from "../../outbound/http/HttpChannelPlayApiAdapter.ts";
+import { HttpPreviewSourceAdapter } from "../../outbound/http/HttpPreviewSourceAdapter.ts";
 
 interface ChannelRangeSource {
 	type: "channel-range";
@@ -22,9 +15,6 @@ interface ChannelRangeSource {
 
 interface PreviewSourceBody {
 	source: ChannelRangeSource;
-	mpdXml?: string;
-	mpdBaseUrl?: string;
-	segmentStartTimeMs?: number;
 }
 
 interface PreviewControllerOptions {
@@ -39,47 +29,23 @@ export const previewController: FastifyPluginAsync<PreviewControllerOptions> = a
 	const { config, storage } = opts;
 	const generatePreviewUseCase = new GeneratePreviewUseCase(storage, config);
 
-	fastify.get("/editor/demo-assets/:filename", async (request, reply) => {
-		const { filename } = request.params as { filename?: string };
-		if (!filename || path.basename(filename) !== filename) {
-			return reply.status(HttpStatus.BAD_REQUEST).send({ error: "Invalid demo asset filename" });
-		}
-
-		const filePath = path.join(getDemoPreviewAssetsDir(), filename);
-		try {
-			const body = await fsp.readFile(filePath);
-			const extension = path.extname(filename).toLowerCase();
-			const contentType =
-				extension === ".mpd"
-					? "application/dash+xml"
-					: extension === ".m4s"
-						? "video/iso.segment"
-						: "video/mp4";
-			reply.header("Content-Type", contentType);
-			return reply.send(body);
-		} catch {
-			return reply.status(HttpStatus.NOT_FOUND).send({ error: "Demo asset not found" });
-		}
-	});
-
 	fastify.get("/editor/segment", async (request, reply) => {
-		const { url, token } = request.query as { url?: string; token?: string };
-		if (!url || !token) {
-			return reply.status(HttpStatus.BAD_REQUEST).send({ error: "Missing url or token" });
+		const { url, token, sig } = request.query as {
+			url?: string;
+			token?: string;
+			sig?: string;
+		};
+		if (!url || !token || !sig) {
+			return reply.status(HttpStatus.BAD_REQUEST).send({ error: "Missing url, token, or sig" });
 		}
 
-		if (!/^[A-Za-z0-9_=-]*$/.test(url)) {
+		if (!/^[A-Za-z0-9_=-]*$/.test(url) || !/^[A-Za-z0-9_-]+$/.test(sig)) {
 			return reply.status(HttpStatus.BAD_REQUEST).send({ error: "Invalid url encoding" });
 		}
 
-		let decoded: string;
-		try {
-			decoded = Buffer.from(url, "base64url").toString("utf8");
-		} catch {
-			return reply.status(HttpStatus.BAD_REQUEST).send({ error: "Invalid url encoding" });
-		}
+		const decoded = Buffer.from(url, "base64url").toString("utf8");
 
-		if (decoded.includes("")) {
+		if (decoded.includes("\x00")) {
 			return reply.status(HttpStatus.BAD_REQUEST).send({ error: "Invalid url encoding" });
 		}
 
@@ -93,6 +59,10 @@ export const previewController: FastifyPluginAsync<PreviewControllerOptions> = a
 			return reply.status(HttpStatus.BAD_REQUEST).send({ error: "Invalid URL" });
 		}
 
+		if (!verifyUrlSignature(config.PREVIEW_SIGNING_SECRET, decoded, sig)) {
+			return reply.status(HttpStatus.FORBIDDEN).send({ error: "Invalid signature" });
+		}
+
 		const upstream = await fetch(decoded, { headers: { "vod-token": token } });
 		if (!upstream.ok) {
 			return reply.status(upstream.status).send();
@@ -103,13 +73,13 @@ export const previewController: FastifyPluginAsync<PreviewControllerOptions> = a
 	});
 
 	fastify.post<{ Body: PreviewSourceBody }>("/editor/preview-source", async (request, reply) => {
-		const { source, mpdXml: rawMpdXml, mpdBaseUrl, segmentStartTimeMs } = request.body;
-
-		if (source.type !== "channel-range") {
+		const body = request.body as PreviewSourceBody | null;
+		if (!body?.source || body.source.type !== "channel-range") {
 			return reply
 				.status(HttpStatus.BAD_REQUEST)
 				.send({ error: "source.type must be channel-range" });
 		}
+		const { source } = body;
 
 		const { channelId, startTimeMs, endTimeMs } = source;
 
@@ -126,41 +96,15 @@ export const previewController: FastifyPluginAsync<PreviewControllerOptions> = a
 			});
 		}
 
-		let channelPlayApi: ChannelPlayApiPort;
-
-		if (rawMpdXml && mpdBaseUrl && segmentStartTimeMs !== undefined) {
-			const mpdXml = rawMpdXml;
-			const baseUrl = mpdBaseUrl;
-			const segStartMs = segmentStartTimeMs;
-			channelPlayApi = {
-				fetchMpd: async () => ({
-					mpdXml,
-					baseUrl,
-					segmentStartTimeMs: segStartMs,
-				}),
-			};
-		} else if (channelId === DEMO_PREVIEW_CHANNEL_ID) {
-			const demoAdapter = new DemoChannelPlayApiAdapter(config.SERVER_BASE_URL);
-			channelPlayApi = demoAdapter;
-		} else if (config.BASE_URL && config.CORE_EXTENSION) {
-			const ztubeToken = (request.headers["x-ztube-token"] as string | undefined) ?? "";
-			channelPlayApi = new HttpChannelPlayApiAdapter(
-				config.BASE_URL + config.CORE_EXTENSION,
-				ztubeToken,
-			);
-		} else {
-			return reply.status(HttpStatus.NOT_IMPLEMENTED).send({
-				error:
-					"BASE_URL and CORE_EXTENSION are not configured. Provide mpdXml/mpdBaseUrl/segmentStartTimeMs or use channelId demo-recording for local testing.",
-			});
-		}
+		const ztubeToken = (request.headers["x-ztube-token"] as string | undefined) ?? "";
+		const previewSource = new HttpPreviewSourceAdapter(config.CORE_BASE_URL, ztubeToken);
 
 		try {
 			const result = await generatePreviewUseCase.execute({
 				channelId,
 				startTimeMs,
 				endTimeMs,
-				channelPlayApi,
+				previewSource,
 			});
 
 			return reply.status(HttpStatus.OK).send({ type: "hls", ...result });

@@ -25,13 +25,18 @@ const envSchema = z.object({
 	FFMPEG_CRF: z.string().default("20"),
 	FFMPEG_AUDIO_BITRATE: z.string().default("192k"),
 	FFMPEG_MAX_CONCURRENT: z.coerce.number().int().min(1).default(2),
-	// Preview source (MPD → HLS)
-	BASE_URL: z.string(),
-	CORE_EXTENSION: z.string(),
+	// Preview source (MPD → HLS).
+	// CORE_BASE_URL includes the "/private" prefix because real Core groups auth-required
+	// endpoints there — the preview adapter appends `/channels/:id/play` to it.
+	// Dev: http://localhost:8002/private.
+	CORE_BASE_URL: z.url(),
+	MOCK_VOD_BASE_URL: z.url().optional(),
 	SERVER_BASE_URL: z.string(),
 	MAX_PREVIEW_DURATION_MS: z.coerce.number().default(3600000),
 	PREVIEW_JOB_TTL_SECONDS: z.coerce.number().default(86400),
 	S3_PREVIEW_PREFIX: z.string().default("preview"),
+	// HMAC secret for segment-proxy URL signing. Prevents SSRF via /editor/segment.
+	PREVIEW_SIGNING_SECRET: z.string().min(32),
 	// MPD
 	ENABLE_MPD_RESTRICTIONS: boolEnv(false),
 	TRANSCODE_TIMEOUT_MS: z.coerce.number().default(7200000),

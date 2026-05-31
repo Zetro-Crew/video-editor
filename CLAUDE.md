@@ -15,14 +15,19 @@ apps/
   frontend/    — Vite + React 19 + React Router v7 (port 3000)
   server/      — Fastify + Node.js (port 4000)
   iframe-demo/ — Angular 21 demo harness for iframe integration (port 8080)
+  core-mock/   — Fastify mock of the Core service (port 8002)
+  mock-vod/    — Fastify mock of the VOD service (port 5050)
 packages/
   contract/         — shared postMessage + AMQP event contract (@video-editor/contract)
 ```
+
+`core-mock` and `mock-vod` coordinate via `POST /__internal/register-token` so cross-service `vod-token` trust mirrors the real Core/VOD relationship. See [docs/adr/0002-mock-vod-as-separate-app.md](docs/adr/0002-mock-vod-as-separate-app.md).
 
 Per-app guidance:
 - [apps/frontend/CLAUDE.md](apps/frontend/CLAUDE.md)
 - [apps/server/CLAUDE.md](apps/server/CLAUDE.md)
 - [apps/iframe-demo/CLAUDE.md](apps/iframe-demo/CLAUDE.md)
+- [apps/mock-vod/CLAUDE.md](apps/mock-vod/CLAUDE.md)
 - [packages/contract/CLAUDE.md](packages/contract/CLAUDE.md)
 
 ## Repo Rules

@@ -23,6 +23,14 @@
       "entry": [],
       "project": ["src/**/*.ts"]
     },
+    "apps/core-mock": {
+      "entry": [],
+      "project": ["src/**/*.ts"]
+    },
+    "apps/mock-vod": {
+      "entry": [],
+      "project": ["src/**/*.ts"]
+    },
     "packages/contract": {
       "entry": [],
       "project": ["src/**/*.ts"]

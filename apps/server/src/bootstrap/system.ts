@@ -31,6 +31,7 @@ export class System {
 			publisherConnected = true;
 			Logger.logInfo("[startup] RabbitMQ connected");
 			await this.server.start();
+			await this.logFixtureWindowIfLocal();
 		} catch (err) {
 			if (publisherConnected) {
 				try {
@@ -51,6 +52,22 @@ export class System {
 				);
 			}
 			throw err;
+		}
+	}
+
+	private async logFixtureWindowIfLocal(): Promise<void> {
+		try {
+			const coreHost = new URL(this.config.CORE_BASE_URL).hostname;
+			if (coreHost !== "localhost" && coreHost !== "127.0.0.1") return;
+			const mockVodUrl = this.config.MOCK_VOD_BASE_URL ?? "http://localhost:5050";
+			const res = await fetch(`${mockVodUrl}/__internal/fixture-window`);
+			if (!res.ok) return;
+			const window = (await res.json()) as { startMs: number; endMs: number; recordingId: string };
+			Logger.logInfo("[startup] mock-vod fixture window", window);
+		} catch (err) {
+			Logger.logInfo("[startup] mock-vod fixture window probe skipped", {
+				reason: err instanceof Error ? err.message : String(err),
+			});
 		}
 	}
 

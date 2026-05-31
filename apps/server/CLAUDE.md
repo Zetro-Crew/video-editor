@@ -79,11 +79,12 @@ Controller: `src/features/render/adapters/inbound/http/render.controller.ts`
 ### preview
 | Method | Path | Description |
 |--------|------|-------------|
-| POST | `/editor/preview-source` | Generate preview from MPD/HLS source |
-| GET | `/editor/segment` | Proxy HLS segment (signed URL) |
-| GET | `/editor/demo-assets/:filename` | Serve local demo media files |
+| POST | `/editor/preview-source` | Generate preview from MPD/HLS source. Calls Core's `/private/channels/:id/play`, fetches the MPD from the returned URL with `vod-token`, builds an HLS playlist, stores it, returns the signed playlist URL |
+| GET | `/editor/segment` | Proxy HLS segment — injects `vod-token` header into the upstream fetch (browsers cannot do it for HLS) |
 
 Controller: `src/features/preview/adapters/inbound/http/preview.controller.ts`
+
+Outbound adapter: `src/features/preview/adapters/outbound/http/HttpPreviewSourceAdapter.ts` (implements `PreviewSourcePort` with `play()` + `fetchManifest()`). Same adapter is used against real Core/VOD and against `apps/core-mock`/`apps/mock-vod`. No demo branches.
 
 ### editor-export
 | Method | Path | Description |
@@ -128,7 +129,9 @@ All validated by Zod in `src/config/env.ts`. Key vars:
 | `JOB_PROGRESS_TTL_SECONDS` | `600` | TTL for job progress keys in Redis |
 | `FFMPEG_PRESET` | `veryfast` | FFmpeg encoding preset |
 | `FFMPEG_CRF` | `20` | FFmpeg CRF quality |
-| `CHANNEL_PLAY_API_BASE_URL` | `""` | External preview source API (leave empty for demo mode) |
+| `CORE_BASE_URL` | required | Core service base URL. **Includes the `/private` prefix** — real Core groups auth-required endpoints there, so the adapter appends `/channels/:id/play` to it. Dev: `http://localhost:8002/private` |
+| `MOCK_VOD_BASE_URL` | optional | Boot-only — used to log the active mock-vod fixture window when `CORE_BASE_URL` is localhost. Defaults to `http://localhost:5050` if unset |
+| `PREVIEW_SIGNING_SECRET` | required | HMAC-SHA256 secret used to sign segment-proxy URLs. Min 32 chars. Without this, `/editor/segment` would be an SSRF vector |
 | `SERVER_BASE_URL` | `http://localhost:4001` | Public server URL (used in signed segment URLs) |
 | `RABBITMQ_URL` | required | AMQP connection URL — service won't start without this |
 

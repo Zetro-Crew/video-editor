@@ -61,8 +61,8 @@ data:
   # Telemetry (set to your collector endpoint or leave empty to disable)
   OTEL_ENDPOINT: ""
 
-  # External preview API (empty = demo mode)
-  CHANNEL_PLAY_API_BASE_URL: ""
+  # External Core service (issues /channels/:id/play). Include the /private prefix.
+  CORE_BASE_URL: "https://<REPLACE_ME>/private"
 
 ---
 # ---------------------------------------------------------------------------
@@ -91,6 +91,8 @@ stringData:
   SERVER_BASE_URL: "https://<REPLACE_ME>"
   # MinIO / S3-compatible endpoint (use https in prod)
   S3_ENDPOINT: "https://<REPLACE_ME>"
+  # HMAC secret for /editor/segment URL signing (min 32 chars, random)
+  PREVIEW_SIGNING_SECRET: "<REPLACE_ME>"
 
 ---
 # ---------------------------------------------------------------------------

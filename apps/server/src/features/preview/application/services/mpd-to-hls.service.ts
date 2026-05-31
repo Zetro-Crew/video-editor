@@ -2,8 +2,8 @@ import { XMLParser } from "fast-xml-parser";
 
 export interface MpdToHlsInput {
 	mpdXml: string;
-	/** Base URL of the MPD document — used to build the EXT-X-MAP URI for the init segment. */
-	baseUrl: string;
+	/** Full URL the MPD document was fetched from — anchor for RFC3986 BaseURL resolution. */
+	mpdUrl: string;
 	/** Absolute wall-clock timestamp (ms) of the first segment identified by startNumber. */
 	segmentStartTimeMs: number;
 	requestedStartMs: number;
@@ -34,6 +34,8 @@ interface ParsedRepresentation {
 	width: number;
 	height: number;
 	segmentTemplate: SegmentTemplate;
+	mpdBase: string;
+	periodBase: string;
 }
 
 const parser = new XMLParser({
@@ -41,7 +43,50 @@ const parser = new XMLParser({
 	attributeNamePrefix: "@_",
 });
 
-function parseMpd(mpdXml: string): ParsedRepresentation {
+function coerceBaseUrlEntry(entry: unknown): string | undefined {
+	if (typeof entry === "string") return entry || undefined;
+	if (entry && typeof entry === "object" && "#text" in (entry as Record<string, unknown>)) {
+		const text = (entry as Record<string, unknown>)["#text"];
+		if (text === undefined || text === null) return undefined;
+		const s = String(text);
+		return s || undefined;
+	}
+	return undefined;
+}
+
+// DASH allows multiple BaseURL siblings for CDN failover; we pick the first usable
+// entry (single-CDN client). Scans the array so a malformed leading entry doesn't
+// silently drop the valid alternates.
+function extractBaseUrl(node: unknown): string | undefined {
+	if (!node || typeof node !== "object") return undefined;
+	const value = (node as { BaseURL?: unknown }).BaseURL;
+	if (value === undefined || value === null) return undefined;
+	if (Array.isArray(value)) {
+		for (const entry of value) {
+			const s = coerceBaseUrlEntry(entry);
+			if (s) return s;
+		}
+		return undefined;
+	}
+	return coerceBaseUrlEntry(value);
+}
+
+function selectVideoAdaptationSet(
+	period: Record<string, unknown>,
+): Record<string, unknown> | undefined {
+	const raw = period.AdaptationSet;
+	const list = Array.isArray(raw) ? raw : raw !== undefined ? [raw] : [];
+	return list.find((as: unknown) => {
+		if (!as || typeof as !== "object") return false;
+		const ct = (as as Record<string, unknown>)["@_contentType"];
+		if (typeof ct === "string" && ct === "video") return true;
+		const mt = (as as Record<string, unknown>)["@_mimeType"];
+		if (typeof mt === "string" && mt.startsWith("video/")) return true;
+		return false;
+	}) as Record<string, unknown> | undefined;
+}
+
+function parseMpd(mpdXml: string, mpdUrl: string): ParsedRepresentation {
 	const doc = parser.parse(mpdXml);
 	const mpd = doc.MPD;
 	if (!mpd) throw new Error("Invalid MPD: missing root MPD element");
@@ -49,23 +94,28 @@ function parseMpd(mpdXml: string): ParsedRepresentation {
 	const period = Array.isArray(mpd.Period) ? mpd.Period[0] : mpd.Period;
 	if (!period) throw new Error("Invalid MPD: missing Period element");
 
-	const adaptationSet = Array.isArray(period.AdaptationSet)
-		? period.AdaptationSet[0]
-		: period.AdaptationSet;
-	if (!adaptationSet) throw new Error("Invalid MPD: missing AdaptationSet element");
+	const adaptationSet = selectVideoAdaptationSet(period as Record<string, unknown>);
+	if (!adaptationSet) throw new Error("Invalid MPD: missing video AdaptationSet");
 
 	const representation = Array.isArray(adaptationSet.Representation)
-		? adaptationSet.Representation[0]
+		? (adaptationSet.Representation as unknown[])[0]
 		: adaptationSet.Representation;
 	if (!representation) throw new Error("Invalid MPD: missing Representation element");
 
-	const representationId: string = String(representation["@_id"] ?? "");
+	const rep = representation as Record<string, unknown>;
+	const representationId: string = String(rep["@_id"] ?? "");
 	if (!representationId) throw new Error("Invalid MPD: Representation missing id attribute");
 
-	const width = Number(representation["@_width"] ?? adaptationSet["@_width"]) || 1920;
-	const height = Number(representation["@_height"] ?? adaptationSet["@_height"]) || 1080;
+	const width =
+		Number(rep["@_width"] ?? (adaptationSet as Record<string, unknown>)["@_width"]) || 1920;
+	const height =
+		Number(rep["@_height"] ?? (adaptationSet as Record<string, unknown>)["@_height"]) || 1080;
 
-	const st = representation.SegmentTemplate ?? adaptationSet.SegmentTemplate;
+	const st =
+		(rep.SegmentTemplate as Record<string, unknown> | undefined) ??
+		((adaptationSet as Record<string, unknown>).SegmentTemplate as
+			| Record<string, unknown>
+			| undefined);
 	if (!st) throw new Error("Invalid MPD: missing SegmentTemplate");
 
 	const timescale = Number(st["@_timescale"]);
@@ -78,6 +128,14 @@ function parseMpd(mpdXml: string): ParsedRepresentation {
 		throw new Error("Invalid MPD: SegmentTemplate missing required attributes");
 	}
 
+	// RFC3986 BaseURL resolution: resolve(period.BaseURL, resolve(mpd.BaseURL, mpdDocumentURL)).
+	// presentationTimeOffset is parsed informationally only — segmentStartTimeMs (from /play)
+	// remains the wall-clock anchor.
+	const mpdBaseText = extractBaseUrl(mpd);
+	const periodBaseText = extractBaseUrl(period);
+	const mpdBase = new URL(mpdBaseText ?? "./", mpdUrl).toString();
+	const periodBase = new URL(periodBaseText ?? "./", mpdBase).toString();
+
 	return {
 		id: representationId,
 		width,
@@ -89,23 +147,25 @@ function parseMpd(mpdXml: string): ParsedRepresentation {
 			initialization,
 			media,
 		},
+		mpdBase,
+		periodBase,
 	};
 }
 
+// ISO/IEC 23009-1 $Number$ / $Number%0Nd$ width-format spec.
 function substituteTemplate(template: string, id: string, number?: number): string {
 	let result = template.replace(/\$RepresentationID\$/g, id);
 	if (number !== undefined) {
-		result = result.replace(/\$Number\$/g, String(number));
+		const n = String(number);
+		result = result.replace(/\$Number(?:%0(\d+)d)?\$/g, (_m, width: string | undefined) =>
+			width ? n.padStart(Number(width), "0") : n,
+		);
 	}
 	return result;
 }
 
-function ensureTrailingSlash(url: string): string {
-	return url.endsWith("/") ? url : `${url}/`;
-}
-
 export function generateHlsPlaylist(input: MpdToHlsInput): MpdToHlsOutput {
-	const { mpdXml, baseUrl, segmentStartTimeMs, requestedStartMs, requestedEndMs, maxDurationMs } =
+	const { mpdXml, mpdUrl, segmentStartTimeMs, requestedStartMs, requestedEndMs, maxDurationMs } =
 		input;
 
 	if (requestedEndMs <= requestedStartMs) {
@@ -119,7 +179,7 @@ export function generateHlsPlaylist(input: MpdToHlsInput): MpdToHlsOutput {
 		);
 	}
 
-	const { id, width, height, segmentTemplate: st } = parseMpd(mpdXml);
+	const { id, width, height, segmentTemplate: st, periodBase } = parseMpd(mpdXml, mpdUrl);
 
 	const segDurationMs = (st.duration / st.timescale) * 1000;
 	const segDurationS = st.duration / st.timescale;
@@ -146,8 +206,7 @@ export function generateHlsPlaylist(input: MpdToHlsInput): MpdToHlsOutput {
 		);
 	}
 
-	const base = ensureTrailingSlash(baseUrl);
-	const initUri = `${base}${substituteTemplate(st.initialization, id)}`;
+	const initUri = new URL(substituteTemplate(st.initialization, id), periodBase).toString();
 
 	const lines: string[] = [
 		"#EXTM3U",
@@ -159,9 +218,9 @@ export function generateHlsPlaylist(input: MpdToHlsInput): MpdToHlsOutput {
 	];
 
 	for (let n = firstSegNumber; n <= lastSegNumber; n++) {
-		const segUri = substituteTemplate(st.media, id, n);
+		const segUri = new URL(substituteTemplate(st.media, id, n), periodBase).toString();
 		lines.push(`#EXTINF:${segDurationS.toFixed(3)},`);
-		lines.push(`${base}${segUri}`);
+		lines.push(segUri);
 	}
 
 	lines.push("#EXT-X-ENDLIST");

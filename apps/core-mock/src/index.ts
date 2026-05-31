@@ -1,8 +1,6 @@
+import { randomBytes } from "node:crypto";
 import cors from "@fastify/cors";
-import Fastify from "fastify";
-
-const PORT = 8002;
-const HOST = "127.0.0.1";
+import Fastify, { type FastifyInstance } from "fastify";
 
 const mockUser = {
 	displayName: "דניאל ריספלר",
@@ -20,32 +18,89 @@ const mockChannels = [
 	{ _id: "ch-008", name: 'ערוץ בסיס נח"ל', type: "unit", subType: "base" },
 ];
 
-const app = Fastify({ logger: { level: "info" } });
+export interface BuildCoreMockOptions {
+	mockVodBaseUrl?: string;
+	tokenTtlMs?: number;
+	logger?: boolean;
+}
 
-await app.register(cors, { origin: true, credentials: true });
+export interface CoreMockHandle {
+	app: FastifyInstance;
+}
 
-app.get("/private/users/me", async () => mockUser);
+interface FixtureWindow {
+	startMs: number;
+	endMs: number;
+	recordingId: string;
+}
 
-app.get("/private/media/clip/managed-virtual-channels", async () => mockChannels);
+async function probeFixtureWindow(mockVodBaseUrl: string): Promise<FixtureWindow> {
+	const res = await fetch(`${mockVodBaseUrl}/__internal/fixture-window`);
+	if (!res.ok) throw new Error(`fixture-window probe failed: ${res.status}`);
+	return (await res.json()) as FixtureWindow;
+}
 
-app.get<{ Params: { channelId: string }; Querystring: { start?: string; end?: string } }>(
-	"/private/channels/:channelId/play",
-	async (req) => {
-		const { channelId } = req.params;
+export async function buildCoreMock(opts: BuildCoreMockOptions = {}): Promise<CoreMockHandle> {
+	const mockVodBaseUrl = opts.mockVodBaseUrl ?? "http://127.0.0.1:5050";
+	const tokenTtlMs = opts.tokenTtlMs ?? 600_000;
+
+	const app = Fastify({ logger: opts.logger ?? false });
+	await app.register(cors, { origin: true, credentials: true });
+
+	let cachedWindow: FixtureWindow | undefined;
+
+	app.get("/private/users/me", async () => mockUser);
+	app.get("/private/media/clip/managed-virtual-channels", async () => mockChannels);
+
+	app.get<{
+		Params: { channelId: string };
+		Querystring: { start?: string; end?: string };
+	}>("/private/channels/:channelId/play", async (req, reply) => {
 		const start = Number(req.query.start ?? 0);
-		const end = Number(req.query.end ?? start + 537284);
-		return {
-			url: "/vod/mock-generate",
-			timeRanges: [[start, end]],
-			token: `mock-vod-token-${channelId}`,
-		};
-	},
-);
+		const end = Number(req.query.end ?? 0);
+		if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) {
+			return reply.status(400).send({ error: "Invalid start/end" });
+		}
 
-app.listen({ port: PORT, host: HOST }, (err) => {
-	if (err) {
-		app.log.error(err);
-		process.exit(1);
-	}
-	app.log.info(`core-mock running at http://${HOST}:${PORT}`);
-});
+		if (!cachedWindow) {
+			try {
+				cachedWindow = await probeFixtureWindow(mockVodBaseUrl);
+			} catch (err) {
+				app.log.warn({ err }, "fixture-window probe failed");
+				return reply.status(502).send({ error: "Mock VOD unreachable" });
+			}
+		}
+
+		const { startMs, endMs, recordingId } = cachedWindow;
+		const clippedEnd = Math.min(end, endMs);
+		if (clippedEnd <= Math.max(start, startMs)) {
+			return reply.status(404).send({
+				error: `Range [${start}, ${end}] does not overlap fixture window [${startMs}, ${endMs}]`,
+			});
+		}
+		// timeRanges[0][0] MUST be the wall-clock anchor of segment startNumber, not the
+		// clipped user-requested start. See CONTEXT.md "Channel Play API".
+
+		const token = randomBytes(18).toString("base64url");
+		try {
+			const registerRes = await fetch(`${mockVodBaseUrl}/__internal/register-token`, {
+				method: "POST",
+				headers: { "content-type": "application/json" },
+				body: JSON.stringify({ token, recordingId, ttlMs: tokenTtlMs }),
+			});
+			if (!registerRes.ok) {
+				app.log.warn({ status: registerRes.status }, "register-token returned non-2xx");
+			}
+		} catch (err) {
+			app.log.warn({ err }, "register-token POST failed");
+		}
+
+		return {
+			url: `${mockVodBaseUrl}/vod/${recordingId}/manifest.mpd`,
+			timeRanges: [[startMs, clippedEnd]],
+			token,
+		};
+	});
+
+	return { app };
+}

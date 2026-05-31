@@ -1,10 +1,10 @@
 {
-	"name": "@video-editor/core-mock",
+	"name": "@video-editor/mock-vod",
 	"version": "1.0.0",
-	"description": "Mock server for the core service API (port 8002)",
+	"description": "Mock VOD service emulating MPD-generate + DASH segments (port 5050)",
 	"main": "src/index.ts",
 	"scripts": {
-		"dev": "node --watch src/main.ts",
+		"dev": "node --watch --env-file=.env src/main.ts",
 		"start": "node src/main.ts",
 		"test": "vitest run",
 		"type-check": "tsc --noEmit",
