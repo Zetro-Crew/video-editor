@@ -3,11 +3,6 @@ export const EDITOR_CLEAR_PROJECT = "EDITOR_CLEAR_PROJECT";
 export const EDITOR_READY = "EDITOR_READY";
 export const EDITOR_SET_AUTH = "EDITOR_SET_AUTH";
 
-export type EditorSetAuthMessage = {
-	type: typeof EDITOR_SET_AUTH;
-	token: string;
-};
-
 export type RecordingRangePayload = {
 	kind: "recording-range";
 	channelId: string;

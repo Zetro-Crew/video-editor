@@ -3,11 +3,6 @@ import { LoggerManager } from "../logger.js";
 import { isSampled } from "../open-telemetry/core.js";
 import { MONITOR_STATUS, type Monitor, type MonitorConfig } from "./monitor.config.js";
 
-export const createZtestMonitor = (): ZMonitor => {
-	const noopLogger = LoggerManager.create({ level: "silent" });
-	return new ZMonitor(noopLogger, { processName: "test", businessId: "test", stageName: "test" });
-};
-
 export const createZMonitor = (config: MonitorConfig, extraInfo?: object): ZMonitor => {
 	const { processName: serviceName, customDestination } = config;
 	const logger = LoggerManager.create({ customDestination, serviceName });

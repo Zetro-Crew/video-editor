@@ -11,10 +11,6 @@
 		"./fastify": {
 			"types": "./dist/fastify/index.d.ts",
 			"import": "./dist/fastify/index.js"
-		},
-		"./monitor": {
-			"types": "./dist/monitor/index.d.ts",
-			"import": "./dist/monitor/index.js"
 		}
 	},
 	"scripts": {

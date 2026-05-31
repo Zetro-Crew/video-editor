@@ -1,7 +1,7 @@
 import type { Attributes, Counter, Histogram, Meter } from "@opentelemetry/api";
 import { metrics } from "@opentelemetry/api";
 
-export interface MetricsService {
+interface MetricsService {
 	recordHistogram(metricName: string, value: number, attributes?: Attributes): void;
 	increment(metricName: string, attributes?: Attributes, value?: number): void;
 }

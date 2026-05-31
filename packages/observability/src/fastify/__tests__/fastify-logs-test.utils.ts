@@ -22,7 +22,7 @@ const createTestLogger = () => {
 	return { loggerOptions, records };
 };
 
-export const createTestApp = (
+const createTestApp = (
 	pluginOpts: httpLoggingOptions,
 	registerRoutes: (app: FastifyInstance) => void,
 ): { app: FastifyInstance; records: any[] } => {
