@@ -53,7 +53,7 @@ export const ControlItem = () => {
 	return (
 		<div
 			dir="rtl"
-			className="absolute right-0 top-0 h-full w-full max-w-80 z-50 overflow-y-auto border-l border-border/80 bg-card shadow-xl"
+			className="h-full w-full overflow-y-auto border-l border-border/80 bg-card shadow-xl"
 		>
 			{trackItem ? <ActiveControlItem trackItem={trackItem} /> : <MenuItem />}
 		</div>

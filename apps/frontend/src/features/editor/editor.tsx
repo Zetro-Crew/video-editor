@@ -2,7 +2,6 @@ import { dispatch } from "@designcombo/events";
 import StateManager, { ADD_SHAPE, ADD_TEXT } from "@designcombo/state";
 import { generateId } from "@designcombo/timeline";
 import type { ITrackItem } from "@designcombo/types";
-import type { PlayerRef } from "@remotion/player";
 import { Circle, MoveUpRight, Square, Triangle, Upload } from "lucide-react";
 import { nanoid } from "nanoid";
 import { memo, useEffect, useRef, useState } from "react";
@@ -21,6 +20,7 @@ import Scene from "./scene/scene";
 import type { SceneRef } from "./scene/scene.types";
 import { ShortcutsModal } from "./shortcuts-modal";
 import useEditorRefs from "./store/use-editor-refs";
+import useLayoutStore from "./store/use-layout-store";
 import useUploadStore from "./store/use-upload-store";
 import Timeline from "./timeline/timeline";
 import { loadFonts } from "./utils/fonts";
@@ -231,30 +231,25 @@ if (import.meta.env.DEV) {
 
 interface SceneContainerProps {
 	sceneRef: React.RefObject<SceneRef | null>;
-	playerRef: React.RefObject<PlayerRef> | null;
 	stateManager: StateManager;
 	trackItem: ITrackItem | null;
 }
 
-const SceneContainer = memo(
-	({ sceneRef, playerRef, stateManager, trackItem }: SceneContainerProps) => {
-		return (
-			<div dir="ltr" className="relative flex h-full w-full flex-col bg-background">
-				<div className="flex-1 relative overflow-hidden w-full h-full">
-					<div className="flex h-full flex-1">
-						<div className="flex-1 relative overflow-hidden w-full h-full">
-							<CropModal />
-							<Scene ref={sceneRef} stateManager={stateManager} />
-						</div>
+const SceneContainer = memo(({ sceneRef, stateManager, trackItem }: SceneContainerProps) => {
+	return (
+		<div dir="ltr" className="relative flex h-full w-full flex-col bg-background">
+			<div className="flex-1 relative overflow-hidden w-full h-full">
+				<div className="flex h-full flex-1">
+					<div className="flex-1 relative overflow-hidden w-full h-full">
+						<CropModal />
+						<Scene ref={sceneRef} stateManager={stateManager} />
 					</div>
-					{!trackItem ? <RightSideMenu /> : null}
 				</div>
-
-				<div className="w-full">{playerRef ? <Timeline stateManager={stateManager} /> : null}</div>
+				{!trackItem ? <RightSideMenu /> : null}
 			</div>
-		);
-	},
-);
+		</div>
+	);
+});
 
 const Editor = ({ tempId, id }: { tempId?: string; id?: string }) => {
 	const [projectName, setProjectName] = useState<string>("RoniCut");
@@ -263,6 +258,10 @@ const Editor = ({ tempId, id }: { tempId?: string; id?: string }) => {
 		useShallow((s) => ({ timeline: s.timeline, playerRef: s.playerRef })),
 	);
 	const trackItem = useActiveItem();
+	const { controlItemOpen, showMenuItem } = useLayoutStore(
+		useShallow((s) => ({ controlItemOpen: s.controlItemOpen, showMenuItem: s.showMenuItem })),
+	);
+	const showPanel = showMenuItem || (!!trackItem && controlItemOpen);
 	const [shortcutsOpen, setShortcutsOpen] = useState(false);
 
 	useTimelineEvents();
@@ -349,18 +348,25 @@ const Editor = ({ tempId, id }: { tempId?: string; id?: string }) => {
 				/>
 			</header>
 
-			<main id="editor-main" tabIndex={-1} className="relative flex flex-1 min-h-0 outline-none">
-				<div className="flex-1 min-w-0 h-full">
-					<SceneContainer
-						sceneRef={sceneRef}
-						playerRef={playerRef}
-						stateManager={stateManager}
-						trackItem={trackItem}
-					/>
+			<main id="editor-main" tabIndex={-1} className="flex flex-col flex-1 min-h-0 outline-none">
+				<div className="flex flex-1 min-h-0">
+					<div className="flex-1 min-w-0 h-full">
+						<SceneContainer
+							sceneRef={sceneRef}
+							stateManager={stateManager}
+							trackItem={trackItem}
+						/>
+					</div>
+					<aside
+						aria-label="לוח בקרה"
+						className={`shrink-0 overflow-hidden transition-[width] duration-200 ease-in-out ${showPanel ? "w-96" : "w-0"}`}
+					>
+						<ControlItem />
+					</aside>
 				</div>
-				<aside aria-label="לוח בקרה">
-					<ControlItem />
-				</aside>
+				<div className="w-full shrink-0">
+					{playerRef ? <Timeline stateManager={stateManager} /> : null}
+				</div>
 			</main>
 		</div>
 	);

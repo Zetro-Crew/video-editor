@@ -6,7 +6,7 @@ import {
 	TIMELINE_SCALE_CHANGED,
 } from "@designcombo/state";
 import type { ITimelineScaleState } from "@designcombo/types";
-import { CopyPlus, Settings2, SquareSplitHorizontal, Trash, ZoomIn, ZoomOut } from "lucide-react";
+import { CopyPlus, SquareSplitHorizontal, Trash, ZoomIn, ZoomOut } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
@@ -18,7 +18,6 @@ import { useTimelineOffsetX } from "../hooks/use-timeline-offset";
 import useUpdateAnsestors from "../hooks/use-update-ansestors";
 import useCompositionStore from "../store/use-composition-store";
 import useEditorRefs from "../store/use-editor-refs";
-import useLayoutStore from "../store/use-layout-store";
 import useSelectionStore from "../store/use-selection-store";
 import useTimelineViewStore from "../store/use-timeline-view-store";
 import { frameToTimeString, getCurrentTime, timeToString } from "../utils/time";
@@ -82,7 +81,6 @@ const Header = () => {
 	const { scale } = useTimelineViewStore();
 	const { playerRef } = useEditorRefs();
 	const { activeIds } = useSelectionStore();
-	const { controlItemOpen, setControlItemOpen } = useLayoutStore();
 	const isLargeScreen = useIsMediumScreen();
 	useUpdateAnsestors({ playing, playerRef });
 
@@ -211,21 +209,6 @@ const Header = () => {
 								</Button>
 							</TooltipTrigger>
 							<TooltipContent side="top">שכפל שכבה</TooltipContent>
-						</Tooltip>
-						<Tooltip>
-							<TooltipTrigger asChild>
-								<Button
-									disabled={!activeIds.length}
-									onClick={() => setControlItemOpen(!controlItemOpen)}
-									variant={controlItemOpen ? "secondary" : "ghost"}
-									size={isLargeScreen ? "default" : "icon"}
-									className="flex items-center gap-1.5 px-3"
-								>
-									<Settings2 size={18} />
-									<span className="hidden md:block text-sm font-medium">מאפיינים</span>
-								</Button>
-							</TooltipTrigger>
-							<TooltipContent side="top">פתח/סגור פאנל עריכה</TooltipContent>
 						</Tooltip>
 					</div>
 					<div className="flex items-center justify-center">

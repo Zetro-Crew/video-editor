@@ -15,6 +15,7 @@ import { useShallow } from "zustand/react/shallow";
 import { PLAYER_SEEK, PLAYER_TOGGLE_PLAY } from "../constants/events";
 import useCompositionStore from "../store/use-composition-store";
 import useEditorRefs from "../store/use-editor-refs";
+import useLayoutStore from "../store/use-layout-store";
 import useSelectionStore from "../store/use-selection-store";
 import useTimelineViewStore from "../store/use-timeline-view-store";
 import { getTargetById } from "../utils/target";
@@ -44,6 +45,11 @@ const useKeyboardShortcuts = () => {
 
 			const { activeIds, trackItemsMap, scale, playerRef, sceneMoveableRef } = stateRef.current;
 			const isMeta = e.metaKey || e.ctrlKey;
+
+			if (e.key === "Escape") {
+				useLayoutStore.getState().setControlItemOpen(false);
+				return;
+			}
 
 			if (e.code === "Space") {
 				e.preventDefault();
