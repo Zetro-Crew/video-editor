@@ -28,8 +28,7 @@ let isProfilingEnabled = false;
 const addShutdownHook = (sdk: NodeSDK): void => {
 	const shutdown = (signal: string): void => {
 		console.info(`Received ${signal}, shutting down telemetry...`);
-		sdk
-			.shutdown()
+		Promise.resolve(sdk.shutdown())
 			.then(() => {
 				console.info("Telemetry shut down gracefully");
 				return null;
