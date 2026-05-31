@@ -4,7 +4,12 @@ import { Droppable } from "@/components/ui/droppable";
 import useUploadStore from "../store/use-upload-store";
 import { DroppableArea } from "./droppable";
 
-const SceneEmpty = () => {
+interface SceneEmptyProps {
+	playerWidth: number;
+	playerHeight: number;
+}
+
+const SceneEmpty = ({ playerWidth, playerHeight }: SceneEmptyProps) => {
 	const [isLoading, setIsLoading] = useState(true);
 	const containerRef = useRef<HTMLDivElement>(null);
 	const [isDraggingOver, setIsDraggingOver] = useState(false);
@@ -32,7 +37,7 @@ const SceneEmpty = () => {
 	return (
 		<div
 			ref={containerRef}
-			className="absolute z-50 flex h-full w-full flex-1 dark:bg-card/80 bg-card"
+			className="absolute z-50 flex h-full w-full flex-1 items-center justify-center pointer-events-none"
 		>
 			{!isLoading ? (
 				<Droppable
@@ -45,7 +50,8 @@ const SceneEmpty = () => {
 					}}
 					disabled={false}
 					onValueChange={onSelectFiles}
-					className="h-full w-full flex-1"
+					className="pointer-events-auto"
+					style={{ width: playerWidth, height: playerHeight }}
 				>
 					<DroppableArea
 						onDragStateChange={setIsDraggingOver}

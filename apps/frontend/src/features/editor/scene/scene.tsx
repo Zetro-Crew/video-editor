@@ -42,7 +42,9 @@ const Scene = forwardRef<
 			}}
 			ref={containerRef}
 		>
-			{trackItemIds.length === 0 ? <SceneEmpty /> : null}
+			{trackItemIds.length === 0 ? (
+				<SceneEmpty playerWidth={size.width * zoom} playerHeight={size.height * zoom} />
+			) : null}
 			<div
 				style={{
 					width: size.width,
