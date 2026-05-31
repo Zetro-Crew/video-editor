@@ -11,8 +11,12 @@
 		},
 		"lint": {},
 		"format": { "cache": false },
-		"type-check": {},
-		"test": {},
+		"type-check": {
+			"dependsOn": ["^build"]
+		},
+		"test": {
+			"dependsOn": ["^build"]
+		},
 		"knip": {
 			"dependsOn": [],
 			"cache": false
