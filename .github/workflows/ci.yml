@@ -38,7 +38,7 @@ jobs:
         run: pnpm lint
 
       - name: Type-check
-        run: turbo run type-check
+        run: pnpm type-check
 
       - name: Knip
         run: pnpm knip
