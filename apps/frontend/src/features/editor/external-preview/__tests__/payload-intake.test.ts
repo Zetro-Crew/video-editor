@@ -4,7 +4,7 @@ import {
 	buildExternalMetadata,
 	buildFallbackTrackItem,
 	getDurationFromItem,
-} from "./payload-intake";
+} from "../payload-intake";
 
 describe("getDurationFromItem", () => {
 	it("returns duration when larger than display range", () => {

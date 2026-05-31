@@ -48,6 +48,7 @@ export class Server {
 			videoRenderUseCase: this.container.videoRenderUseCase,
 			renderJobStatePort: this.container.renderJobStatePort,
 			s3OutputPrefix: this.config.S3_OUTPUT_PREFIX,
+			exportEventPublisher: this.container.exportEventPublisher,
 		});
 
 		await this.app.register(previewController, {

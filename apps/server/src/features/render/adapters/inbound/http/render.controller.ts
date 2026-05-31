@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { Logger } from "@ztube/observability";
 import type { FastifyPluginAsync, FastifyReply, FastifyRequest } from "fastify";
+import type { ExportEventPublisherPort } from "../../../../../infrastructure/messaging/RabbitMQPublisher.ts";
 import { getOutputFilename } from "../../../../../shared/utils/file.utils.ts";
 import { HttpStatus } from "../../../../../shared/utils/http-status.ts";
 import type { RenderRequest } from "../../../../edit-video/adapters/inbound/http/edit-video.types.ts";
@@ -8,6 +9,14 @@ import type { RenderJobStatePort } from "../../../application/ports/outbound/Ren
 import type { VideoRenderUseCase } from "../../../application/use-cases/VideoRenderUseCase.ts";
 import { DesignRenderInputAdapter } from "../design/DesignRenderInputAdapter.ts";
 import { designPayloadSchema } from "./design-payload.schema.ts";
+
+interface SaveMetadata {
+	mediaName: string;
+	downloadToComputer: boolean;
+	saveToPersonalChannel: boolean;
+	selectedChannelIds: string[];
+	items: unknown[];
+}
 
 interface StartRenderBody {
 	design: unknown;
@@ -17,6 +26,7 @@ interface StartRenderBody {
 		size?: unknown;
 		frameTimeMs?: number;
 	};
+	saveMetadata?: SaveMetadata;
 }
 
 interface StatusQuery {
@@ -37,13 +47,14 @@ interface RenderControllerOptions {
 	videoRenderUseCase: VideoRenderUseCase;
 	renderJobStatePort: RenderJobStatePort;
 	s3OutputPrefix: string;
+	exportEventPublisher: ExportEventPublisherPort;
 }
 
 export const renderController: FastifyPluginAsync<RenderControllerOptions> = async (
 	fastify,
 	opts,
 ): Promise<void> => {
-	const { videoRenderUseCase, renderJobStatePort, s3OutputPrefix } = opts;
+	const { videoRenderUseCase, renderJobStatePort, s3OutputPrefix, exportEventPublisher } = opts;
 
 	const abortRegistry = new Map<string, AbortController>();
 
@@ -51,6 +62,7 @@ export const renderController: FastifyPluginAsync<RenderControllerOptions> = asy
 		jobId: string,
 		request: RenderRequest,
 		signal: AbortSignal,
+		exportType: "mp4" | "webp",
 	): Promise<void> => {
 		const { jobId: _jobId, ...renderInput } = request;
 		const s3Key = `${s3OutputPrefix}/${getOutputFilename(request.format)}`;
@@ -83,6 +95,11 @@ export const renderController: FastifyPluginAsync<RenderControllerOptions> = asy
 					durationMs: Date.now() - start,
 					url: result.url,
 				});
+				await exportEventPublisher.publishExportCompleted({
+					jobId,
+					url: result.url,
+					exportType,
+				});
 			}
 		} catch (err) {
 			if (signal.aborted) {
@@ -99,6 +116,7 @@ export const renderController: FastifyPluginAsync<RenderControllerOptions> = asy
 					progress: 0,
 					error: message,
 				});
+				await exportEventPublisher.publishExportFailed({ jobId, error: message });
 			}
 		} finally {
 			abortRegistry.delete(jobId);
@@ -134,7 +152,17 @@ export const renderController: FastifyPluginAsync<RenderControllerOptions> = asy
 		abortRegistry.set(jobId, abortController);
 
 		req.log.info({ jobId, format }, "render job accepted");
-		void runRender(jobId, renderRequest, abortController.signal);
+
+		const exportType: "mp4" | "webp" = format === "webp" ? "webp" : "mp4";
+		void runRender(jobId, renderRequest, abortController.signal, exportType);
+
+		if (body.saveMetadata) {
+			await exportEventPublisher.publishExportStarted({
+				jobId,
+				...body.saveMetadata,
+				exportType,
+			});
+		}
 
 		return reply.status(HttpStatus.ACCEPTED).send({ id: jobId });
 	});

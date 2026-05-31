@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import type { EnvConfig } from "../../config/env.ts";
-import { FfmpegCommandBuilder } from "./ffmpeg-command.builder.ts";
+import type { EnvConfig } from "../../../config/env.ts";
+import { FfmpegCommandBuilder } from "../ffmpeg-command.builder.ts";
 
 const config = {
 	FFMPEG_PRESET: "veryfast",

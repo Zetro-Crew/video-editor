@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildWatermarkFilterParts } from "./watermark.service.ts";
+import { buildWatermarkFilterParts } from "../watermark.service.ts";
 
 describe("buildWatermarkFilterParts", () => {
 	it("returns 3 filter parts", () => {

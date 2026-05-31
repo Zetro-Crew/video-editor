@@ -1,3 +1,15 @@
 {
-	"skillListingBudgetFraction": 0.02
+  "skillListingBudgetFraction": 0.02,
+  "skillOverrides": {
+    "create-readme": "user-invocable-only",
+    "diagnose": "user-invocable-only",
+    "grill-with-docs": "user-invocable-only",
+    "handoff": "user-invocable-only",
+    "improve-codebase-architecture": "user-invocable-only",
+    "memory-leak-audit": "user-invocable-only",
+    "multi-stage-dockerfile": "user-invocable-only"
+  },
+  "enabledPlugins": {
+    "terraform@claude-plugins-official": true
+  }
 }

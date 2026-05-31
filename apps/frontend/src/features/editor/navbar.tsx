@@ -259,11 +259,10 @@ const CanvasSizePopover = ({
 };
 
 const DownloadPopover = ({ stateManager }: { stateManager: StateManager }) => {
-	const { actions, exportType } = useDownloadState();
-	const [open, setOpen] = useState(false);
+	const { actions } = useDownloadState();
 	const { size } = useCompositionStore();
 
-	const handleExport = () => {
+	const handleOpen = () => {
 		const data: IDesign = {
 			id: generateId(),
 			...stateManager.toJSON(),
@@ -281,65 +280,22 @@ const DownloadPopover = ({ stateManager }: { stateManager: StateManager }) => {
 			return;
 		}
 
-		actions.setState({ payload: data });
-		actions.startExport();
-		setOpen(false);
+		actions.setPayload(data);
+		actions.setDisplayProgressModal(true);
 	};
 
 	return (
-		<Popover open={open} onOpenChange={setOpen}>
-			<Tooltip>
-				<TooltipTrigger asChild>
-					<PopoverTrigger asChild>
-						<Button
-							className="flex h-8 w-20 gap-1 border border-border rounded-full shrink-0"
-							size="sm"
-						>
-							<span>שמור</span>
-						</Button>
-					</PopoverTrigger>
-				</TooltipTrigger>
-				<TooltipContent side="bottom">שמור פרויקט</TooltipContent>
-			</Tooltip>
-			<PopoverContent align="end" className="bg-sidebar z-[250] flex w-64 flex-col gap-4">
-				<div>
-					<Label className="text-sm font-semibold">פורמט ייצוא</Label>
-					<p className="text-muted-foreground mt-0.5 text-xs">בחר כיצד לשמור את הפרויקט</p>
-				</div>
-
-				<div className="flex flex-col gap-2">
-					<button
-						type="button"
-						onClick={() => actions.setExportType("mp4")}
-						className={`flex flex-col gap-0.5 rounded-lg border px-3 py-2.5 text-right transition-colors hover:bg-secondary ${
-							exportType === "mp4" ? "border-primary bg-secondary" : "border-border"
-						}`}
-					>
-						<span className="text-sm font-medium">סרטון</span>
-						<span className="text-muted-foreground text-xs">קובץ MP4 באיכות גבוהה</span>
-					</button>
-
-					<button
-						type="button"
-						onClick={() => actions.setExportType("webp")}
-						className={`flex flex-col gap-0.5 rounded-lg border px-3 py-2.5 text-right transition-colors hover:bg-secondary ${
-							exportType === "webp" ? "border-primary bg-secondary" : "border-border"
-						}`}
-					>
-						<span className="text-sm font-medium">תמונה</span>
-						<span className="text-muted-foreground text-xs">תמונה של הפריים הנוכחי</span>
-					</button>
-				</div>
-
-				<Tooltip>
-					<TooltipTrigger asChild>
-						<Button onClick={handleExport} className="w-full">
-							ייצא
-						</Button>
-					</TooltipTrigger>
-					<TooltipContent side="bottom">התחל ייצוא</TooltipContent>
-				</Tooltip>
-			</PopoverContent>
-		</Popover>
+		<Tooltip>
+			<TooltipTrigger asChild>
+				<Button
+					onClick={handleOpen}
+					className="flex h-8 w-20 gap-1 border border-border rounded-full shrink-0"
+					size="sm"
+				>
+					<span>שמור</span>
+				</Button>
+			</TooltipTrigger>
+			<TooltipContent side="bottom">שמור פרויקט</TooltipContent>
+		</Tooltip>
 	);
 };

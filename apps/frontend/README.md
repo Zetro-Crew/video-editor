@@ -43,13 +43,14 @@ The core editing surface. Root component is `editor.tsx`.
 
 | Store | Purpose |
 |---|---|
-| `use-store.ts` | Main editor state |
+| `use-composition-store.ts` | Canvas size + FPS state |
 | `use-upload-store.ts` | Upload state |
 | `use-layout-store.ts` | Panel layout |
 | `use-crop-store.ts` | Crop modal |
-| `use-data-state.ts` | Data / project state |
-| `use-download-state.ts` | Export progress |
-| `use-folder.ts` | Media library folders |
+| `use-download-state.ts` | Export state (fire-and-forget POST to /render, no polling) |
+| `use-editor-refs.ts` | DOM/player refs (playerRef, etc.) |
+| `use-selection-store.ts` | Selected item state |
+| `use-timeline-view-store.ts` | Timeline view/scroll state |
 
 Global scene store: `src/store/use-scene-store.ts`
 

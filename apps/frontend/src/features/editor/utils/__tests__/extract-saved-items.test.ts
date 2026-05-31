@@ -1,6 +1,6 @@
 import type { ITrackItem } from "@designcombo/types";
 import { describe, expect, it } from "vitest";
-import { extractSavedItems } from "./extract-saved-items";
+import { extractSavedItems } from "../extract-saved-items";
 
 const makeItem = (overrides: Partial<ITrackItem>): ITrackItem =>
 	({

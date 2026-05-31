@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
-import type { VideoRenderPort } from "../../../../shared/application/ports/outbound/VideoRenderPort.ts";
-import type { VideoRenderInput } from "./VideoRenderUseCase.ts";
-import { VideoRenderUseCase } from "./VideoRenderUseCase.ts";
+import type { VideoRenderPort } from "../../../../../shared/application/ports/outbound/VideoRenderPort.ts";
+import type { VideoRenderInput } from "../VideoRenderUseCase.ts";
+import { VideoRenderUseCase } from "../VideoRenderUseCase.ts";
 
 function makeMockPort(): VideoRenderPort {
 	return {

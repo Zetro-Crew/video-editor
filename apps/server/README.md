@@ -51,6 +51,7 @@ docker compose up -d   # from repo root
 | `FFMPEG_CRF` | `20` | FFmpeg quality (lower = better) |
 | `SERVER_BASE_URL` | `http://localhost:4001` | Public server URL (used in signed URLs) |
 | `CHANNEL_PLAY_API_BASE_URL` | `""` | External preview API (empty = demo mode) |
+| `RABBITMQ_URL` | required | AMQP connection URL for export event publishing |
 
 ## Architecture
 
@@ -126,9 +127,9 @@ pnpm test
 | Package | Purpose |
 |---|---|
 | `fastify` v5 | HTTP framework |
-| `fluent-ffmpeg` | FFmpeg wrapper |
-| `ioredis` / `redis` v5 | Redis client |
+| `amqplib` v2 | AMQP client for RabbitMQ event publishing |
+| `redis` v5 | Redis client (node-redis) |
 | `@aws-sdk/*` | S3 / MinIO client |
 | `zod` | Env validation |
 | `sharp` | Image processing |
-| `@remotion/renderer` | Server-side video rendering |
+| `@ffmpeg-installer/ffmpeg` | Bundled FFmpeg binary; invoked via raw `spawn` |

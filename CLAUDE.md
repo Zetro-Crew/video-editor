@@ -90,7 +90,7 @@ Configure `apps/server/.env`. Frontend needs no `.env` in dev. The server defaul
 
 ### Frontend (`apps/frontend`)
 
-Vite + React 19 SPA on port 3000. Core feature is `src/features/editor/` — the full video editing UI with scene canvas (Moveable/Selecto), timeline (`@designcombo/timeline`), Remotion `<Player>`, and per-type property panels. State via 6 Zustand stores. Supports iframe embedding via `useEditorPostMessage` hook.
+Vite + React 19 SPA on port 3000. Core feature is `src/features/editor/` — the full video editing UI with scene canvas (Moveable/Selecto), timeline (`@designcombo/timeline`), Remotion `<Player>`, and per-type property panels. State via 8 Zustand stores. Supports iframe embedding via `useEditorPostMessage` hook.
 
 → See [apps/frontend/CLAUDE.md](apps/frontend/CLAUDE.md) for full detail.
 
@@ -133,9 +133,9 @@ Published as `@video-editor/iframe-contract`. Defines Zod schemas and TypeScript
 ## Key External Dependencies
 
 - **`@designcombo/*`** — proprietary packages (state, timeline, transitions, animations, frames, events, types). Core to editor behavior.
-- **Remotion** — video composition and rendering engine. Player renders the canvas; `@remotion/renderer` for export.
+- **Remotion** — video composition engine. `@remotion/player` renders the canvas preview in the browser.
+- **`@ffmpeg-installer/ffmpeg`** — bundled FFmpeg binary (no system install needed). Server uses raw `spawn` for all FFmpeg processing.
 - **`@fastify/multipart`** — file upload handling (500 MB limit).
-- **`fluent-ffmpeg`** — FFmpeg wrapper used throughout server source processing and overlay pipelines.
 
 ## Agent skills
 

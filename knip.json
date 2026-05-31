@@ -3,7 +3,8 @@
   "ignoreDependencies": [
     "@remotion/shapes",
     "tailwindcss",
-    "tw-animate-css"
+    "tw-animate-css",
+    "@types/amqplib"
   ],
   "workspaces": {
     ".": {

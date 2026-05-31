@@ -55,6 +55,8 @@ const envSchema = z.object({
 	REDIS_PASSWORD: z.string().default(""),
 	JOB_PROGRESS_TTL_SECONDS: z.coerce.number().default(600),
 	RENDER_URL_EXPIRY_SECONDS: z.coerce.number().default(86400),
+	// Messaging
+	RABBITMQ_URL: z.string(),
 });
 
 export type EnvConfig = z.infer<typeof envSchema>;

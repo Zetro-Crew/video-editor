@@ -6,7 +6,7 @@ import {
 	createProjectClearedMessage,
 	isParentToEditorMessage,
 	parseParentToEditorMessage,
-} from "./helpers.js";
+} from "../helpers.js";
 import {
 	mockAudioRangeMessage,
 	mockClearProjectMessage,
@@ -14,8 +14,8 @@ import {
 	mockMediaMp4Message,
 	mockRecordingRangeHlsMessage,
 	mockRecordingRangeNoPlaybackMessage,
-} from "./mocks.js";
-import { editorToParentMessageSchema, parentToEditorMessageSchema } from "./schemas.js";
+} from "../mocks.js";
+import { editorToParentMessageSchema, parentToEditorMessageSchema } from "../schemas.js";
 
 const baseRecordingPayload = {
 	kind: "recording-range" as const,
