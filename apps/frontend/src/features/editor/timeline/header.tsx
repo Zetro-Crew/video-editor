@@ -171,7 +171,7 @@ const Header = () => {
 									size={isLargeScreen ? "default" : "icon"}
 									className="flex items-center gap-1.5 px-3"
 								>
-									<Trash size={18} />
+									<Trash size={18} aria-hidden="true" />
 									<span className="hidden md:block text-sm font-medium">מחק</span>
 								</Button>
 							</TooltipTrigger>
@@ -187,7 +187,7 @@ const Header = () => {
 									size={isLargeScreen ? "default" : "icon"}
 									className="flex items-center gap-1.5 px-3"
 								>
-									<SquareSplitHorizontal size={18} />
+									<SquareSplitHorizontal size={18} aria-hidden="true" />
 									<span className="hidden md:block text-sm font-medium">פצל</span>
 								</Button>
 							</TooltipTrigger>
@@ -204,28 +204,41 @@ const Header = () => {
 									size={isLargeScreen ? "default" : "icon"}
 									className="flex items-center gap-1.5 px-3"
 								>
-									<CopyPlus size={18} />
+									<CopyPlus size={18} aria-hidden="true" />
 									<span className="hidden md:block text-sm font-medium">שכפל</span>
 								</Button>
 							</TooltipTrigger>
 							<TooltipContent side="top">שכפל שכבה</TooltipContent>
 						</Tooltip>
 					</div>
-					<div className="flex items-center justify-center">
+					<div className="flex flex-col items-center justify-center gap-0.5">
+						<div className="flex items-center justify-center tabular-nums">
+							<div className="text-xs text-muted-foreground hidden md:block">
+								{timeToString({ time: duration })}
+							</div>
+							<span className="px-1 text-xs text-muted-foreground">|</span>
+							<div
+								className="text-xs font-medium text-foreground"
+								data-current-time={currentFrame / fps}
+								id="video-current-time"
+							>
+								{frameToTimeString({ frame: currentFrame }, { fps })}
+							</div>
+						</div>
 						<div>
 							<Tooltip>
 								<TooltipTrigger asChild>
 									<Button
 										className="hidden md:inline-flex"
-										onClick={doActiveDelete}
+										onClick={doActiveSplit}
 										variant={"ghost"}
 										size={"icon"}
-										aria-label="קפוץ להתחלה"
+										aria-label="קפוץ לסוף"
 									>
-										<IconPlayerSkipBack size={18} aria-hidden="true" />
+										<IconPlayerSkipForward size={18} aria-hidden="true" />
 									</Button>
 								</TooltipTrigger>
-								<TooltipContent side="top">קפוץ להתחלה</TooltipContent>
+								<TooltipContent side="top">קפוץ לסוף</TooltipContent>
 							</Tooltip>
 							<Tooltip>
 								<TooltipTrigger asChild>
@@ -254,46 +267,16 @@ const Header = () => {
 								<TooltipTrigger asChild>
 									<Button
 										className="hidden md:inline-flex"
-										onClick={doActiveSplit}
+										onClick={doActiveDelete}
 										variant={"ghost"}
 										size={"icon"}
-										aria-label="קפוץ לסוף"
+										aria-label="קפוץ להתחלה"
 									>
-										<IconPlayerSkipForward size={18} aria-hidden="true" />
+										<IconPlayerSkipBack size={18} aria-hidden="true" />
 									</Button>
 								</TooltipTrigger>
-								<TooltipContent side="top">קפוץ לסוף</TooltipContent>
+								<TooltipContent side="top">קפוץ להתחלה</TooltipContent>
 							</Tooltip>
-						</div>
-						<div
-							className="font-light flex"
-							style={{
-								alignItems: "center",
-								paddingTop: "2px",
-								justifyContent: "center",
-							}}
-						>
-							<div
-								className="text-sm font-medium text-foreground"
-								style={{
-									display: "flex",
-									justifyContent: "center",
-								}}
-								data-current-time={currentFrame / fps}
-								id="video-current-time"
-							>
-								{frameToTimeString({ frame: currentFrame }, { fps })}
-							</div>
-							<span className="px-1 text-sm">|</span>
-							<div
-								className="text-sm text-muted-foreground hidden md:block"
-								style={{
-									display: "flex",
-									justifyContent: "center",
-								}}
-							>
-								{timeToString({ time: duration })}
-							</div>
 						</div>
 					</div>
 
