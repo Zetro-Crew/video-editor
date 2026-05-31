@@ -97,7 +97,7 @@ Controller: `src/features/editor-export/adapters/inbound/http/editor-export.cont
 | File | Purpose |
 |------|---------|
 | `src/infrastructure/storage/S3StorageAdapter.ts` | AWS SDK v3 S3 client (MinIO locally) |
-| `src/infrastructure/messaging/RabbitMQPublisher.ts` | RabbitMQ AMQP publisher — exchange `video-editor` (topic), routing keys: `export.started`, `export.completed`, `export.failed` |
+| `src/infrastructure/messaging/RabbitMQPublisher.ts` | RabbitMQ AMQP publisher — exchange `video-editor` (topic), routing keys: `export.started`, `export.completed`, `export.failed`. See *Messaging* below |
 | `src/infrastructure/ffmpeg/FfmpegVideoProcessor.ts` | FFmpeg video processing via raw `spawn` |
 | `src/features/render/adapters/outbound/redis/RedisRenderJobStateAdapter.ts` | Render job state in Redis |
 | `src/features/edit-video/adapters/outbound/redis/RedisEditVideoJobStateAdapter.ts` | Edit-video job progress in Redis |
@@ -131,6 +131,27 @@ All validated by Zod in `src/config/env.ts`. Key vars:
 | `CHANNEL_PLAY_API_BASE_URL` | `""` | External preview source API (leave empty for demo mode) |
 | `SERVER_BASE_URL` | `http://localhost:4001` | Public server URL (used in signed segment URLs) |
 | `RABBITMQ_URL` | required | AMQP connection URL — service won't start without this |
+
+## Messaging (RabbitMQ)
+
+Publisher: `RabbitMQPublisher` (hexagonal infra adapter). Schemas + envelope types from `@video-editor/contract/events`.
+
+| Aspect | Behavior |
+|---|---|
+| Exchange | `video-editor` (topic, durable). Single exchange — any team binds queues against it |
+| Routing keys | `export.started`, `export.completed`, `export.failed` (lowercase `<domain>.<action>`) |
+| Envelope | Every message body is `{ eventName, eventVersion, occurredAt, traceparent, data }`. AMQP headers `x-event-name`, `x-event-version` mirror the envelope so subscribers can filter without parsing JSON |
+| Versioning | Additive change = same `eventVersion`. Breaking change = new version + parallel publish |
+| Confirms | `confirmSelect` + `mandatory: true`. Broker-ack = success. Broker-nack or unrouted-return = failure |
+| Retry | 3 attempts per publish, backoff 100ms / 500ms / 2s. On exhaustion: `logAborting` via `ZMonitor` and **swallow** — controller never sees the error |
+| Monitoring | `ZMonitor` per publish: `processName: "amqp-publish"`, `stageName: <eventName>`, `businessId: <jobId>`. Lifecycle: `logStarted` → `logRetry` (per retry) → `logSuccess` OR `logAborting` |
+| Startup | Eager connect in `System.start()` (after Redis). Fail-fast: throws if broker unreachable |
+| Reconnect | Background loop on connection close/error. Backoff 1s/2s/5s/10s capped at 30s. Each attempt logged via `ZMonitor` (`stageName: "reconnect"`, `businessId: "connection"`). Stops on explicit `close()` |
+| Shutdown | `System.stop()` order: HTTP close → `publisher.drain(5_000)` → `publisher.close()` → `redis.quit()`. Unconfirmed messages at drain timeout logged as `amqp_publish_drained_unconfirmed` |
+| Signals | `SIGTERM`/`SIGINT` registered in `src/index.ts`. Idempotent. Hard-exit fallback at 15s |
+| OTel | Auto-instrumentation via `@opentelemetry/instrumentation-amqplib` (registered in `@ztube/observability`). No custom span attributes |
+
+External teams subscribe by binding their own queue to the `video-editor` exchange and importing schemas from `@video-editor/contract/events`. See [packages/contract/src/events/README.md](../../packages/contract/src/events/README.md).
 
 ## Tests
 

@@ -1,12 +1,13 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
+	createMediaSavedMessage,
 	createPreviewItemAddedMessage,
 	createPreviewItemRejectedMessage,
 	createProjectClearedMessage,
 	isParentToEditorMessage,
 	parseParentToEditorMessage,
-} from "../helpers.js";
+} from "./helpers.js";
 import {
 	mockAudioRangeMessage,
 	mockClearProjectMessage,
@@ -14,8 +15,8 @@ import {
 	mockMediaMp4Message,
 	mockRecordingRangeHlsMessage,
 	mockRecordingRangeNoPlaybackMessage,
-} from "../mocks.js";
-import { editorToParentMessageSchema, parentToEditorMessageSchema } from "../schemas.js";
+} from "./mocks.js";
+import { editorToParentMessageSchema, parentToEditorMessageSchema } from "./schemas.js";
 
 const baseRecordingPayload = {
 	kind: "recording-range" as const,
@@ -373,5 +374,52 @@ describe("iframe contract helpers", () => {
 				`Mock failed schema validation: ${JSON.stringify(message)}`,
 			);
 		}
+	});
+});
+
+describe("EDITOR_SET_AUTH", () => {
+	it("accepts a non-empty token", () => {
+		assert.equal(
+			parentToEditorMessageSchema.safeParse({ type: "EDITOR_SET_AUTH", token: "abc.123" }).success,
+			true,
+		);
+	});
+
+	it("rejects an empty token", () => {
+		assert.equal(
+			parentToEditorMessageSchema.safeParse({ type: "EDITOR_SET_AUTH", token: "" }).success,
+			false,
+		);
+	});
+
+	it("rejects when token is missing", () => {
+		assert.equal(parentToEditorMessageSchema.safeParse({ type: "EDITOR_SET_AUTH" }).success, false);
+	});
+});
+
+describe("createMediaSavedMessage", () => {
+	it("returns expected shape with each arg at its named key", () => {
+		const items = [{ type: "clip" as const, id: "media-1" }];
+		const msg = createMediaSavedMessage(
+			"My Clip",
+			true,
+			false,
+			"https://example.com/output/video.mp4",
+			"mp4",
+			items,
+			"550e8400-e29b-41d4-a716-446655440000",
+			["ch-1"],
+		);
+		assert.deepEqual(msg, {
+			type: "EDITOR_MEDIA_SAVED",
+			mediaId: "550e8400-e29b-41d4-a716-446655440000",
+			mediaName: "My Clip",
+			downloadToComputer: true,
+			saveToPersonalChannel: false,
+			selectedUnitChannelIds: ["ch-1"],
+			url: "https://example.com/output/video.mp4",
+			exportType: "mp4",
+			items,
+		});
 	});
 });

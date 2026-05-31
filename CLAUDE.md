@@ -16,14 +16,14 @@ apps/
   server/      — Fastify + Node.js (port 4000)
   iframe-demo/ — Angular 21 demo harness for iframe integration (port 8080)
 packages/
-  editor-contract/  — shared postMessage contract (@video-editor/iframe-contract)
+  contract/         — shared postMessage + AMQP event contract (@video-editor/contract)
 ```
 
 Per-app guidance:
 - [apps/frontend/CLAUDE.md](apps/frontend/CLAUDE.md)
 - [apps/server/CLAUDE.md](apps/server/CLAUDE.md)
 - [apps/iframe-demo/CLAUDE.md](apps/iframe-demo/CLAUDE.md)
-- [packages/editor-contract/CLAUDE.md](packages/editor-contract/CLAUDE.md)
+- [packages/contract/CLAUDE.md](packages/contract/CLAUDE.md)
 
 ## Repo Rules
 
@@ -70,7 +70,7 @@ pnpm format
 
 # Tests (Vitest)
 cd apps/server && pnpm test   # vitest run
-cd packages/editor-contract && pnpm test   # builds then runs dist/**/*.test.js
+cd packages/contract && pnpm test   # builds then runs dist/**/*.test.js
 ```
 
 ## Local Dev Setup
@@ -124,11 +124,15 @@ Angular 21 standalone app on port 8080. Embeds `/editor/embed` in a floating, dr
 
 → See [apps/iframe-demo/CLAUDE.md](apps/iframe-demo/CLAUDE.md) for full detail.
 
-### Package: editor-contract (`packages/editor-contract`)
+### Package: contract (`packages/contract`)
 
-Published as `@video-editor/iframe-contract`. Defines Zod schemas and TypeScript types for the postMessage protocol. Key exports: `parentToEditorMessageSchema`, `ParentToEditorMessage`, `EditorToParentMessage`, `PreviewItemPayload`, `EditorReadyMessage`, and response factories.
+Published as `@video-editor/contract`. Two sub-paths:
+- `/iframe` — Zod schemas + types for the editor↔parent postMessage protocol.
+- `/events` — versioned `Envelope<T>` + Zod schemas for AMQP events published to the `video-editor` topic exchange (`export.started`, `export.completed`, `export.failed`). External teams bind queues against this exchange and import schemas from `/events` for consumer-side validation.
 
-→ See [packages/editor-contract/CLAUDE.md](packages/editor-contract/CLAUDE.md) for full detail.
+Root export (`@video-editor/contract`) re-exports `iframe` + shared `SavedMediaItem`/`SavedMediaPayload`.
+
+→ See [packages/contract/CLAUDE.md](packages/contract/CLAUDE.md) for full detail and [packages/contract/src/events/README.md](packages/contract/src/events/README.md) for the consumer onboarding doc.
 
 ## Key External Dependencies
 

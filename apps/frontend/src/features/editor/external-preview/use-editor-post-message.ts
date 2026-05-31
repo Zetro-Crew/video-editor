@@ -10,7 +10,7 @@ import {
 	type EditorToParentMessage,
 	type ParentToEditorMessage,
 	parentToEditorMessageSchema,
-} from "@video-editor/iframe-contract";
+} from "@video-editor/contract";
 import { useEffect, useMemo, useRef } from "react";
 import { addPreviewItemToEditor, clearProject } from "./payload-intake";
 import { parseAllowedOrigins } from "./utils";

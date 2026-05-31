@@ -78,7 +78,7 @@ export class Server {
 			this.app.log.info({ port: this.config.PORT, host: this.config.HOST }, "server listening");
 		} catch (err) {
 			this.app.log.error(err);
-			process.exit(1);
+			throw err;
 		}
 	}
 

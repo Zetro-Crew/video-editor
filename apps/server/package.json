@@ -21,6 +21,7 @@
 		"@fastify/cors": "^11.2.0",
 		"@fastify/multipart": "^10.0.0",
 		"@ffmpeg-installer/ffmpeg": "^1.1.0",
+		"@video-editor/contract": "workspace:*",
 		"@ztube/observability": "workspace:*",
 		"amqplib": "^2.0.1",
 		"fast-xml-parser": "^5.7.3",

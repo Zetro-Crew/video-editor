@@ -23,7 +23,7 @@
       "entry": [],
       "project": ["src/**/*.ts"]
     },
-    "packages/editor-contract": {
+    "packages/contract": {
       "entry": [],
       "project": ["src/**/*.ts"]
     }

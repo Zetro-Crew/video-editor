@@ -18,10 +18,11 @@ const validDesign = {
 };
 
 const validSaveMetadata = {
+	mediaId: "550e8400-e29b-41d4-a716-446655440000",
 	mediaName: "clip",
 	downloadToComputer: true,
 	saveToPersonalChannel: false,
-	selectedChannelIds: ["ch1"],
+	selectedUnitChannelIds: ["ch1"],
 	items: [],
 };
 
@@ -159,5 +160,130 @@ describe("renderController", () => {
 				),
 			{ timeout: 5000 },
 		);
+	});
+
+	it("POST /render with invalid design returns 400 with path-prefixed message", async () => {
+		const res = await app.inject({
+			method: "POST",
+			url: "/render",
+			payload: { design: { fps: -1 } },
+		});
+		expect(res.statusCode).toBe(400);
+		const body = res.json() as { error: string };
+		expect(body.error).toMatch(/^[\w.]+:\s/);
+	});
+
+	it("POST /render forwards full SavedMediaPayload to publishExportStarted", async () => {
+		const items = [
+			{ type: "image" as const, id: "img-1" },
+			{ type: "clip" as const, id: "media-1" },
+		];
+		const res = await app.inject({
+			method: "POST",
+			url: "/render",
+			payload: {
+				design: validDesign,
+				options: { format: "mp4" },
+				saveMetadata: { ...validSaveMetadata, items },
+			},
+		});
+		const { id: jobId } = res.json() as { id: string };
+		expect(publisher.publishExportStarted).toHaveBeenCalledWith({
+			jobId,
+			mediaId: validSaveMetadata.mediaId,
+			mediaName: validSaveMetadata.mediaName,
+			downloadToComputer: validSaveMetadata.downloadToComputer,
+			saveToPersonalChannel: validSaveMetadata.saveToPersonalChannel,
+			selectedUnitChannelIds: validSaveMetadata.selectedUnitChannelIds,
+			items,
+			exportType: "mp4",
+		});
+	});
+
+	it("on render COMPLETED renderJobStatePort.saveState is called with COMPLETED + 100 + url", async () => {
+		await app.inject({
+			method: "POST",
+			url: "/render",
+			payload: { design: validDesign, options: { format: "mp4" } },
+		});
+		await vi.waitFor(
+			() =>
+				expect(renderJobStatePort.saveState).toHaveBeenCalledWith(
+					expect.any(String),
+					expect.objectContaining({
+						status: "COMPLETED",
+						progress: 100,
+						url: "https://s3.example.com/out.mp4",
+					}),
+				),
+			{ timeout: 5000 },
+		);
+	});
+
+	describe("GET /render", () => {
+		it("returns 400 when id is missing", async () => {
+			const res = await app.inject({ method: "GET", url: "/render" });
+			expect(res.statusCode).toBe(400);
+		});
+
+		it("returns 404 when state is null", async () => {
+			renderJobStatePort.getState.mockResolvedValueOnce(null);
+			const res = await app.inject({ method: "GET", url: "/render?id=missing" });
+			expect(res.statusCode).toBe(404);
+		});
+
+		it("returns 200 with status/progress/url/presigned_url when state exists", async () => {
+			renderJobStatePort.getState.mockResolvedValueOnce(
+				makeJobState({ status: "COMPLETED", progress: 100, url: "https://s3.example.com/x.mp4" }),
+			);
+			const res = await app.inject({ method: "GET", url: "/render?id=abc" });
+			expect(res.statusCode).toBe(200);
+			expect(res.json()).toEqual(
+				expect.objectContaining({
+					status: "COMPLETED",
+					progress: 100,
+					url: "https://s3.example.com/x.mp4",
+					presigned_url: "https://s3.example.com/x.mp4",
+				}),
+			);
+		});
+	});
+
+	describe("DELETE /render", () => {
+		it("returns 400 when id is missing", async () => {
+			const res = await app.inject({ method: "DELETE", url: "/render" });
+			expect(res.statusCode).toBe(400);
+		});
+
+		it("returns 404 when no abortController registered and state is null", async () => {
+			renderJobStatePort.getState.mockResolvedValueOnce(null);
+			const res = await app.inject({ method: "DELETE", url: "/render?id=ghost" });
+			expect(res.statusCode).toBe(404);
+		});
+
+		it("returns 204 and triggers CANCELLED saveState when job is in-flight", async () => {
+			videoRenderUseCase.execute.mockImplementationOnce(
+				(_input, _key, _onProgress, signal: AbortSignal) =>
+					new Promise((_resolve, reject) => {
+						signal.addEventListener("abort", () => reject(new Error("aborted")));
+					}),
+			);
+			const startRes = await app.inject({
+				method: "POST",
+				url: "/render",
+				payload: { design: validDesign, options: { format: "mp4" } },
+			});
+			const { id: jobId } = startRes.json() as { id: string };
+			const delRes = await app.inject({ method: "DELETE", url: `/render?id=${jobId}` });
+			expect(delRes.statusCode).toBe(204);
+			await vi.waitFor(
+				() =>
+					expect(renderJobStatePort.saveState).toHaveBeenCalledWith(
+						jobId,
+						expect.objectContaining({ status: "CANCELLED" }),
+					),
+				{ timeout: 5000 },
+			);
+		});
 	});
 });

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { savedMediaPayloadSchema } from "../shared/saved-media.js";
 
 export const MAX_PREVIEW_DURATION_MS = 1000 * 60 * 60 * 1;
 
@@ -166,33 +167,10 @@ export const editorProjectClearedMessageSchema = z.strictObject({
 	requestId: requestIdSchema,
 });
 
-const savedMediaItemSchema = z.discriminatedUnion("type", [
-	z.strictObject({ type: z.literal("image"), id: nonEmptyString }),
-	z.strictObject({ type: z.literal("clip"), id: nonEmptyString }),
-	z.strictObject({
-		type: z.literal("recording"),
-		id: nonEmptyString,
-		from: positiveNumber,
-		to: positiveNumber,
-	}),
-	z.strictObject({
-		type: z.literal("audio"),
-		id: nonEmptyString,
-		from: positiveNumber,
-		to: positiveNumber,
-	}),
-]);
-
 export const editorMediaSavedMessageSchema = z.strictObject({
+	...savedMediaPayloadSchema.shape,
 	type: z.literal("EDITOR_MEDIA_SAVED"),
-	mediaId: nonEmptyString,
-	mediaName: nonEmptyString,
-	downloadToComputer: z.boolean(),
-	saveToPersonalChannel: z.boolean(),
-	selectedUnitChannelIds: z.array(z.string()),
 	url: safeSrc,
-	exportType: z.union([z.literal("mp4"), z.literal("webp")]),
-	items: z.array(savedMediaItemSchema),
 });
 
 export const editorToParentMessageSchema = z.union([

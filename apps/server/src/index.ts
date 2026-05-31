@@ -1,4 +1,4 @@
-import { initTelemetry } from "@ztube/observability";
+import { initTelemetry, Logger } from "@ztube/observability";
 import { parseEnv } from "./config/env.ts";
 
 const config = parseEnv();
@@ -13,5 +13,15 @@ if (config.OTEL_ENDPOINT) {
 }
 
 const { System } = await import("./bootstrap/system.ts");
+const { createShutdown } = await import("./bootstrap/shutdown.ts");
+
 const system = new System(config);
-system.start();
+const shutdown = createShutdown({ system });
+
+process.on("SIGTERM", () => shutdown("SIGTERM"));
+process.on("SIGINT", () => shutdown("SIGINT"));
+
+system.start().catch((err: unknown) => {
+	Logger.logError("[startup] failed", err instanceof Error ? err : new Error(String(err)));
+	process.exit(1);
+});

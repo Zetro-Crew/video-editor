@@ -3,7 +3,7 @@ import type StateManager from "@designcombo/state";
 import { ADD_AUDIO, ADD_VIDEO } from "@designcombo/state";
 import { generateId } from "@designcombo/timeline";
 import type { ITrackItem } from "@designcombo/types";
-import type { PreviewItemPayload } from "@video-editor/iframe-contract";
+import type { PreviewItemPayload } from "@video-editor/contract";
 import { resolvePreviewSource } from "./preview-source-api";
 
 export type ExternalMetadata = {

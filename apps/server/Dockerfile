@@ -28,8 +28,9 @@ RUN pnpm install --frozen-lockfile
 # Full pruned source
 COPY --from=pruner /app/out/full/ .
 
-# Build workspace packages (observability dist/ required by pnpm deploy)
+# Build workspace packages (dist/ required by pnpm deploy)
 RUN pnpm --filter @ztube/observability build
+RUN pnpm --filter @video-editor/contract build
 
 # Isolate production deps + source into a clean directory
 RUN pnpm --filter server deploy --prod /prod/server

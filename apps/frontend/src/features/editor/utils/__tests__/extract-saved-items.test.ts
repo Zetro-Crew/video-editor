@@ -1,4 +1,5 @@
 import type { ITrackItem } from "@designcombo/types";
+import { savedMediaItemSchema } from "@video-editor/contract";
 import { describe, expect, it } from "vitest";
 import { extractSavedItems } from "../extract-saved-items";
 
@@ -147,5 +148,31 @@ describe("extractSavedItems", () => {
 			}),
 		};
 		expect(extractSavedItems(items)).toEqual([{ type: "recording", id: "v1", from: 0, to: 3000 }]);
+	});
+
+	it("output validates against savedMediaItemSchema.array()", () => {
+		const items = {
+			img1: makeItem({ id: "img1", type: "image" }),
+			v_rec: makeItem({
+				id: "v_rec",
+				type: "video",
+				display: { from: 0, to: 5000 },
+				metadata: { externalKind: "recording-range", channelId: "ch-1" },
+			}),
+			a1: makeItem({
+				id: "a1",
+				type: "audio",
+				display: { from: 1000, to: 4000 },
+				metadata: { externalKind: "audio-range", audioId: "aud-1" },
+			}),
+			v_clip: makeItem({
+				id: "v_clip",
+				type: "video",
+				metadata: { externalKind: "media", mediaId: "media-9" },
+			}),
+		};
+		const result = extractSavedItems(items);
+		const parsed = savedMediaItemSchema.array().safeParse(result);
+		expect(parsed.success).toBe(true);
 	});
 });

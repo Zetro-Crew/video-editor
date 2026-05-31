@@ -1,6 +1,8 @@
 import { randomUUID } from "node:crypto";
+import { savedMediaPayloadSchema } from "@video-editor/contract";
 import { Logger } from "@ztube/observability";
 import type { FastifyPluginAsync, FastifyReply, FastifyRequest } from "fastify";
+import type { z } from "zod";
 import type { ExportEventPublisherPort } from "../../../../../infrastructure/messaging/RabbitMQPublisher.ts";
 import { getOutputFilename } from "../../../../../shared/utils/file.utils.ts";
 import { HttpStatus } from "../../../../../shared/utils/http-status.ts";
@@ -10,13 +12,8 @@ import type { VideoRenderUseCase } from "../../../application/use-cases/VideoRen
 import { DesignRenderInputAdapter } from "../design/DesignRenderInputAdapter.ts";
 import { designPayloadSchema } from "./design-payload.schema.ts";
 
-interface SaveMetadata {
-	mediaName: string;
-	downloadToComputer: boolean;
-	saveToPersonalChannel: boolean;
-	selectedChannelIds: string[];
-	items: unknown[];
-}
+const saveMetadataSchema = savedMediaPayloadSchema.omit({ exportType: true });
+type SaveMetadata = z.infer<typeof saveMetadataSchema>;
 
 interface StartRenderBody {
 	design: unknown;
@@ -63,6 +60,7 @@ export const renderController: FastifyPluginAsync<RenderControllerOptions> = asy
 		request: RenderRequest,
 		signal: AbortSignal,
 		exportType: "mp4" | "webp",
+		startPromise: Promise<void>,
 	): Promise<void> => {
 		const { jobId: _jobId, ...renderInput } = request;
 		const s3Key = `${s3OutputPrefix}/${getOutputFilename(request.format)}`;
@@ -95,6 +93,7 @@ export const renderController: FastifyPluginAsync<RenderControllerOptions> = asy
 					durationMs: Date.now() - start,
 					url: result.url,
 				});
+				await startPromise;
 				await exportEventPublisher.publishExportCompleted({
 					jobId,
 					url: result.url,
@@ -116,6 +115,7 @@ export const renderController: FastifyPluginAsync<RenderControllerOptions> = asy
 					progress: 0,
 					error: message,
 				});
+				await startPromise;
 				await exportEventPublisher.publishExportFailed({ jobId, error: message });
 			}
 		} finally {
@@ -154,15 +154,26 @@ export const renderController: FastifyPluginAsync<RenderControllerOptions> = asy
 		req.log.info({ jobId, format }, "render job accepted");
 
 		const exportType: "mp4" | "webp" = format === "webp" ? "webp" : "mp4";
-		void runRender(jobId, renderRequest, abortController.signal, exportType);
 
-		if (body.saveMetadata) {
-			await exportEventPublisher.publishExportStarted({
+		let startPromise: Promise<void> = Promise.resolve();
+		if (body.saveMetadata !== undefined) {
+			const saveMetadataParse = saveMetadataSchema.safeParse(body.saveMetadata);
+			if (!saveMetadataParse.success) {
+				const issue = saveMetadataParse.error.issues[0];
+				const path = issue?.path.join(".") ?? "";
+				const message = issue?.message ?? "Invalid saveMetadata";
+				return reply
+					.status(HttpStatus.BAD_REQUEST)
+					.send({ error: path ? `saveMetadata.${path}: ${message}` : message });
+			}
+			startPromise = exportEventPublisher.publishExportStarted({
+				...saveMetadataParse.data,
 				jobId,
-				...body.saveMetadata,
 				exportType,
 			});
 		}
+
+		void runRender(jobId, renderRequest, abortController.signal, exportType, startPromise);
 
 		return reply.status(HttpStatus.ACCEPTED).send({ id: jobId });
 	});

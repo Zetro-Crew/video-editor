@@ -1,3 +1,4 @@
+import { createZMonitor } from "@ztube/observability";
 import { createClient } from "redis";
 import type { EnvConfig } from "../config/env.ts";
 import { RedisEditVideoJobStateAdapter } from "../features/edit-video/adapters/outbound/redis/RedisEditVideoJobStateAdapter.ts";
@@ -6,7 +7,6 @@ import { RedisRenderJobStateAdapter } from "../features/render/adapters/outbound
 import { VideoRenderUseCase } from "../features/render/application/use-cases/VideoRenderUseCase.ts";
 import { UploadUseCase } from "../features/upload/application/use-cases/UploadUseCase.ts";
 import { FfmpegVideoProcessingAdapter } from "../infrastructure/ffmpeg/FfmpegVideoProcessingAdapter.ts";
-import type { ExportEventPublisherPort } from "../infrastructure/messaging/RabbitMQPublisher.ts";
 import { RabbitMQPublisher } from "../infrastructure/messaging/RabbitMQPublisher.ts";
 import { S3StorageAdapter } from "../infrastructure/storage/S3StorageAdapter.ts";
 import type { StoragePort } from "../shared/application/ports/outbound/StoragePort.ts";
@@ -21,7 +21,7 @@ export interface Container {
 	renderJobStatePort: RedisRenderJobStateAdapter;
 	editVideoJobStatePort: RedisEditVideoJobStateAdapter;
 	generatePreviewUseCase: GeneratePreviewUseCase;
-	exportEventPublisher: ExportEventPublisherPort;
+	exportEventPublisher: RabbitMQPublisher;
 }
 
 export function buildContainer(config: EnvConfig): Container {
@@ -50,7 +50,7 @@ export function buildContainer(config: EnvConfig): Container {
 	const editVideoJobStatePort = new RedisEditVideoJobStateAdapter(redis);
 	const generatePreviewUseCase = new GeneratePreviewUseCase(storage, config);
 
-	const exportEventPublisher: ExportEventPublisherPort = new RabbitMQPublisher(config.RABBITMQ_URL);
+	const exportEventPublisher = new RabbitMQPublisher(config.RABBITMQ_URL, createZMonitor);
 
 	return {
 		storage,

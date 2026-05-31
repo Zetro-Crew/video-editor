@@ -6,7 +6,7 @@ const baseMeta = {
 	mediaId: "test-id",
 	downloadToComputer: true,
 	saveToPersonalChannel: false,
-	selectedChannelIds: [],
+	selectedUnitChannelIds: [],
 };
 
 beforeEach(() => {
@@ -30,11 +30,11 @@ describe("setSaveMetadata", () => {
 		expect(useDownloadState.getState().saveMetadata?.downloadToComputer).toBe(false);
 	});
 
-	it("stores selectedChannelIds", () => {
+	it("stores selectedUnitChannelIds", () => {
 		useDownloadState
 			.getState()
-			.actions.setSaveMetadata({ ...baseMeta, selectedChannelIds: ["c1", "c2"] });
-		expect(useDownloadState.getState().saveMetadata?.selectedChannelIds).toEqual(["c1", "c2"]);
+			.actions.setSaveMetadata({ ...baseMeta, selectedUnitChannelIds: ["c1", "c2"] });
+		expect(useDownloadState.getState().saveMetadata?.selectedUnitChannelIds).toEqual(["c1", "c2"]);
 	});
 });
 

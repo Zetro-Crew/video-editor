@@ -31,7 +31,7 @@ RUN pnpm install --frozen-lockfile
 # Full pruned source
 COPY --from=pruner /app/out/full/ .
 
-RUN pnpm --filter @video-editor/iframe-contract build
+RUN pnpm --filter @video-editor/contract build
 RUN pnpm --filter @video-editor/frontend build
 
 # ── Stage 3: serve ────────────────────────────────────────────────────────────

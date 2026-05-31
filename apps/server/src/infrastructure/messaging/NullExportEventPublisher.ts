@@ -1,12 +1,12 @@
 import type {
-	ExportCompletedEvent,
+	ExportCompletedData,
 	ExportEventPublisherPort,
-	ExportFailedEvent,
-	ExportStartedEvent,
+	ExportFailedData,
+	ExportStartedData,
 } from "./RabbitMQPublisher.ts";
 
 export class NullExportEventPublisher implements ExportEventPublisherPort {
-	async publishExportStarted(_event: ExportStartedEvent): Promise<void> {}
-	async publishExportCompleted(_event: ExportCompletedEvent): Promise<void> {}
-	async publishExportFailed(_event: ExportFailedEvent): Promise<void> {}
+	async publishExportStarted(_event: ExportStartedData): Promise<void> {}
+	async publishExportCompleted(_event: ExportCompletedData): Promise<void> {}
+	async publishExportFailed(_event: ExportFailedData): Promise<void> {}
 }

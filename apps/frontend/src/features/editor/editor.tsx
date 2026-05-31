@@ -351,11 +351,7 @@ const Editor = ({ tempId, id }: { tempId?: string; id?: string }) => {
 			<main id="editor-main" tabIndex={-1} className="flex flex-col flex-1 min-h-0 outline-none">
 				<div className="flex flex-1 min-h-0">
 					<div className="flex-1 min-w-0 h-full">
-						<SceneContainer
-							sceneRef={sceneRef}
-							stateManager={stateManager}
-							trackItem={trackItem}
-						/>
+						<SceneContainer sceneRef={sceneRef} stateManager={stateManager} trackItem={trackItem} />
 					</div>
 					<aside
 						aria-label="לוח בקרה"

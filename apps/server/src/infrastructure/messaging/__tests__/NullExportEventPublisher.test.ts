@@ -8,10 +8,11 @@ describe("NullExportEventPublisher", () => {
 		await expect(
 			publisher.publishExportStarted({
 				jobId: "j1",
+				mediaId: "m1",
 				mediaName: "test",
 				downloadToComputer: false,
 				saveToPersonalChannel: false,
-				selectedChannelIds: [],
+				selectedUnitChannelIds: [],
 				exportType: "mp4",
 				items: [],
 			}),

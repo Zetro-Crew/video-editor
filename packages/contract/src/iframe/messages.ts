@@ -1,4 +1,7 @@
+import type { SavedMediaPayload } from "../shared/saved-media.js";
 import type { PreviewItemPayload } from "./payloads.js";
+
+export type { SavedMediaItem, SavedMediaPayload } from "../shared/saved-media.js";
 
 export type EditorAddPreviewItemMessage = {
 	type: "EDITOR_ADD_PREVIEW_ITEM";
@@ -42,22 +45,9 @@ export type EditorReadyMessage = {
 	type: "EDITOR_READY";
 };
 
-export type SavedMediaItem =
-	| { type: "image"; id: string }
-	| { type: "clip"; id: string }
-	| { type: "recording"; id: string; from: number; to: number }
-	| { type: "audio"; id: string; from: number; to: number };
-
-export type EditorMediaSavedMessage = {
+export type EditorMediaSavedMessage = SavedMediaPayload & {
 	type: "EDITOR_MEDIA_SAVED";
-	mediaId: string;
-	mediaName: string;
-	downloadToComputer: boolean;
-	saveToPersonalChannel: boolean;
-	selectedUnitChannelIds: string[];
 	url: string;
-	exportType: "mp4" | "webp";
-	items: SavedMediaItem[];
 };
 
 export type EditorToParentMessage =

@@ -94,7 +94,7 @@ const DownloadProgressModal = ({ stateManager }: { stateManager: StateManager })
 			mediaId,
 			downloadToComputer,
 			saveToPersonalChannel,
-			selectedChannelIds: saveToUnitChannel ? selectedChannelIds : [],
+			selectedUnitChannelIds: saveToUnitChannel ? selectedChannelIds : [],
 		});
 		void actions.startExport({ copyWatchLink });
 	};

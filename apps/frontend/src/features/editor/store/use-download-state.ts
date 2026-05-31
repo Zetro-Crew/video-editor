@@ -10,7 +10,7 @@ interface SaveMetadata {
 	mediaId: string;
 	downloadToComputer: boolean;
 	saveToPersonalChannel: boolean;
-	selectedChannelIds: string[];
+	selectedUnitChannelIds: string[];
 }
 
 interface DownloadState {

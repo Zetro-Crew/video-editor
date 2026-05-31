@@ -50,7 +50,12 @@ function scaleDiv(selector: string, scale: number, currentWidth: number, current
 	}
 }
 
-export function SceneInteractions({ stateManager, containerRef, zoom, size }: SceneInteractionsProps) {
+export function SceneInteractions({
+	stateManager,
+	containerRef,
+	zoom,
+	size,
+}: SceneInteractionsProps) {
 	const [targets, setTargets] = useState<HTMLDivElement[]>([]);
 	const [selection, setSelection] = useState<Selection>();
 	const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
@@ -233,7 +238,10 @@ export function SceneInteractions({ stateManager, containerRef, zoom, size }: Sc
 			if (!sceneItem) return;
 			e.preventDefault();
 			const id = getIdFromClassName((sceneItem as HTMLElement).className);
-			stateManager.updateState({ activeIds: [id] }, { updateHistory: false, kind: "layer:selection" });
+			stateManager.updateState(
+				{ activeIds: [id] },
+				{ updateHistory: false, kind: "layer:selection" },
+			);
 			setContextMenu({ x: e.clientX, y: e.clientY });
 		};
 		container.addEventListener("contextmenu", handleContextMenu);
@@ -284,7 +292,8 @@ export function SceneInteractions({ stateManager, containerRef, zoom, size }: Sc
 					}}
 				/>
 			)}
-			{iconPos && activeIds.length === 1 &&
+			{iconPos &&
+				activeIds.length === 1 &&
 				createPortal(
 					<button
 						type="button"
@@ -303,8 +312,7 @@ export function SceneInteractions({ stateManager, containerRef, zoom, size }: Sc
 						<MoreHorizontal size={14} />
 					</button>,
 					document.body,
-				)
-			}
+				)}
 			<Moveable
 				ref={moveableRef}
 				rotationPosition={"bottom"}

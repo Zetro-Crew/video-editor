@@ -1,5 +1,5 @@
 import type { ITrackItem } from "@designcombo/types";
-import type { SavedMediaItem } from "@video-editor/iframe-contract";
+import type { SavedMediaItem } from "@video-editor/contract";
 import type { ExternalMetadata } from "../external-preview/payload-intake";
 
 export function extractSavedItems(trackItemsMap: Record<string, ITrackItem>): SavedMediaItem[] {
@@ -18,7 +18,7 @@ export function extractSavedItems(trackItemsMap: Record<string, ITrackItem>): Sa
 	for (const item of items) {
 		if (item.type !== "audio") continue;
 		const meta = item.metadata as ExternalMetadata | undefined;
-		const key = meta?.audioId ?? item.id;
+		const key = meta?.audioId || item.id;
 		const from = item.display?.from ?? 0;
 		const to = item.display?.to ?? 0;
 		const existing = audioGroups.get(key);
@@ -40,7 +40,7 @@ export function extractSavedItems(trackItemsMap: Record<string, ITrackItem>): Sa
 		if (item.type !== "video") continue;
 		const meta = item.metadata as ExternalMetadata | undefined;
 		if (meta?.externalKind === "recording-range") {
-			const key = meta.channelId ?? item.id;
+			const key = meta.channelId || item.id;
 			const from = item.display?.from ?? 0;
 			const to = item.display?.to ?? 0;
 			const existing = recordingGroups.get(key);
@@ -51,7 +51,7 @@ export function extractSavedItems(trackItemsMap: Record<string, ITrackItem>): Sa
 				recordingGroups.set(key, { from, to });
 			}
 		} else {
-			const key = meta?.mediaId ?? item.id;
+			const key = meta?.mediaId || item.id;
 			clipGroups.set(key, true);
 		}
 	}
