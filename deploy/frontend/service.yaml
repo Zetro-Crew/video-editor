@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: video-editor-frontend
+  namespace: # TODO: your-ocp-namespace
+spec:
+  selector:
+    app: video-editor-frontend
+  ports:
+    - port: 8080
+      targetPort: 8080

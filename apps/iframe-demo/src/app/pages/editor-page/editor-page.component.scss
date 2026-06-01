@@ -266,11 +266,29 @@ legend.section-title {
 
 
 .json-section {
-  flex: 1;
   display: flex;
   flex-direction: column;
   padding: 20px;
-  min-height: 0;
+  border-bottom: 1px solid #27272a;
+}
+
+.export-result-section {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.result-media {
+  width: 100%;
+  border-radius: 8px;
+  display: block;
+}
+
+.result-download {
+  display: block;
+  text-align: center;
+  text-decoration: none;
 }
 
 .json-display {

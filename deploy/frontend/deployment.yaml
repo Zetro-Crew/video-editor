@@ -1,0 +1,43 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: video-editor-frontend
+  namespace: # TODO: your-ocp-namespace
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: video-editor-frontend
+  template:
+    metadata:
+      labels:
+        app: video-editor-frontend
+    spec:
+      imagePullSecrets:
+        - name: internal-registry-secret
+      containers:
+        - name: frontend
+          image: # TODO: your-registry.internal/video-editor-frontend:latest
+          ports:
+            - containerPort: 8080
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 30
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "256Mi"

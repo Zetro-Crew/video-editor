@@ -1,0 +1,38 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: video-editor-server-config
+  namespace: # TODO: your-ocp-namespace
+data:
+  NODE_ENV: "production"
+  PORT: "4001"
+  HOST: "0.0.0.0"
+  # Must be the public frontend URL — server uses it to build signed /editor/segment URLs
+  # which the browser fetches, and nginx proxies them back to the server.
+  SERVER_BASE_URL: "# TODO: https://video-editor.apps.yourcluster.com"
+  CORE_BASE_URL: "# TODO: https://your-core-service.internal/private"
+  FFMPEG_PRESET: "veryfast"
+  FFMPEG_CRF: "20"
+  FFMPEG_AUDIO_BITRATE: "192k"
+  FFMPEG_MAX_CONCURRENT: "4"
+  MIN_TRANSCODE_SEGMENT_SECONDS: "0.35"
+  MAX_PREVIEW_DURATION_MS: "3600000"
+  PREVIEW_JOB_TTL_SECONDS: "86400"
+  S3_PREVIEW_PREFIX: "preview"
+  ENABLE_MPD_RESTRICTIONS: "true"
+  TRANSCODE_TIMEOUT_MS: "7200000"
+  MAX_TEMP_FILE_SIZE_MB: "5000"
+  MPD_TRANSCODE_CRF_MULTI: "10"
+  MPD_TRANSCODE_CRF_SINGLE: "18"
+  MPD_TRANSCODE_PRESET: "medium"
+  S3_BUCKET: "# TODO: your-bucket-name"
+  S3_REGION: "us-east-1"
+  S3_ENDPOINT: "# TODO: https://your-minio.internal"
+  S3_FORCE_PATH_STYLE: "true"
+  S3_UPLOAD_PREFIX: "uploads"
+  S3_OUTPUT_PREFIX: "output"
+  S3_AUTO_CREATE_BUCKET: "false"
+  REDIS_HOST: "# TODO: your-redis.internal"
+  REDIS_PORT: "6379"
+  JOB_PROGRESS_TTL_SECONDS: "600"
+  RENDER_URL_EXPIRY_SECONDS: "86400"

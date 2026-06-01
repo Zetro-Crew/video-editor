@@ -1,0 +1,48 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: video-editor-server
+  namespace: # TODO: your-ocp-namespace
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: video-editor-server
+  template:
+    metadata:
+      labels:
+        app: video-editor-server
+    spec:
+      imagePullSecrets:
+        - name: internal-registry-secret
+      containers:
+        - name: server
+          image: # TODO: your-registry.internal/video-editor-server:latest
+          ports:
+            - containerPort: 4001
+          envFrom:
+            - configMapRef:
+                name: video-editor-server-config
+            - secretRef:
+                name: video-editor-server-secrets
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 4001
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 4001
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: "500m"
+              memory: "512Mi"
+            limits:
+              cpu: "2000m"
+              memory: "2Gi"

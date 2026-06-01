@@ -74,6 +74,11 @@ export class EditorPageComponent implements OnInit, OnDestroy {
 	private readonly boundOnUp = this.onMouseUp.bind(this);
 	private readonly boundOnMessage = this.onMessage.bind(this);
 
+	readonly exportResult = signal<{ jobId: string; url: string; exportType: "mp4" | "webp" } | null>(
+		null,
+	);
+	private eventSource: EventSource | null = null;
+
 	private readonly bridge = inject(EditorBridgeService);
 	private readonly destroyRef = inject(DestroyRef);
 	private readonly ngZone = inject(NgZone);
@@ -114,12 +119,27 @@ export class EditorPageComponent implements OnInit, OnDestroy {
 			window.addEventListener("mouseup", this.boundOnUp);
 			window.addEventListener("message", this.boundOnMessage);
 		});
+
+		this.eventSource = new EventSource("http://localhost:8002/export-result/stream");
+		this.eventSource.onmessage = (event: MessageEvent) => {
+			try {
+				const data = JSON.parse(event.data as string) as {
+					jobId: string;
+					url: string;
+					exportType: "mp4" | "webp";
+				};
+				this.ngZone.run(() => this.exportResult.set(data));
+			} catch {
+				// malformed
+			}
+		};
 	}
 
 	ngOnDestroy(): void {
 		window.removeEventListener("mousemove", this.boundOnMove);
 		window.removeEventListener("mouseup", this.boundOnUp);
 		window.removeEventListener("message", this.boundOnMessage);
+		this.eventSource?.close();
 	}
 
 	startDrag(e: MouseEvent): void {

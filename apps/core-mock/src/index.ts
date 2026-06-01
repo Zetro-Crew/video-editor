@@ -1,6 +1,7 @@
 import { randomBytes } from "node:crypto";
 import cors from "@fastify/cors";
 import Fastify, { type FastifyInstance } from "fastify";
+import { ExportResultStore } from "./export-result-store.ts";
 
 const mockUser = {
 	displayName: "דניאל ריספלר",
@@ -26,6 +27,7 @@ export interface BuildCoreMockOptions {
 
 export interface CoreMockHandle {
 	app: FastifyInstance;
+	exportResultStore: ExportResultStore;
 }
 
 interface FixtureWindow {
@@ -50,6 +52,8 @@ export async function buildCoreMock(opts: BuildCoreMockOptions = {}): Promise<Co
 
 	const app = Fastify({ logger: opts.logger ?? false });
 	await app.register(cors, { origin: true, credentials: true });
+
+	const exportResultStore = new ExportResultStore();
 
 	let cachedWindow: FixtureWindow | undefined;
 
@@ -107,5 +111,31 @@ export async function buildCoreMock(opts: BuildCoreMockOptions = {}): Promise<Co
 		};
 	});
 
-	return { app };
+	app.get("/export-result/stream", (req, reply) => {
+		reply.hijack();
+		const res = reply.raw;
+		res.setHeader("Content-Type", "text/event-stream");
+		res.setHeader("Cache-Control", "no-cache");
+		res.setHeader("Connection", "keep-alive");
+		res.setHeader("Access-Control-Allow-Origin", "*");
+		res.flushHeaders();
+
+		const latest = exportResultStore.getLatest();
+		if (latest) {
+			res.write(`data: ${JSON.stringify(latest)}\n\n`);
+		}
+
+		exportResultStore.subscribe(res);
+
+		const keepAlive = setInterval(() => {
+			res.write(": keepalive\n\n");
+		}, 30_000);
+
+		req.socket.on("close", () => {
+			clearInterval(keepAlive);
+			exportResultStore.unsubscribe(res);
+		});
+	});
+
+	return { app, exportResultStore };
 }

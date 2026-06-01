@@ -4,8 +4,8 @@
 	"description": "Mock server for the core service API (port 8002)",
 	"main": "src/index.ts",
 	"scripts": {
-		"dev": "node --watch src/main.ts",
-		"start": "node src/main.ts",
+		"dev": "node --env-file=.env --watch src/main.ts",
+		"start": "node --env-file=.env src/main.ts",
 		"test": "vitest run",
 		"type-check": "tsc --noEmit",
 		"lint": "biome check . --write"
@@ -13,6 +13,8 @@
 	"type": "module",
 	"dependencies": {
 		"@fastify/cors": "^11.2.0",
+		"@video-editor/contract": "workspace:*",
+		"amqplib": "^2.0.1",
 		"fastify": "catalog:"
 	},
 	"devDependencies": {

@@ -121,5 +121,19 @@
       <span class="section-title">תגובה / שליחה</span>
       <pre class="json-display">{{ stringify({ outgoing: outgoingPayload(), lastResponse: lastResponse() }) }}</pre>
     </div>
+
+    @if (exportResult()) {
+      <div class="export-result-section">
+        <span class="section-title">תוצאת ייצוא</span>
+        @if (exportResult()!.exportType === 'mp4') {
+          <video [src]="exportResult()!.url" controls class="result-media">
+            <track kind="captions" />
+          </video>
+        } @else {
+          <img [src]="exportResult()!.url" alt="תצוגה מקדימה" class="result-media" />
+        }
+        <a [href]="exportResult()!.url" download class="btn-secondary result-download">הורד</a>
+      </div>
+    }
   </aside>
 </div>

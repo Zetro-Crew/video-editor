@@ -1,0 +1,15 @@
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: video-editor-frontend
+  namespace: # TODO: your-ocp-namespace
+spec:
+  host: # TODO: video-editor.apps.yourcluster.com
+  to:
+    kind: Service
+    name: video-editor-frontend
+  port:
+    targetPort: 8080
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
