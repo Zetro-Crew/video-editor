@@ -172,3 +172,38 @@ describe("generateHlsPlaylist — AdaptationSet selection", () => {
 		expect(out.width).toBe(640);
 	});
 });
+
+describe("generateHlsPlaylist — playback compatibility (mediabunny)", () => {
+	// mediabunny's HLS demuxer (hls-segmented-input.js) shifts the first segment's
+	// timestamp by `EXT-X-MEDIA-SEQUENCE * EXTINF` when no PROGRAM-DATE-TIME tag is
+	// present. Emitting MEDIA-SEQUENCE=startNumber (e.g. 2362) makes the demuxer
+	// report all segment timestamps starting at ~9.85h, so Remotion's seek requests
+	// for 0–30s never match and segments after the first are never fetched.
+	// MEDIA-SEQUENCE must be 0 (the HLS default).
+	it("emits EXT-X-MEDIA-SEQUENCE:0 regardless of source startNumber", () => {
+		const out = generateHlsPlaylist({
+			mpdXml: realShapeMpd,
+			mpdUrl: "https://vod/manifest.mpd",
+			segmentStartTimeMs: SEGMENT_START_MS,
+			requestedStartMs: SEGMENT_START_MS,
+			requestedEndMs: SEGMENT_START_MS + 2 * SEG_DURATION_MS,
+		});
+
+		expect(out.playlist).toContain("#EXT-X-MEDIA-SEQUENCE:0\n");
+		expect(out.playlist).not.toMatch(/#EXT-X-MEDIA-SEQUENCE:(?!0\b)/);
+	});
+
+	it("references segment by source startNumber in URLs while sequence stays at 0", () => {
+		const out = generateHlsPlaylist({
+			mpdXml: realShapeMpd,
+			mpdUrl: "https://vod.example.com/api/manifest.mpd",
+			segmentStartTimeMs: SEGMENT_START_MS,
+			requestedStartMs: SEGMENT_START_MS,
+			requestedEndMs: SEGMENT_START_MS + 2 * SEG_DURATION_MS,
+		});
+
+		expect(out.playlist).toContain("segment_v4_2362.m4s");
+		expect(out.playlist).toContain("segment_v4_2363.m4s");
+		expect(out.playlist).toContain("#EXT-X-MEDIA-SEQUENCE:0\n");
+	});
+});

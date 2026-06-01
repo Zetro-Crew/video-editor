@@ -241,11 +241,16 @@ export function generateHlsPlaylist(input: MpdToHlsInput): MpdToHlsOutput {
 		inheritedQuery,
 	);
 
+	// MEDIA-SEQUENCE must be 0: mediabunny's HLS demuxer offsets the first
+	// segment's timestamp by `MEDIA-SEQUENCE * TARGETDURATION` when no
+	// PROGRAM-DATE-TIME tag is present, which would push all timestamps far
+	// past the player's seek range and prevent any segment after the first
+	// from being fetched.
 	const lines: string[] = [
 		"#EXTM3U",
 		"#EXT-X-VERSION:7",
 		`#EXT-X-TARGETDURATION:${Math.ceil(segDurationS)}`,
-		`#EXT-X-MEDIA-SEQUENCE:${firstSegNumber}`,
+		"#EXT-X-MEDIA-SEQUENCE:0",
 		"#EXT-X-PLAYLIST-TYPE:VOD",
 		`#EXT-X-MAP:URI="${initUri}"`,
 	];
