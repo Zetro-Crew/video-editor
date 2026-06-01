@@ -1,5 +1,4 @@
 import { z } from "zod";
-import { savedMediaPayloadSchema } from "../shared/saved-media.js";
 
 export const MAX_PREVIEW_DURATION_MS = 1000 * 60 * 60 * 1;
 
@@ -29,6 +28,12 @@ export const audioPlaybackSchema = z.strictObject({
 	src: safeSrc,
 });
 
+export const playbackSchema = z.union([
+	hlsPlaybackSchema,
+	mediaPlaybackSchema,
+	audioPlaybackSchema,
+]);
+
 export const recordingRangePayloadSchema = z
 	.strictObject({
 		kind: z.literal("recording-range"),
@@ -36,6 +41,7 @@ export const recordingRangePayloadSchema = z
 		startTimeMs: positiveNumber,
 		endTimeMs: positiveNumber,
 		durationMs: positiveDuration,
+		/** When absent, the editor resolves the HLS playlist URL via POST /api/editor/preview-source. */
 		playback: hlsPlaybackSchema.optional(),
 		sourceOffsetMs: positiveNumber.optional(),
 		posterSrc: nonEmptyString.optional(),
@@ -139,43 +145,19 @@ export const editorClearProjectMessageSchema = z.strictObject({
 	requestId: requestIdSchema,
 });
 
-export const editorSetAuthMessageSchema = z.strictObject({
-	type: z.literal("EDITOR_SET_AUTH"),
-	token: nonEmptyString,
-});
-
 export const parentToEditorMessageSchema = z.union([
 	editorAddPreviewItemMessageSchema,
 	editorClearProjectMessageSchema,
-	editorSetAuthMessageSchema,
 ]);
 
-export const editorPreviewItemAddedMessageSchema = z.strictObject({
-	type: z.literal("EDITOR_PREVIEW_ITEM_ADDED"),
-	requestId: requestIdSchema,
-	itemId: nonEmptyString,
-});
-
-export const editorPreviewItemRejectedMessageSchema = z.strictObject({
-	type: z.literal("EDITOR_PREVIEW_ITEM_REJECTED"),
-	requestId: requestIdSchema,
-	reason: nonEmptyString,
-});
-
-export const editorProjectClearedMessageSchema = z.strictObject({
-	type: z.literal("EDITOR_PROJECT_CLEARED"),
-	requestId: requestIdSchema,
-});
-
-export const editorMediaSavedMessageSchema = z.strictObject({
-	...savedMediaPayloadSchema.shape,
-	type: z.literal("EDITOR_MEDIA_SAVED"),
-	url: safeSrc,
-});
-
-export const editorToParentMessageSchema = z.union([
-	editorPreviewItemAddedMessageSchema,
-	editorPreviewItemRejectedMessageSchema,
-	editorProjectClearedMessageSchema,
-	editorMediaSavedMessageSchema,
-]);
+export type HlsPlayback = z.infer<typeof hlsPlaybackSchema>;
+export type MediaPlayback = z.infer<typeof mediaPlaybackSchema>;
+export type AudioPlayback = z.infer<typeof audioPlaybackSchema>;
+export type Playback = z.infer<typeof playbackSchema>;
+export type RecordingRangePayload = z.infer<typeof recordingRangePayloadSchema>;
+export type MediaPayload = z.infer<typeof mediaPayloadSchema>;
+export type AudioRangePayload = z.infer<typeof audioRangePayloadSchema>;
+export type PreviewItemPayload = z.infer<typeof previewItemPayloadSchema>;
+export type EditorAddPreviewItemMessage = z.infer<typeof editorAddPreviewItemMessageSchema>;
+export type EditorClearProjectMessage = z.infer<typeof editorClearProjectMessageSchema>;
+export type ParentToEditorMessage = z.infer<typeof parentToEditorMessageSchema>;

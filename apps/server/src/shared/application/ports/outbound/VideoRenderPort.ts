@@ -1,5 +1,5 @@
-import type { AudioSource, Overlay, VideoSource } from "../../../domain/render-types.ts";
-import type { TimeRange } from "../../../domain/TimeRange.ts";
+import type { AudioSource, Overlay, VideoSource } from "@video-editor/contract/internal/edit-video";
+import type { TimeRange } from "@video-editor/contract/internal/shared";
 
 export interface RenderJob {
 	sources: VideoSource[];

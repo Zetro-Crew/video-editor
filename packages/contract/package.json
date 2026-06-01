@@ -3,33 +3,21 @@
 	"version": "0.1.0",
 	"private": true,
 	"type": "module",
-	"main": "./dist/index.js",
-	"types": "./dist/index.d.ts",
 	"exports": {
-		".": {
-			"types": "./dist/index.d.ts",
-			"import": "./dist/index.js",
-			"default": "./dist/index.js"
-		},
-		"./iframe": {
-			"types": "./dist/iframe/index.d.ts",
-			"import": "./dist/iframe/index.js",
-			"default": "./dist/iframe/index.js"
-		},
-		"./iframe/mocks": {
-			"types": "./dist/iframe/mocks.d.ts",
-			"import": "./dist/iframe/mocks.js",
-			"default": "./dist/iframe/mocks.js"
+		"./iframe/*": {
+			"types": "./dist/iframe/*/index.d.ts",
+			"import": "./dist/iframe/*/index.js",
+			"default": "./dist/iframe/*/index.js"
 		},
 		"./events": {
 			"types": "./dist/events/index.d.ts",
 			"import": "./dist/events/index.js",
 			"default": "./dist/events/index.js"
 		},
-		"./events/mocks": {
-			"types": "./dist/events/mocks.d.ts",
-			"import": "./dist/events/mocks.js",
-			"default": "./dist/events/mocks.js"
+		"./internal/*": {
+			"types": "./dist/internal/*/index.d.ts",
+			"import": "./dist/internal/*/index.js",
+			"default": "./dist/internal/*/index.js"
 		}
 	},
 	"files": [

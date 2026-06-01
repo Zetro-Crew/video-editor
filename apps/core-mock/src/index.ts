@@ -34,8 +34,12 @@ interface FixtureWindow {
 	recordingId: string;
 }
 
+const MOCK_VOD_FETCH_TIMEOUT_MS = 2_000;
+
 async function probeFixtureWindow(mockVodBaseUrl: string): Promise<FixtureWindow> {
-	const res = await fetch(`${mockVodBaseUrl}/__internal/fixture-window`);
+	const res = await fetch(`${mockVodBaseUrl}/__internal/fixture-window`, {
+		signal: AbortSignal.timeout(MOCK_VOD_FETCH_TIMEOUT_MS),
+	});
 	if (!res.ok) throw new Error(`fixture-window probe failed: ${res.status}`);
 	return (await res.json()) as FixtureWindow;
 }
@@ -87,6 +91,7 @@ export async function buildCoreMock(opts: BuildCoreMockOptions = {}): Promise<Co
 				method: "POST",
 				headers: { "content-type": "application/json" },
 				body: JSON.stringify({ token, recordingId, ttlMs: tokenTtlMs }),
+				signal: AbortSignal.timeout(MOCK_VOD_FETCH_TIMEOUT_MS),
 			});
 			if (!registerRes.ok) {
 				app.log.warn({ status: registerRes.status }, "register-token returned non-2xx");

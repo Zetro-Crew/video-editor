@@ -1,4 +1,4 @@
-import type { TextOverlay } from "../../../shared/domain/render-types.ts";
+import type { TextOverlay } from "@video-editor/contract/internal/edit-video";
 import { getFontFileParameter, prepareRTLText } from "../../../shared/utils/font.utils.ts";
 import {
 	buildEnableExpression,

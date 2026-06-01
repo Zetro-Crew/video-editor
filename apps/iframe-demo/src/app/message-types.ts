@@ -1,7 +1,6 @@
 export const EDITOR_ADD_PREVIEW_ITEM = "EDITOR_ADD_PREVIEW_ITEM";
 export const EDITOR_CLEAR_PROJECT = "EDITOR_CLEAR_PROJECT";
 export const EDITOR_READY = "EDITOR_READY";
-export const EDITOR_SET_AUTH = "EDITOR_SET_AUTH";
 
 export type RecordingRangePayload = {
 	kind: "recording-range";

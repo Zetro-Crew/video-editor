@@ -1,4 +1,4 @@
-import type { DesignPayload } from "../../../adapters/inbound/http/design-payload.schema.ts";
+import type { DesignPayload } from "@video-editor/contract/internal/render";
 import type { RenderInputPort } from "../../../application/ports/inbound/RenderInputPort.ts";
 import type { VideoRenderInput } from "../../../application/use-cases/VideoRenderUseCase.ts";
 import { type IDesign, translate } from "../../../domain/DesignToRenderJobTranslator.ts";

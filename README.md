@@ -13,9 +13,12 @@ A full-stack, browser-based video editor built on [Remotion](https://www.remotio
 | App / Package | Description | Port |
 |---|---|---|
 | `apps/frontend` | Vite + React 19 SPA — the editor UI | 3000 |
-| `apps/server` | Fastify + Node.js API — upload, render, FFmpeg | 4000 |
-| `apps/iframe-demo` | Angular 21 harness for iframe integration testing | 4200 |
-| `packages/editor-contract` | Shared postMessage types (`@video-editor/iframe-contract`) | — |
+| `apps/server` | Fastify + Node.js API — upload, render, FFmpeg, RabbitMQ publisher | 4001 |
+| `apps/iframe-demo` | Angular 21 harness for iframe integration testing | 8080 |
+| `apps/core-mock` | Dev-only Fastify mock of the upstream Core service | 8002 |
+| `apps/mock-vod` | Dev-only Fastify mock of the upstream VOD service | 5050 |
+| `packages/contract` | `@video-editor/contract` — Zod schemas/types. Subpaths: `/iframe/from-parent`, `/iframe/to-parent`, `/events`, `/internal/*` | — |
+| `packages/observability` | `@ztube/observability` — OpenTelemetry tracing, metrics, structured logging | — |
 
 ## Prerequisites
 
@@ -57,6 +60,11 @@ Key variables (all have defaults for local dev):
 | `S3_ACCESS_KEY_ID` | `minioadmin` | MinIO access key |
 | `S3_SECRET_ACCESS_KEY` | `minioadmin123` | MinIO secret |
 | `REDIS_HOST` | `localhost` | Redis host |
+| `CORE_BASE_URL` | required | Upstream Core service base URL (includes `/private`). Dev: `http://localhost:8002/private` |
+| `PREVIEW_SIGNING_SECRET` | required | HMAC-SHA256 secret (min 32 chars) for signed segment-proxy URLs |
+| `RABBITMQ_URL` | required | AMQP connection URL for export event publishing |
+
+See [apps/server/README.md](apps/server/README.md) for the full env schema.
 
 **4. Run everything**
 
@@ -86,17 +94,25 @@ Per-app commands are documented in each app's README.
 - **S3 storage** — upload assets to MinIO (local) or any S3-compatible store
 - **Export pipeline** — FFmpeg (via raw `spawn`) renders and processes video on the server
 - **iframe embedding** — embed the editor in any page via postMessage API
+- **RabbitMQ events** — server publishes `export.started`, `export.completed`, `export.failed` to the `video-editor` topic exchange
 
 ## iframe Integration
 
-The editor can be embedded at `/editor/embed` and controlled via `postMessage`. The `@video-editor/iframe-contract` package provides typed schemas for the protocol.
+The editor can be embedded at `/editor/embed` and controlled via `postMessage`. The `@video-editor/contract` package provides typed Zod schemas across four subpaths:
 
-See [packages/editor-contract/README.md](packages/editor-contract/README.md) and [apps/iframe-demo/README.md](apps/iframe-demo/README.md) for details.
+- `@video-editor/contract/iframe/from-parent` — parent → editor messages
+- `@video-editor/contract/iframe/to-parent` — editor → parent messages
+- `@video-editor/contract/events` — RabbitMQ event envelopes (external consumers)
+- `@video-editor/contract/internal/<feature>` — server-owner HTTP schemas (not for external use)
+
+See [packages/contract/README.md](packages/contract/README.md) and [apps/iframe-demo/README.md](apps/iframe-demo/README.md) for details.
 
 ## Tech Stack
 
 **Frontend:** React 19, Vite, Remotion, Zustand, TanStack Query, Tailwind v4, shadcn/ui, `@designcombo/*`
 
-**Server:** Fastify 5, Node.js 22, FFmpeg (bundled via `@ffmpeg-installer/ffmpeg`), Redis, AWS SDK v3 (S3/MinIO), Zod, Sharp
+**Server:** Fastify 5, Node.js 22, FFmpeg (bundled via `@ffmpeg-installer/ffmpeg`), Redis, AWS SDK v3 (S3/MinIO), `amqplib`, Zod, Sharp
+
+**Observability:** OpenTelemetry tracing + metrics, Pyroscope profiling, Pino logging (via `@ztube/observability`)
 
 **Tooling:** pnpm, Turborepo, Biome, TypeScript, Vitest, Playwright

@@ -1,6 +1,6 @@
 import path from "node:path";
+import type { CircleOverlay } from "@video-editor/contract/internal/edit-video";
 import sharp from "sharp";
-import type { CircleOverlay } from "../../../shared/domain/render-types.ts";
 import { buildCircleSvg } from "../../../shared/utils/icons/circle.ts";
 import { buildEnableExpression, buildPositionExpression } from "./overlay-utils.ts";
 

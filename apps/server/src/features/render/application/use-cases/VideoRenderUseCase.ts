@@ -1,6 +1,6 @@
+import type { AudioSource, Overlay, VideoSource } from "@video-editor/contract/internal/edit-video";
+import type { TimeRange } from "@video-editor/contract/internal/shared";
 import type { VideoRenderPort } from "../../../../shared/application/ports/outbound/VideoRenderPort.ts";
-import type { AudioSource, Overlay, VideoSource } from "../../../../shared/domain/render-types.ts";
-import type { TimeRange } from "../../../../shared/domain/TimeRange.ts";
 import {
 	calculateKeepSegments,
 	calculateTotalDurationSegments,

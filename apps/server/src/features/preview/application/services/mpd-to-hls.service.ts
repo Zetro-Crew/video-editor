@@ -36,6 +36,7 @@ interface ParsedRepresentation {
 	segmentTemplate: SegmentTemplate;
 	mpdBase: string;
 	periodBase: string;
+	inheritedQuery: string;
 }
 
 const parser = new XMLParser({
@@ -71,6 +72,21 @@ function extractBaseUrl(node: unknown): string | undefined {
 	return coerceBaseUrlEntry(value);
 }
 
+function isVideoAdaptationSet(as: Record<string, unknown>): boolean {
+	const ct = as["@_contentType"];
+	if (typeof ct === "string" && ct === "video") return true;
+	const mt = as["@_mimeType"];
+	if (typeof mt === "string" && mt.startsWith("video/")) return true;
+	// Fall back to inner Representation@mimeType — valid DASH may carry mimeType only on Representation.
+	const rep = as.Representation;
+	const reps = Array.isArray(rep) ? rep : rep !== undefined ? [rep] : [];
+	return reps.some((r: unknown) => {
+		if (!r || typeof r !== "object") return false;
+		const m = (r as Record<string, unknown>)["@_mimeType"];
+		return typeof m === "string" && m.startsWith("video/");
+	});
+}
+
 function selectVideoAdaptationSet(
 	period: Record<string, unknown>,
 ): Record<string, unknown> | undefined {
@@ -78,11 +94,7 @@ function selectVideoAdaptationSet(
 	const list = Array.isArray(raw) ? raw : raw !== undefined ? [raw] : [];
 	return list.find((as: unknown) => {
 		if (!as || typeof as !== "object") return false;
-		const ct = (as as Record<string, unknown>)["@_contentType"];
-		if (typeof ct === "string" && ct === "video") return true;
-		const mt = (as as Record<string, unknown>)["@_mimeType"];
-		if (typeof mt === "string" && mt.startsWith("video/")) return true;
-		return false;
+		return isVideoAdaptationSet(as as Record<string, unknown>);
 	}) as Record<string, unknown> | undefined;
 }
 
@@ -135,6 +147,9 @@ function parseMpd(mpdXml: string, mpdUrl: string): ParsedRepresentation {
 	const periodBaseText = extractBaseUrl(period);
 	const mpdBase = new URL(mpdBaseText ?? "./", mpdUrl).toString();
 	const periodBase = new URL(periodBaseText ?? "./", mpdBase).toString();
+	// URL constructor drops the base's query when resolving a path-relative reference.
+	// Preserve mpdUrl's query as a fallback so CDN session/auth query tokens reach segment URLs.
+	const inheritedQuery = new URL(mpdUrl).search;
 
 	return {
 		id: representationId,
@@ -149,7 +164,14 @@ function parseMpd(mpdXml: string, mpdUrl: string): ParsedRepresentation {
 		},
 		mpdBase,
 		periodBase,
+		inheritedQuery,
 	};
+}
+
+function resolveSegmentUrl(template: string, periodBase: string, inheritedQuery: string): string {
+	const u = new URL(template, periodBase);
+	if (!u.search && inheritedQuery) u.search = inheritedQuery;
+	return u.toString();
 }
 
 // ISO/IEC 23009-1 $Number$ / $Number%0Nd$ width-format spec.
@@ -179,7 +201,14 @@ export function generateHlsPlaylist(input: MpdToHlsInput): MpdToHlsOutput {
 		);
 	}
 
-	const { id, width, height, segmentTemplate: st, periodBase } = parseMpd(mpdXml, mpdUrl);
+	const {
+		id,
+		width,
+		height,
+		segmentTemplate: st,
+		periodBase,
+		inheritedQuery,
+	} = parseMpd(mpdXml, mpdUrl);
 
 	const segDurationMs = (st.duration / st.timescale) * 1000;
 	const segDurationS = st.duration / st.timescale;
@@ -206,7 +235,11 @@ export function generateHlsPlaylist(input: MpdToHlsInput): MpdToHlsOutput {
 		);
 	}
 
-	const initUri = new URL(substituteTemplate(st.initialization, id), periodBase).toString();
+	const initUri = resolveSegmentUrl(
+		substituteTemplate(st.initialization, id),
+		periodBase,
+		inheritedQuery,
+	);
 
 	const lines: string[] = [
 		"#EXTM3U",
@@ -218,7 +251,11 @@ export function generateHlsPlaylist(input: MpdToHlsInput): MpdToHlsOutput {
 	];
 
 	for (let n = firstSegNumber; n <= lastSegNumber; n++) {
-		const segUri = new URL(substituteTemplate(st.media, id, n), periodBase).toString();
+		const segUri = resolveSegmentUrl(
+			substituteTemplate(st.media, id, n),
+			periodBase,
+			inheritedQuery,
+		);
 		lines.push(`#EXTINF:${segDurationS.toFixed(3)},`);
 		lines.push(segUri);
 	}

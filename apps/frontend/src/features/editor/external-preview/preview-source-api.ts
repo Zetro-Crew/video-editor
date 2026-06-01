@@ -21,13 +21,10 @@ export const resolvePreviewSource = async (
 	channelId: string,
 	startTimeMs: number,
 	endTimeMs: number,
-	authToken?: string,
 ): Promise<PreviewSourceResponse> => {
-	const headers: Record<string, string> = { "Content-Type": "application/json" };
-	if (authToken) headers["x-ztube-token"] = authToken;
 	const response = await fetch("/editor/preview-source", {
 		method: "POST",
-		headers,
+		headers: { "Content-Type": "application/json" },
 		body: JSON.stringify({
 			source: { type: "channel-range", channelId, startTimeMs, endTimeMs },
 		}),

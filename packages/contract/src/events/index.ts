@@ -1,3 +1,8 @@
+export type { SavedMediaItem, SavedMediaPayload } from "../shared/saved-media.js";
+export {
+	savedMediaItemSchema,
+	savedMediaPayloadSchema,
+} from "../shared/saved-media.js";
 export type { Envelope } from "./envelope.js";
 export {
 	EXCHANGE_NAME,

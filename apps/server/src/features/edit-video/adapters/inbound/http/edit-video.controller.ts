@@ -1,3 +1,7 @@
+import {
+	editVideoRequestSchema,
+	type RenderRequest,
+} from "@video-editor/contract/internal/edit-video";
 import { Logger } from "@ztube/observability";
 import type { FastifyInstance, FastifyPluginAsync } from "fastify";
 import { getOutputFilename } from "../../../../../shared/utils/file.utils.ts";
@@ -5,8 +9,6 @@ import { HttpStatus } from "../../../../../shared/utils/http-status.ts";
 import { DirectRenderInputAdapter } from "../../../../render/adapters/inbound/direct/DirectRenderInputAdapter.ts";
 import type { VideoRenderUseCase } from "../../../../render/application/use-cases/VideoRenderUseCase.ts";
 import type { EditVideoJobStatePort } from "../../../application/ports/outbound/EditVideoJobStatePort.ts";
-import { editVideoRequestSchema } from "./edit-video.schema.ts";
-import type { RenderRequest } from "./edit-video.types.ts";
 
 interface EditVideoControllerOptions {
 	videoRenderUseCase: VideoRenderUseCase;

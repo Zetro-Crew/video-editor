@@ -4,12 +4,12 @@ const errorResponseSchema = z.object({
 	error: z.string(),
 });
 
-const getSignedUrlBodySchema = z.object({
+export const getSignedUrlBodySchema = z.object({
 	filename: z.string().min(1),
 	mimetype: z.string().min(1),
 });
 
-const getSignedUrlResponseSchema = z.object({
+export const getSignedUrlResponseSchema = z.object({
 	uploadUrl: z.string(),
 	s3Key: z.string(),
 	filename: z.string(),
@@ -25,11 +25,11 @@ export const getSignedUrlRequestSchema = {
 	},
 };
 
-const cleanupBodySchema = z.object({
+export const cleanupBodySchema = z.object({
 	s3Keys: z.array(z.string().min(1)).min(1),
 });
 
-const cleanupResponseSchema = z.object({
+export const cleanupResponseSchema = z.object({
 	deleted: z.number(),
 	deletedFiles: z.array(z.string()),
 	errors: z.array(z.string()).optional(),
@@ -45,4 +45,6 @@ export const cleanupRequestSchema = {
 };
 
 export type GetSignedUrlRequest = z.infer<typeof getSignedUrlBodySchema>;
+export type GetSignedUrlResponse = z.infer<typeof getSignedUrlResponseSchema>;
 export type CleanupRequest = z.infer<typeof cleanupBodySchema>;
+export type CleanupResponse = z.infer<typeof cleanupResponseSchema>;

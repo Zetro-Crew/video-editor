@@ -1,46 +1,15 @@
+import type { VideoSource } from "@video-editor/contract/internal/edit-video";
+import type {
+	CutRange,
+	DirectSource,
+	EditorExportBody,
+} from "@video-editor/contract/internal/editor-export";
 import type { FastifyPluginAsync } from "fastify";
-import type { VideoSource } from "../../../../../shared/domain/render-types.ts";
 import { HttpStatus } from "../../../../../shared/utils/http-status.ts";
 import type {
 	VideoRenderInput,
 	VideoRenderUseCase,
 } from "../../../../render/application/use-cases/VideoRenderUseCase.ts";
-
-interface CutRange {
-	start: number;
-	end: number;
-}
-
-interface ExportEdits {
-	cuts?: CutRange[];
-}
-
-interface ExportOutput {
-	format?: "mp4" | "dash";
-}
-
-interface ChannelRangeSource {
-	type: "channel-range";
-	channelId: string;
-	startTimeMs: number;
-	endTimeMs: number;
-}
-
-interface DirectSource {
-	type: "direct";
-	url: string;
-	duration: number;
-	trimFrom?: number;
-	trimTo?: number;
-}
-
-type ExportSource = ChannelRangeSource | DirectSource;
-
-interface EditorExportBody {
-	source: ExportSource;
-	edits?: ExportEdits;
-	output?: ExportOutput;
-}
 
 interface EditorExportControllerOptions {
 	videoRenderUseCase: VideoRenderUseCase;

@@ -1,8 +1,8 @@
 import { existsSync, promises as fsp } from "node:fs";
 import path from "node:path";
+import type { VideoSource } from "@video-editor/contract/internal/edit-video";
 import type { EnvConfig } from "../../../config/env.ts";
 import type { StoragePort } from "../../../shared/application/ports/outbound/StoragePort.ts";
-import type { VideoSource } from "../../../shared/domain/render-types.ts";
 import { normalizeFfmpegDuration, normalizeFfmpegTime } from "../../../shared/utils/time.utils.ts";
 import { FFMPEG_COMMAND, FFMPEG_FLAG } from "../ffmpeg.consts.ts";
 import { runFfmpeg } from "../ffmpeg.utils.ts";

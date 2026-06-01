@@ -1,6 +1,6 @@
 import { access } from "node:fs/promises";
 import path from "node:path";
-import type { ImageOverlay } from "../../../shared/domain/render-types.ts";
+import type { ImageOverlay } from "@video-editor/contract/internal/edit-video";
 import { downloadFile } from "../../../shared/utils/file.utils.ts";
 import { convertWebpToPng, getImageExtension } from "../source-processors/image-process.ts";
 import { buildEnableExpression, buildPositionExpression } from "./overlay-utils.ts";

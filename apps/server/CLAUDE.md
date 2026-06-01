@@ -106,9 +106,10 @@ Controller: `src/features/editor-export/adapters/inbound/http/editor-export.cont
 
 ## Shared Domain (`src/shared/`)
 
-- `domain/OverlayType.ts`, `TimeRange.ts`, `VideoMetadata.ts`, `RenderResponse.ts`
 - `application/ports/outbound/StoragePort.ts` — storage interface
 - `utils/` — file, font, time utilities
+
+HTTP route schemas + their value types (`OverlayType`, `TimeRange`, `VideoMetadata`, `DesignPayload`, `RenderRequest`, upload schemas, editor-export body types) live in `@video-editor/contract/internal/<feature>`. See [ADR 0004](../../docs/adr/0004-server-http-schemas-in-shared-contract-package.md).
 
 ## Environment Variables
 

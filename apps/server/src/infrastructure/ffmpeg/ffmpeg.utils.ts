@@ -1,8 +1,8 @@
 import { spawn } from "node:child_process";
 import ffmpegInstaller from "@ffmpeg-installer/ffmpeg";
+import type { VideoMetadata } from "@video-editor/contract/internal/shared";
 import { Logger } from "@ztube/observability";
 import ffprobeStatic from "ffprobe-static";
-import type { VideoMetadata } from "../../shared/domain/VideoMetadata.ts";
 
 const FFPROBE_QUIET = "-v";
 const FFPROBE_QUIET_LEVEL = "quiet";

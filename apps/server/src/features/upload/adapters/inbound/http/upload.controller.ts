@@ -1,14 +1,14 @@
 import path from "node:path";
-import type { FastifyPluginAsync, FastifyReply, FastifyRequest } from "fastify";
-import type { Request } from "../../../../../infrastructure/fastify/fastify.ts";
-import { HttpStatus } from "../../../../../shared/utils/http-status.ts";
-import type { UploadUseCase } from "../../../application/use-cases/UploadUseCase.ts";
 import {
 	type CleanupRequest,
 	cleanupRequestSchema,
 	type GetSignedUrlRequest,
 	getSignedUrlRequestSchema,
-} from "./upload.schema.ts";
+} from "@video-editor/contract/internal/upload";
+import type { FastifyPluginAsync, FastifyReply, FastifyRequest } from "fastify";
+import type { Request } from "../../../../../infrastructure/fastify/fastify.ts";
+import { HttpStatus } from "../../../../../shared/utils/http-status.ts";
+import type { UploadUseCase } from "../../../application/use-cases/UploadUseCase.ts";
 
 const ALLOWED_MIMES = [
 	"video/mp4",

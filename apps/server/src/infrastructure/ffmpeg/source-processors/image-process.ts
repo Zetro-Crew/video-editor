@@ -1,7 +1,7 @@
 import path from "node:path";
+import type { VideoSource } from "@video-editor/contract/internal/edit-video";
 import sharp from "sharp";
 import type { StoragePort } from "../../../shared/application/ports/outbound/StoragePort.ts";
-import type { VideoSource } from "../../../shared/domain/render-types.ts";
 import { FFMPEG_COMMAND, FFMPEG_FLAG } from "../ffmpeg.consts.ts";
 import { runFfmpeg } from "../ffmpeg.utils.ts";
 

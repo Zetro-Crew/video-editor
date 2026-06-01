@@ -8,6 +8,20 @@ Zod is the single validation library for both env config and HTTP request schema
 
 → See [ADR 0001](docs/adr/0001-zod-over-typebox.md)
 
+## Contract Package Buckets
+
+`@video-editor/contract` exposes four explicit subpaths so external teams can see what's theirs vs the editor team's:
+
+**from-parent** — parent app → editor postMessage (`EDITOR_ADD_PREVIEW_ITEM`, `EDITOR_CLEAR_PROJECT`). Subpath: `@video-editor/contract/iframe/from-parent`.
+
+**to-parent** — editor → parent postMessage (`EDITOR_PREVIEW_ITEM_ADDED`, `EDITOR_PREVIEW_ITEM_REJECTED`, `EDITOR_PROJECT_CLEARED`, `EDITOR_READY`, `EDITOR_MEDIA_SAVED`). Subpath: `@video-editor/contract/iframe/to-parent`.
+
+**events** — server publishes to the `video-editor` topic exchange (`export.started`, `export.completed`, `export.failed`). Subpath: `@video-editor/contract/events`.
+
+**internal** — editor server's own HTTP API schemas (upload, edit-video, render, editor-export). Subpath: `@video-editor/contract/internal/<feature>`. External teams must not import — see [ADR 0004](docs/adr/0004-server-http-schemas-in-shared-contract-package.md).
+
+Every TS type in the package is `z.infer<typeof schema>` so schemas and types cannot drift.
+
 ## Messaging
 
 **Publish** — server hands an event envelope to the broker on the `video-editor` topic exchange. Considered successful only when the broker confirms it (publisher confirms). A publish that the broker never acks, or that the broker returns as unrouted, is a failure the server must log and meter.

@@ -1,10 +1,37 @@
+import type StateManager from "@designcombo/state";
 import type { ITrackItem } from "@designcombo/types";
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+vi.mock("@designcombo/events", () => ({ dispatch: vi.fn() }));
+vi.mock("@designcombo/timeline", () => ({ generateId: () => "generated-id" }));
+vi.mock("../preview-source-api", () => ({
+	resolvePreviewSource: vi.fn(),
+}));
+
 import {
+	addPreviewItemToEditor,
 	buildExternalMetadata,
 	buildFallbackTrackItem,
 	getDurationFromItem,
 } from "../payload-intake";
+import { resolvePreviewSource } from "../preview-source-api";
+
+const makeStateManager = (): StateManager => {
+	let state = {
+		trackItemsMap: {} as Record<string, unknown>,
+		duration: 0,
+		tracks: [],
+		trackItemIds: [] as string[],
+		structure: [],
+		activeIds: [],
+	};
+	return {
+		getState: () => state,
+		updateState: (patch: Record<string, unknown>) => {
+			state = { ...state, ...patch };
+		},
+	} as unknown as StateManager;
+};
 
 describe("getDurationFromItem", () => {
 	it("returns duration when larger than display range", () => {
@@ -151,5 +178,57 @@ describe("buildFallbackTrackItem", () => {
 			0,
 		);
 		expect(item.metadata?.previewUrl).toBe("https://example.com/poster.jpg");
+	});
+});
+
+describe("addPreviewItemToEditor recording-range integration", () => {
+	const resolveSpy = resolvePreviewSource as unknown as ReturnType<typeof vi.fn>;
+
+	beforeEach(() => {
+		resolveSpy.mockReset();
+	});
+
+	afterEach(() => {
+		resolveSpy.mockReset();
+	});
+
+	it("calls resolvePreviewSource with exactly (channelId, startTimeMs, endTimeMs) when playback.src absent", async () => {
+		resolveSpy.mockResolvedValueOnce({
+			type: "hls",
+			playlistUrl: "https://example.com/preview.m3u8",
+			channelId: "ch-7",
+			requestedStartMs: 1000,
+			requestedEndMs: 4000,
+			durationMs: 3000,
+			sourceOffsetMs: 500,
+			width: 1280,
+			height: 720,
+		});
+
+		const sm = makeStateManager();
+		await addPreviewItemToEditor(sm, {
+			kind: "recording-range",
+			channelId: "ch-7",
+			startTimeMs: 1000,
+			endTimeMs: 4000,
+			durationMs: 3000,
+		});
+
+		expect(resolveSpy).toHaveBeenCalledTimes(1);
+		expect(resolveSpy.mock.calls[0]).toEqual(["ch-7", 1000, 4000]);
+	});
+
+	it("does not call resolvePreviewSource when payload.playback.src is present (fast path)", async () => {
+		const sm = makeStateManager();
+		await addPreviewItemToEditor(sm, {
+			kind: "recording-range",
+			channelId: "ch-7",
+			startTimeMs: 1000,
+			endTimeMs: 4000,
+			durationMs: 3000,
+			playback: { kind: "hls", src: "https://parent.example/preview.m3u8" },
+		});
+
+		expect(resolveSpy).not.toHaveBeenCalled();
 	});
 });

@@ -3,7 +3,7 @@ import type StateManager from "@designcombo/state";
 import { ADD_AUDIO, ADD_VIDEO } from "@designcombo/state";
 import { generateId } from "@designcombo/timeline";
 import type { ITrackItem } from "@designcombo/types";
-import type { PreviewItemPayload } from "@video-editor/contract";
+import type { PreviewItemPayload } from "@video-editor/contract/iframe/from-parent";
 import { resolvePreviewSource } from "./preview-source-api";
 
 export type ExternalMetadata = {
@@ -195,7 +195,6 @@ const appendItemState = (
 export const addPreviewItemToEditor = async (
 	stateManager: StateManager,
 	payload: PreviewItemPayload,
-	authToken?: string,
 ) => {
 	const itemId = generateId();
 	const insertAtMs = getProjectDuration(stateManager);
@@ -216,7 +215,6 @@ export const addPreviewItemToEditor = async (
 				payload.channelId,
 				payload.startTimeMs,
 				payload.endTimeMs,
-				authToken,
 			);
 			hlsSrc = resolved.playlistUrl;
 			videoWidth = resolved.width;

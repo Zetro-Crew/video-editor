@@ -25,7 +25,7 @@ export interface GeneratePreviewOutput {
 
 function buildProxyUrl(secret: string, proxyBase: string, token: string, target: string): string {
 	const encoded = Buffer.from(target, "utf8").toString("base64url");
-	const sig = signUrl(secret, target);
+	const sig = signUrl(secret, target, token);
 	return `${proxyBase}?url=${encoded}&token=${encodeURIComponent(token)}&sig=${sig}`;
 }
 

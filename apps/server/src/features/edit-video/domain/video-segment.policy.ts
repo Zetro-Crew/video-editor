@@ -1,5 +1,5 @@
+import type { TimeRange } from "@video-editor/contract/internal/shared";
 import { probeMpdMetadata } from "../../../infrastructure/ffmpeg/ffmpeg.utils.ts";
-import type { TimeRange } from "../../../shared/domain/TimeRange.ts";
 import { ONE_HOUR_IN_SECONDS } from "../../../shared/utils/time.utils.ts";
 
 const MAX_MPD_VIDEO_WIDTH = 1920;

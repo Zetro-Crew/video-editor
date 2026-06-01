@@ -1,7 +1,7 @@
+import type { Overlay } from "@video-editor/contract/internal/edit-video";
+import { OverlayType } from "@video-editor/contract/internal/shared";
 import type { EnvConfig } from "../../../config/env.ts";
 import type { StoragePort } from "../../../shared/application/ports/outbound/StoragePort.ts";
-import { OverlayType } from "../../../shared/domain/OverlayType.ts";
-import type { Overlay } from "../../../shared/domain/render-types.ts";
 import { buildCircleOverlayFilter, prepareCircleOverlay } from "./circle-overlay.service.ts";
 import { buildImageOverlayFilter, prepareImageOverlay } from "./image-overlay.service.ts";
 import { buildRectangleOverlayFilter } from "./rectangle-overlay.service.ts";

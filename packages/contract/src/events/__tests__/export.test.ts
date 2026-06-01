@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { EXCHANGE_NAME } from "./envelope.js";
+import { EXCHANGE_NAME } from "../envelope.js";
 import {
 	EXPORT_COMPLETED,
 	EXPORT_COMPLETED_V1,
@@ -11,12 +11,12 @@ import {
 	exportCompletedEnvelopeSchema,
 	exportFailedEnvelopeSchema,
 	exportStartedEnvelopeSchema,
-} from "./export.js";
+} from "../export.js";
 import {
 	mockExportCompletedEnvelope,
 	mockExportFailedEnvelope,
 	mockExportStartedEnvelope,
-} from "./mocks.js";
+} from "../mocks.js";
 
 describe("event routing keys", () => {
 	it("uses lowercase domain.action pattern", () => {

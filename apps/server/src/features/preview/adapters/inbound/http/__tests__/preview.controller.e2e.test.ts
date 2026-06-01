@@ -88,7 +88,7 @@ describe("preview.controller E2E (core-mock + mock-vod + server)", () => {
 		expect(segRes.rawPayload.length).toBeGreaterThan(0);
 	});
 
-	it("range outside fixture window → 500 (adapter throws on core 404)", async () => {
+	it("range outside fixture window → 400 (adapter throws RangeError on core 404)", async () => {
 		const { endMs } = mockVod.fixtureWindow;
 		const res = await server.inject({
 			method: "POST",
@@ -102,6 +102,6 @@ describe("preview.controller E2E (core-mock + mock-vod + server)", () => {
 				},
 			},
 		});
-		expect(res.statusCode).toBe(500);
+		expect(res.statusCode).toBe(400);
 	});
 });

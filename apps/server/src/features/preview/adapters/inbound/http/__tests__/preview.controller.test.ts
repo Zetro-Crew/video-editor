@@ -114,4 +114,95 @@ describe("previewController POST /editor/preview-source", () => {
 		expect(body.height).toBe(360);
 		expect(body.playlistUrl).toMatch(/^internal:\/\/preview\//);
 	});
+
+	describe("ztube-token cookie parsing", () => {
+		const mpd = `<?xml version="1.0" encoding="utf-8"?>
+<MPD xmlns="urn:mpeg:dash:schema:mpd:2011" type="static">
+	<Period id="P0">
+		<AdaptationSet contentType="video">
+			<SegmentTemplate timescale="1000" duration="15000"
+				media="segment_$RepresentationID$_$Number$.m4s"
+				initialization="$RepresentationID$_init.mp4"
+				startNumber="1"/>
+			<Representation id="v4" mimeType="video/mp4" width="640" height="360" bandwidth="100000"/>
+		</AdaptationSet>
+	</Period>
+</MPD>`;
+
+		const stubHappyFetch = () => {
+			const fetchSpy = globalThis.fetch as unknown as ReturnType<typeof vi.fn>;
+			fetchSpy
+				.mockResolvedValueOnce(
+					new Response(
+						JSON.stringify({
+							url: "http://mock-vod/vod/demo/manifest.mpd",
+							timeRanges: [[1000, 16_000]],
+							token: "vod-tok",
+						}),
+						{ status: 200, headers: { "content-type": "application/json" } },
+					),
+				)
+				.mockResolvedValueOnce(new Response(mpd, { status: 200 }));
+			return fetchSpy;
+		};
+
+		const validBody = {
+			source: {
+				type: "channel-range",
+				channelId: "ch-001",
+				startTimeMs: 1000,
+				endTimeMs: 16_000,
+			},
+		};
+
+		it("forwards Cookie: ztube-token=<value> upstream when present", async () => {
+			const fetchSpy = stubHappyFetch();
+			const res = await app.inject({
+				method: "POST",
+				url: "/editor/preview-source",
+				headers: { cookie: "ztube-token=abc" },
+				payload: validBody,
+			});
+			expect(res.statusCode).toBe(200);
+			const playCall = fetchSpy.mock.calls[0];
+			const playInit = playCall[1] as { headers: Record<string, string> };
+			expect(playInit.headers.Cookie).toBe("ztube-token=abc");
+		});
+
+		it("forwards no Cookie header when none present", async () => {
+			const fetchSpy = stubHappyFetch();
+			const res = await app.inject({
+				method: "POST",
+				url: "/editor/preview-source",
+				payload: validBody,
+			});
+			expect(res.statusCode).toBe(200);
+			const playInit = fetchSpy.mock.calls[0][1] as { headers: Record<string, string> };
+			expect(playInit.headers.Cookie).toBeUndefined();
+		});
+
+		it("URL-decodes ztube-token cookie value mixed with other cookies", async () => {
+			const fetchSpy = stubHappyFetch();
+			const res = await app.inject({
+				method: "POST",
+				url: "/editor/preview-source",
+				headers: { cookie: "foo=1; ztube-token=ab%3Dcd; bar=2" },
+				payload: validBody,
+			});
+			expect(res.statusCode).toBe(200);
+			const playInit = fetchSpy.mock.calls[0][1] as { headers: Record<string, string> };
+			expect(playInit.headers.Cookie).toBe("ztube-token=ab=cd");
+		});
+
+		it("returns 400 when ztube-token cookie has malformed percent encoding", async () => {
+			const res = await app.inject({
+				method: "POST",
+				url: "/editor/preview-source",
+				headers: { cookie: "ztube-token=%ZZ" },
+				payload: validBody,
+			});
+			expect(res.statusCode).toBe(400);
+			expect(JSON.parse(res.body)).toEqual({ error: "Invalid ztube-token cookie" });
+		});
+	});
 });

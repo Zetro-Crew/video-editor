@@ -63,7 +63,8 @@ describe("HttpPreviewSourceAdapter.play", () => {
 		fetchSpy.mockResolvedValueOnce(jsonResponse({ url: "/x", timeRanges: [[0, 1]], token: "t" }));
 		const adapter = new HttpPreviewSourceAdapter("https://core/private", "abc");
 		await adapter.play("ch", 0, 1);
-		expect(fetchSpy.mock.calls[0][1]).toEqual({ headers: { Cookie: "ztube-token=abc" } });
+		const callOpts = fetchSpy.mock.calls[0][1] as { headers: Record<string, string> };
+		expect(callOpts.headers).toEqual({ Cookie: "ztube-token=abc" });
 	});
 
 	it("omits Cookie header when authCookie empty (no empty-value cookie)", async () => {
@@ -72,6 +73,20 @@ describe("HttpPreviewSourceAdapter.play", () => {
 		await adapter.play("ch", 0, 1);
 		const callOpts = fetchSpy.mock.calls[0][1] as { headers: Record<string, string> };
 		expect(callOpts.headers).toEqual({});
+	});
+
+	it("throws RangeError on 404 (range not found)", async () => {
+		fetchSpy.mockResolvedValueOnce(jsonResponse({}, 404));
+		const adapter = new HttpPreviewSourceAdapter("https://core/private");
+		await expect(adapter.play("ch", 0, 1)).rejects.toBeInstanceOf(RangeError);
+	});
+
+	it("throws on malformed inner timeRanges entry (empty inner array)", async () => {
+		fetchSpy.mockResolvedValueOnce(
+			jsonResponse({ url: "/x", timeRanges: [[]], token: "t" } as unknown),
+		);
+		const adapter = new HttpPreviewSourceAdapter("https://core/private");
+		await expect(adapter.play("ch", 0, 1)).rejects.toThrow(/malformed timeRanges/i);
 	});
 
 	it("throws on timeRanges.length !== 1", async () => {
@@ -118,16 +133,17 @@ describe("HttpPreviewSourceAdapter.fetchManifest", () => {
 		const body = await adapter.fetchManifest("https://vod/x.mpd", "tok");
 		expect(body).toBe("<MPD/>");
 		expect(fetchSpy.mock.calls[0][0]).toBe("https://vod/x.mpd");
-		expect(fetchSpy.mock.calls[0][1]).toEqual({ headers: { "vod-token": "tok" } });
+		const opts = fetchSpy.mock.calls[0][1] as { headers: Record<string, string> };
+		expect(opts.headers).toEqual({ "vod-token": "tok" });
 	});
 
-	it("forwards Cookie when authCookie set", async () => {
+	it("does NOT forward Core ztube-token cookie to VOD origin", async () => {
 		fetchSpy.mockResolvedValueOnce(textResponse("<MPD/>"));
 		const adapter = new HttpPreviewSourceAdapter("https://core/private", "abc");
 		await adapter.fetchManifest("https://vod/x.mpd", "tok");
-		expect(fetchSpy.mock.calls[0][1]).toEqual({
-			headers: { "vod-token": "tok", Cookie: "ztube-token=abc" },
-		});
+		const opts = fetchSpy.mock.calls[0][1] as { headers: Record<string, string> };
+		expect(opts.headers).toEqual({ "vod-token": "tok" });
+		expect(opts.headers.Cookie).toBeUndefined();
 	});
 
 	it("throws on non-2xx", async () => {

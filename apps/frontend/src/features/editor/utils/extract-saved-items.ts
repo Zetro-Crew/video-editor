@@ -1,5 +1,5 @@
 import type { ITrackItem } from "@designcombo/types";
-import type { SavedMediaItem } from "@video-editor/contract";
+import type { SavedMediaItem } from "@video-editor/contract/iframe/to-parent";
 import type { ExternalMetadata } from "../external-preview/payload-intake";
 
 export function extractSavedItems(trackItemsMap: Record<string, ITrackItem>): SavedMediaItem[] {

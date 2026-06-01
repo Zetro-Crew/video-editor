@@ -1,16 +1,16 @@
 import { randomUUID } from "node:crypto";
-import { savedMediaPayloadSchema } from "@video-editor/contract";
+import { savedMediaPayloadSchema } from "@video-editor/contract/events";
+import type { RenderRequest } from "@video-editor/contract/internal/edit-video";
+import { designPayloadSchema } from "@video-editor/contract/internal/render";
 import { Logger } from "@ztube/observability";
 import type { FastifyPluginAsync, FastifyReply, FastifyRequest } from "fastify";
 import type { z } from "zod";
 import type { ExportEventPublisherPort } from "../../../../../infrastructure/messaging/RabbitMQPublisher.ts";
 import { getOutputFilename } from "../../../../../shared/utils/file.utils.ts";
 import { HttpStatus } from "../../../../../shared/utils/http-status.ts";
-import type { RenderRequest } from "../../../../edit-video/adapters/inbound/http/edit-video.types.ts";
 import type { RenderJobStatePort } from "../../../application/ports/outbound/RenderJobStatePort.ts";
 import type { VideoRenderUseCase } from "../../../application/use-cases/VideoRenderUseCase.ts";
 import { DesignRenderInputAdapter } from "../design/DesignRenderInputAdapter.ts";
-import { designPayloadSchema } from "./design-payload.schema.ts";
 
 const saveMetadataSchema = savedMediaPayloadSchema.omit({ exportType: true });
 type SaveMetadata = z.infer<typeof saveMetadataSchema>;

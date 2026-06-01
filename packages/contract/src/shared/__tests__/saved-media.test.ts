@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { savedMediaItemSchema, savedMediaPayloadSchema } from "./saved-media.js";
+import { savedMediaItemSchema, savedMediaPayloadSchema } from "../saved-media.js";
 
 describe("savedMediaItemSchema", () => {
 	it("accepts image item", () => {

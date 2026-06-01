@@ -46,7 +46,7 @@ The demo page (`/`) loads the editor in a floating, draggable and resizable ifra
 | `src/app/pages/editor-page/editor-page.component.ts` | Main page — iframe host, drag/resize, postMessage |
 | `src/app/pages/media-page/media-page.component.ts` | Secondary media page |
 | `src/app/services/editor-bridge.service.ts` | Signal-based queue for cross-page item injection |
-| `src/app/message-types.ts` | Local type mirror of `@video-editor/iframe-contract` |
+| `src/app/message-types.ts` | Local type mirror of `@video-editor/contract/iframe/from-parent` + `/iframe/to-parent` |
 | `src/environments/environment.ts` | `editorUrl` configuration |
 
 ## Configuration
@@ -61,7 +61,9 @@ export const environment = {
 
 ## postMessage Protocol
 
-See [packages/editor-contract/README.md](../../packages/editor-contract/README.md) for the full message schema. The demo app uses a local type mirror (`message-types.ts`) rather than importing the workspace package directly.
+See [packages/contract/README.md](../../packages/contract/README.md) for the full message schema. The demo app uses a local type mirror (`message-types.ts`) rather than importing the workspace package directly.
+
+**Auth:** the `ztube-token` cookie is HttpOnly and never travels via postMessage. The editor iframe's same-origin fetches to its own server attach it automatically.
 
 ## Dependencies
 

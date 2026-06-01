@@ -1,6 +1,6 @@
 import path from "node:path";
+import type { ShapeOverlay } from "@video-editor/contract/internal/edit-video";
 import sharp from "sharp";
-import type { ShapeOverlay } from "../../../shared/domain/render-types.ts";
 import { buildEnableExpression, buildPositionExpression } from "./overlay-utils.ts";
 
 const DEFAULT_SIZE = 100;

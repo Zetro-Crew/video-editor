@@ -59,11 +59,30 @@ export const previewController: FastifyPluginAsync<PreviewControllerOptions> = a
 			return reply.status(HttpStatus.BAD_REQUEST).send({ error: "Invalid URL" });
 		}
 
-		if (!verifyUrlSignature(config.PREVIEW_SIGNING_SECRET, decoded, sig)) {
+		if (!verifyUrlSignature(config.PREVIEW_SIGNING_SECRET, decoded, token, sig)) {
 			return reply.status(HttpStatus.FORBIDDEN).send({ error: "Invalid signature" });
 		}
 
-		const upstream = await fetch(decoded, { headers: { "vod-token": token } });
+		const clientAbort = new AbortController();
+		const onAborted = () => clientAbort.abort();
+		request.raw.once("aborted", onAborted);
+		const upstreamSignal = AbortSignal.any([clientAbort.signal, AbortSignal.timeout(30_000)]);
+
+		let upstream: Response;
+		try {
+			upstream = await fetch(decoded, {
+				headers: { "vod-token": token },
+				signal: upstreamSignal,
+			});
+		} catch (err) {
+			request.raw.removeListener("aborted", onAborted);
+			if (clientAbort.signal.aborted) return;
+			if (err instanceof Error && err.name === "TimeoutError") {
+				return reply.status(HttpStatus.GATEWAY_TIMEOUT).send({ error: "Upstream timeout" });
+			}
+			throw err;
+		}
+
 		if (!upstream.ok) {
 			return reply.status(upstream.status).send();
 		}
@@ -96,7 +115,19 @@ export const previewController: FastifyPluginAsync<PreviewControllerOptions> = a
 			});
 		}
 
-		const ztubeToken = (request.headers["x-ztube-token"] as string | undefined) ?? "";
+		const cookieHeader = request.headers.cookie ?? "";
+		const cookieMatch = cookieHeader.match(/(?:^|;\s*)ztube-token=([^;]+)/);
+		let ztubeToken = "";
+		if (cookieMatch) {
+			try {
+				ztubeToken = decodeURIComponent(cookieMatch[1]);
+			} catch (err) {
+				if (err instanceof URIError) {
+					return reply.status(HttpStatus.BAD_REQUEST).send({ error: "Invalid ztube-token cookie" });
+				}
+				throw err;
+			}
+		}
 		const previewSource = new HttpPreviewSourceAdapter(config.CORE_BASE_URL, ztubeToken);
 
 		try {

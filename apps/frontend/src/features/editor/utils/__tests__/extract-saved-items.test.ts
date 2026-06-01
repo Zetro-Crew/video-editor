@@ -1,5 +1,5 @@
 import type { ITrackItem } from "@designcombo/types";
-import { savedMediaItemSchema } from "@video-editor/contract";
+import { savedMediaItemSchema } from "@video-editor/contract/iframe/to-parent";
 import { describe, expect, it } from "vitest";
 import { extractSavedItems } from "../extract-saved-items";
 

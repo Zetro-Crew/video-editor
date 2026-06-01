@@ -1,6 +1,10 @@
 import { z } from "zod";
 
-const parsePx = (v: unknown) => (typeof v === "string" ? Number.parseFloat(v) : v);
+const parsePx = (v: unknown) => {
+	if (typeof v !== "string") return v;
+	const n = Number.parseFloat(v);
+	return Number.isFinite(n) ? n : undefined;
+};
 const px = z.preprocess(parsePx, z.number().default(0));
 const pxOpt = z.preprocess(parsePx, z.number().optional());
 

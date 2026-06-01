@@ -1,5 +1,4 @@
 import { z } from "zod";
-import type { SavedMediaItem } from "../shared/saved-media.js";
 import { savedMediaItemSchema } from "../shared/saved-media.js";
 import { type Envelope, envelopeSchema } from "./envelope.js";
 
@@ -38,32 +37,14 @@ export const exportFailedDataSchema = z.strictObject({
 	error: nonEmptyString,
 });
 
-export type ExportStartedData = {
-	jobId: string;
-	mediaId: string;
-	mediaName: string;
-	downloadToComputer: boolean;
-	saveToPersonalChannel: boolean;
-	selectedUnitChannelIds: string[];
-	exportType: "mp4" | "webp";
-	items: SavedMediaItem[];
-};
+export const exportStartedEnvelopeSchema = envelopeSchema(exportStartedDataSchema);
+export const exportCompletedEnvelopeSchema = envelopeSchema(exportCompletedDataSchema);
+export const exportFailedEnvelopeSchema = envelopeSchema(exportFailedDataSchema);
 
-export type ExportCompletedData = {
-	jobId: string;
-	url: string;
-	exportType: "mp4" | "webp";
-};
-
-export type ExportFailedData = {
-	jobId: string;
-	error: string;
-};
+export type ExportStartedData = z.infer<typeof exportStartedDataSchema>;
+export type ExportCompletedData = z.infer<typeof exportCompletedDataSchema>;
+export type ExportFailedData = z.infer<typeof exportFailedDataSchema>;
 
 export type ExportStartedEnvelope = Envelope<ExportStartedData>;
 export type ExportCompletedEnvelope = Envelope<ExportCompletedData>;
 export type ExportFailedEnvelope = Envelope<ExportFailedData>;
-
-export const exportStartedEnvelopeSchema = envelopeSchema(exportStartedDataSchema);
-export const exportCompletedEnvelopeSchema = envelopeSchema(exportCompletedDataSchema);
-export const exportFailedEnvelopeSchema = envelopeSchema(exportFailedDataSchema);

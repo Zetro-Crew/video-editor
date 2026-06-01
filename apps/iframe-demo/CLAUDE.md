@@ -30,7 +30,7 @@ pnpm type-check   # tsc -p tsconfig.json --noEmit
 | `src/app/pages/editor-page/editor-page.component.ts` | Main page — hosts iframe, drag/resize, postMessage send/receive |
 | `src/app/pages/media-page/media-page.component.ts` | Secondary media page |
 | `src/app/services/editor-bridge.service.ts` | Angular signal-based queue — injects items cross-page |
-| `src/app/message-types.ts` | Local type mirror of `@video-editor/iframe-contract` |
+| `src/app/message-types.ts` | Local type mirror of `@video-editor/contract/iframe/*` |
 | `src/environments/environment.ts` | `editorUrl: http://localhost:3000/editor/embed` |
 
 ## postMessage Integration
@@ -40,6 +40,8 @@ Editor iframe is loaded at `editorUrl` from `environment.ts`. The demo app:
 1. Sends `EDITOR_ADD_PREVIEW_ITEM` (`recording-range` kind) to the editor
 2. Sends `EDITOR_CLEAR_PROJECT` to reset the editor
 3. Displays outgoing payload and last response
+
+Auth (`ztube-token`) is **not** forwarded via postMessage. The cookie is HttpOnly and travels server-side: the iframe's fetch to its same-origin server attaches it automatically.
 
 `editor-bridge.service.ts` uses Angular signals to queue items across page navigation.
 

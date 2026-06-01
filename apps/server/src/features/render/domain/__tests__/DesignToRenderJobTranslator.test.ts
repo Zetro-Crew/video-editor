@@ -1,5 +1,5 @@
+import { designPayloadSchema } from "@video-editor/contract/internal/render";
 import { describe, expect, it } from "vitest";
-import { designPayloadSchema } from "../../adapters/inbound/http/design-payload.schema.ts";
 import type { IDesign, ITrackItemBase } from "../DesignToRenderJobTranslator.ts";
 import { translate } from "../DesignToRenderJobTranslator.ts";
 

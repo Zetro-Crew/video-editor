@@ -1,67 +1,50 @@
 # @video-editor/contract
 
-Shared contracts for the video editor: the iframe `postMessage` protocol and the AMQP event envelopes published to RabbitMQ. Pure Zod schemas and TypeScript types — no runtime network calls.
+Shared contracts for the video editor. Pure Zod schemas + TypeScript types — no runtime network calls. Every TS type is derived via `z.infer<typeof schema>` so schemas and types never drift.
 
-## Overview
+## Four Subpaths
 
-Three import surfaces, one package:
+| Subpath | Direction / Owner | Who imports |
+|---|---|---|
+| `@video-editor/contract/iframe/from-parent` | Parent **sends** to editor | Parent app + editor frontend |
+| `@video-editor/contract/iframe/to-parent` | Editor **sends** to parent | Parent app + editor frontend |
+| `@video-editor/contract/events` | Server **publishes** to RabbitMQ | Anyone consuming events |
+| `@video-editor/contract/internal/<feature>` | Editor server's own HTTP API schemas | **`apps/server` only** — external teams must not import |
 
-- **`@video-editor/contract/iframe`** — `postMessage` protocol between the editor iframe (`/editor/embed`) and any host page.
-- **`@video-editor/contract/events`** — versioned `Envelope<T>` and Zod schemas for events published by `apps/server` to the `video-editor` topic exchange.
-- **`@video-editor/contract`** (root) — convenience re-export of `iframe/*` plus shared payload types (`SavedMediaItem`, `SavedMediaPayload`).
+`SavedMediaItem` / `SavedMediaPayload` are re-exported from both `iframe/to-parent` and `events` (same shape used in `EDITOR_MEDIA_SAVED` and `export.started.data`). Pick whichever subpath matches your context.
 
-> [!NOTE]
-> External teams consume `/events` from their own services. Treat the event schemas as a public API and follow the [versioning policy](src/events/README.md#versioning-policy) when changing them.
+There is no root `@video-editor/contract` export. Every caller imports a subpath so the bucket they touch is explicit.
 
 ## Installation
 
-Workspace dependency inside the monorepo:
-
 ```json
-{
-  "dependencies": {
-    "@video-editor/contract": "workspace:*"
-  }
-}
+{ "dependencies": { "@video-editor/contract": "workspace:*" } }
 ```
-
-## Subpath Exports
-
-| Import path | Purpose |
-|---|---|
-| `@video-editor/contract` | Iframe protocol + shared payload types (re-export) |
-| `@video-editor/contract/iframe` | Iframe `postMessage` schemas, types, factories |
-| `@video-editor/contract/iframe/mocks` | Fixture builders for iframe messages (test-only) |
-| `@video-editor/contract/events` | AMQP envelope, routing-key constants, per-event schemas |
-| `@video-editor/contract/events/mocks` | Fixture builders for event envelopes (test-only) |
-
-Mocks live behind separate subpaths so test helpers stay out of production bundles.
 
 ## Iframe Protocol
 
 ```
-Host page                        Editor iframe (at /editor/embed)
+Parent page                       Editor iframe (at /editor/embed)
 ─────────────────────────────────────────────────────────────────
-                                 ──EDITOR_READY──────────────────▶
-◀── EDITOR_ADD_PREVIEW_ITEM ─────
-         ─────────────── preview_item_added / preview_item_rejected ──▶
-◀── EDITOR_CLEAR_PROJECT ────────
-         ─────────────────────────────────── project_cleared ──────▶
-◀── EDITOR_SET_AUTH ─────────────
-         ────────────────────────────────────── media_saved ──────▶
+                                  ──EDITOR_READY──────────────────▶
+◀── EDITOR_ADD_PREVIEW_ITEM ──────
+         ─────────────── EDITOR_PREVIEW_ITEM_ADDED / EDITOR_PREVIEW_ITEM_REJECTED ──▶
+◀── EDITOR_CLEAR_PROJECT ─────────
+         ─────────────────────────────────── EDITOR_PROJECT_CLEARED ──▶
+         ────────────────────────────────────── EDITOR_MEDIA_SAVED ──▶
 ```
 
-### Validate incoming messages
+### Validate incoming messages (parent → editor)
 
 ```ts
-import { parentToEditorMessageSchema } from "@video-editor/contract/iframe";
+import { parentToEditorMessageSchema } from "@video-editor/contract/iframe/from-parent";
 
 const result = parentToEditorMessageSchema.safeParse(event.data);
 if (!result.success) return;
 // result.data is fully typed
 ```
 
-### Build response messages
+### Build response messages (editor → parent)
 
 ```ts
 import {
@@ -69,12 +52,12 @@ import {
   createPreviewItemRejectedMessage,
   createProjectClearedMessage,
   createMediaSavedMessage,
-} from "@video-editor/contract/iframe";
+} from "@video-editor/contract/iframe/to-parent";
 
-window.parent.postMessage(createPreviewItemAddedMessage({ itemId }), targetOrigin);
+window.parent.postMessage(createPreviewItemAddedMessage(itemId), targetOrigin);
 ```
 
-### `PreviewItemPayload`
+### `PreviewItemPayload` (inbound)
 
 Discriminated union on `kind`:
 
@@ -84,15 +67,9 @@ Discriminated union on `kind`:
 | `media` | A generic media asset |
 | `audio-range` | An audio segment with a time range |
 
-### Mocks
-
-```ts
-import { mockEditorReadyMessage } from "@video-editor/contract/iframe/mocks";
-```
-
 ## Events
 
-Single topic exchange `video-editor`. Three routing keys today:
+Single topic exchange `video-editor`. Three routing keys:
 
 | Routing key | Purpose |
 |---|---|
@@ -108,44 +85,52 @@ import {
 } from "@video-editor/contract/events";
 ```
 
-See [`src/events/README.md`](src/events/README.md) for the full consumer onboarding doc — envelope shape, AMQP headers, queue binding, dead-lettering, versioning, and delivery guarantees.
+See [`src/events/README.md`](src/events/README.md) for envelope shape, AMQP headers, queue binding, dead-lettering, versioning, delivery guarantees.
 
-## Shared Payloads
-
-Re-exported from the root for use by both iframe and event consumers:
+## Internal (server-owner only)
 
 ```ts
-import {
-  type SavedMediaItem,
-  type SavedMediaPayload,
-  savedMediaItemSchema,
-  savedMediaPayloadSchema,
-} from "@video-editor/contract";
+import { designPayloadSchema } from "@video-editor/contract/internal/render";
+import { editVideoRequestSchema } from "@video-editor/contract/internal/edit-video";
+import { getSignedUrlRequestSchema } from "@video-editor/contract/internal/upload";
+import { OverlayType, type TimeRange } from "@video-editor/contract/internal/shared";
 ```
+
+External consumers must not import `/internal/*`. See `docs/adr/0004-server-http-schemas-in-shared-contract-package.md`.
 
 ## Source Structure
 
 ```
 src/
-├── index.ts                 # Root barrel — re-exports iframe + shared
 ├── iframe/
-│   ├── index.ts             # iframe barrel
-│   ├── messages.ts          # Message type definitions
-│   ├── payloads.ts          # Payload interfaces
-│   ├── schemas.ts           # Zod validation schemas
-│   ├── helpers.ts           # Factory functions
-│   ├── mocks.ts             # Fixture builders
-│   └── helpers.test.ts
+│   ├── from-parent/        # Parent → editor (postMessage)
+│   │   ├── __tests__/
+│   │   ├── schemas.ts      # Zod + z.infer types
+│   │   ├── helpers.ts
+│   │   ├── mocks.ts
+│   │   └── index.ts
+│   └── to-parent/          # Editor → parent (postMessage)
+│       ├── __tests__/
+│       ├── schemas.ts
+│       ├── helpers.ts
+│       ├── mocks.ts
+│       └── index.ts        # also re-exports SavedMedia* from ../shared
 ├── events/
-│   ├── index.ts             # events barrel
-│   ├── envelope.ts          # Envelope<T> + header-key constants
-│   ├── export.ts            # v1 schemas for export.*
-│   ├── mocks.ts             # Fixture envelopes
-│   ├── export.test.ts
-│   └── README.md            # External-team onboarding doc
-└── shared/
-    ├── saved-media.ts       # SavedMediaItem, SavedMediaPayload
-    └── saved-media.test.ts
+│   ├── __tests__/
+│   ├── envelope.ts
+│   ├── export.ts
+│   ├── mocks.ts
+│   ├── README.md
+│   └── index.ts            # also re-exports SavedMedia* from ../shared
+├── shared/                 # internal-only — not in package.json exports
+│   ├── __tests__/
+│   └── saved-media.ts
+└── internal/               # ⚠ server-owner only
+    ├── upload/{schemas,index}.ts
+    ├── edit-video/{schemas,index}.ts
+    ├── render/{design-payload.schema,index}.ts
+    ├── editor-export/{types,index}.ts
+    └── shared/{overlay-type,time-range,video-metadata,index}.ts
 ```
 
 ## Commands
@@ -160,6 +145,4 @@ pnpm format       # biome format . --write
 
 ## Dependencies
 
-| Package | Purpose |
-|---|---|
-| `zod` v4 | Runtime schema validation and type inference |
+- `zod` v4 — runtime validation. All TS types come from `z.infer<typeof schema>`.

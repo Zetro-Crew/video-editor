@@ -159,6 +159,11 @@ spec:
                 secretKeyRef:
                   name: video-editor-server-secrets
                   key: SERVER_BASE_URL
+            - name: PREVIEW_SIGNING_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: video-editor-server-secrets
+                  key: PREVIEW_SIGNING_SECRET
           # No /health endpoint — probe TCP socket directly
           readinessProbe:
             tcpSocket:

@@ -1,8 +1,8 @@
 import { promises as fsp } from "node:fs";
+import type { VideoSource } from "@video-editor/contract/internal/edit-video";
 import { Logger } from "@ztube/observability";
 import type { EnvConfig } from "../../../config/env.ts";
 import { validateMpdRestrictions } from "../../../features/edit-video/domain/video-segment.policy.ts";
-import type { VideoSource } from "../../../shared/domain/render-types.ts";
 import { FFMPEG_COMMAND, FFMPEG_FLAG } from "../ffmpeg.consts.ts";
 import { runFfmpeg } from "../ffmpeg.utils.ts";
 

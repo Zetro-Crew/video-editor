@@ -1,5 +1,5 @@
+import type { Overlay, VideoSource } from "@video-editor/contract/internal/edit-video";
 import type { EnvConfig } from "../../config/env.ts";
-import type { Overlay, VideoSource } from "../../shared/domain/render-types.ts";
 import { FFMPEG_COMMAND, FFMPEG_FLAG } from "./ffmpeg.consts.ts";
 import { buildOverlayFilters, type PreparedOverlayInput } from "./overlays/overlay.service.ts";
 import { buildWatermarkFilterParts } from "./overlays/watermark.service.ts";

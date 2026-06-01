@@ -22,7 +22,6 @@ import {
 	EDITOR_ADD_PREVIEW_ITEM,
 	EDITOR_CLEAR_PROJECT,
 	EDITOR_READY,
-	EDITOR_SET_AUTH,
 	type EditorResponse,
 	type PreviewItemPayload,
 	type RecordingRangePayload,
@@ -248,11 +247,6 @@ export class EditorPageComponent implements OnInit, OnDestroy {
 		this.postToEditor(msg);
 	}
 
-	private getZtubeToken(): string {
-		const match = document.cookie.match(/(?:^|;\s*)ztube-token=([^;]+)/);
-		return match ? decodeURIComponent(match[1]) : "";
-	}
-
 	private postToEditor(payload: object): void {
 		this.iframeRef().nativeElement.contentWindow?.postMessage(payload, this.editorOrigin);
 	}
@@ -269,8 +263,6 @@ export class EditorPageComponent implements OnInit, OnDestroy {
 
 		if (data.type === EDITOR_READY) {
 			this.editorReady.set(true);
-			const token = this.getZtubeToken();
-			if (token) this.postToEditor({ type: EDITOR_SET_AUTH, token });
 			const pending = this.bridge.drainQueue();
 			for (const item of pending) this.postItem(item);
 			return;

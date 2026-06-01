@@ -1,22 +1,14 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
-	createMediaSavedMessage,
-	createPreviewItemAddedMessage,
-	createPreviewItemRejectedMessage,
-	createProjectClearedMessage,
-	isParentToEditorMessage,
-	parseParentToEditorMessage,
-} from "./helpers.js";
-import {
 	mockAudioRangeMessage,
 	mockClearProjectMessage,
 	mockMediaHlsMessage,
 	mockMediaMp4Message,
 	mockRecordingRangeHlsMessage,
 	mockRecordingRangeNoPlaybackMessage,
-} from "./mocks.js";
-import { editorToParentMessageSchema, parentToEditorMessageSchema } from "./schemas.js";
+} from "../mocks.js";
+import { parentToEditorMessageSchema } from "../schemas.js";
 
 const baseRecordingPayload = {
 	kind: "recording-range" as const,
@@ -38,7 +30,7 @@ const baseAudioPayload = {
 
 const MAX_MS = 1000 * 60 * 60; // 1 hour
 
-describe("iframe contract schemas — business rules (new refines)", () => {
+describe("from-parent — business rules", () => {
 	it("rejects unsafe (non-http/https) src in hls playback", () => {
 		const result = parentToEditorMessageSchema.safeParse({
 			type: "EDITOR_ADD_PREVIEW_ITEM",
@@ -133,7 +125,7 @@ describe("iframe contract schemas — business rules (new refines)", () => {
 	});
 });
 
-describe("iframe contract schemas", () => {
+describe("from-parent — schema invariants", () => {
 	it("parses valid add-preview-item messages", () => {
 		assert.equal(parentToEditorMessageSchema.safeParse(mockRecordingRangeHlsMessage).success, true);
 		assert.equal(parentToEditorMessageSchema.safeParse(mockMediaMp4Message).success, true);
@@ -235,129 +227,6 @@ describe("iframe contract schemas", () => {
 			false,
 		);
 	});
-});
-
-describe("editorMediaSavedMessageSchema", () => {
-	const validMsg = {
-		type: "EDITOR_MEDIA_SAVED",
-		mediaId: "550e8400-e29b-41d4-a716-446655440000",
-		mediaName: "My Clip",
-		downloadToComputer: true,
-		saveToPersonalChannel: false,
-		selectedUnitChannelIds: [],
-		url: "https://example.com/output/video.mp4",
-		exportType: "mp4",
-		items: [
-			{ type: "recording", id: "ch-1", from: 0, to: 5000 },
-			{ type: "audio", id: "aud-1", from: 1000, to: 4000 },
-			{ type: "image", id: "img-1" },
-			{ type: "clip", id: "media-1" },
-		],
-	};
-
-	it("accepts a valid EDITOR_MEDIA_SAVED message", () => {
-		assert.equal(editorToParentMessageSchema.safeParse(validMsg).success, true);
-	});
-
-	it("rejects missing mediaName", () => {
-		const { mediaName: _m, ...rest } = validMsg;
-		assert.equal(editorToParentMessageSchema.safeParse(rest).success, false);
-	});
-
-	it("rejects non-http url", () => {
-		assert.equal(
-			editorToParentMessageSchema.safeParse({ ...validMsg, url: "ftp://bad.com/x.mp4" }).success,
-			false,
-		);
-	});
-
-	it("rejects unknown exportType", () => {
-		assert.equal(
-			editorToParentMessageSchema.safeParse({ ...validMsg, exportType: "json" }).success,
-			false,
-		);
-	});
-
-	it("rejects recording item missing from/to", () => {
-		assert.equal(
-			editorToParentMessageSchema.safeParse({
-				...validMsg,
-				items: [{ type: "recording", id: "ch-1" }],
-			}).success,
-			false,
-		);
-	});
-
-	it("accepts empty items array", () => {
-		assert.equal(editorToParentMessageSchema.safeParse({ ...validMsg, items: [] }).success, true);
-	});
-
-	it("rejects EDITOR_MEDIA_SAVED without mediaId", () => {
-		const { mediaId: _m, ...withoutMediaId } = validMsg as typeof validMsg & { mediaId: string };
-		assert.equal(editorToParentMessageSchema.safeParse(withoutMediaId).success, false);
-	});
-
-	it("rejects EDITOR_MEDIA_SAVED without selectedUnitChannelIds", () => {
-		const { selectedUnitChannelIds: _s, ...withoutChannels } = validMsg as typeof validMsg & {
-			selectedUnitChannelIds: string[];
-		};
-		assert.equal(editorToParentMessageSchema.safeParse(withoutChannels).success, false);
-	});
-
-	it("accepts EDITOR_MEDIA_SAVED with mediaId and selectedUnitChannelIds", () => {
-		assert.equal(
-			editorToParentMessageSchema.safeParse({
-				...validMsg,
-				mediaId: "550e8400-e29b-41d4-a716-446655440000",
-				selectedUnitChannelIds: ["ch-1", "ch-2"],
-			}).success,
-			true,
-		);
-	});
-
-	it("accepts EDITOR_MEDIA_SAVED with empty selectedUnitChannelIds", () => {
-		assert.equal(
-			editorToParentMessageSchema.safeParse({
-				...validMsg,
-				mediaId: "550e8400-e29b-41d4-a716-446655440000",
-				selectedUnitChannelIds: [],
-			}).success,
-			true,
-		);
-	});
-});
-
-describe("iframe contract helpers", () => {
-	it("detects valid parent-to-editor messages", () => {
-		assert.equal(isParentToEditorMessage(mockMediaMp4Message), true);
-		assert.equal(isParentToEditorMessage({ type: "UNKNOWN" }), false);
-	});
-
-	it("parses valid parent-to-editor messages", () => {
-		const parsed = parseParentToEditorMessage(mockMediaHlsMessage);
-		assert.equal(parsed.type, "EDITOR_ADD_PREVIEW_ITEM");
-		if (parsed.type !== "EDITOR_ADD_PREVIEW_ITEM") {
-			assert.fail("Expected an add-preview-item message");
-		}
-		assert.equal(parsed.payload.kind, "media");
-	});
-
-	it("creates response messages with the expected shapes", () => {
-		assert.deepEqual(createPreviewItemAddedMessage("item-1", "req-1"), {
-			type: "EDITOR_PREVIEW_ITEM_ADDED",
-			requestId: "req-1",
-			itemId: "item-1",
-		});
-		assert.deepEqual(createPreviewItemRejectedMessage("bad request", "req-2"), {
-			type: "EDITOR_PREVIEW_ITEM_REJECTED",
-			requestId: "req-2",
-			reason: "bad request",
-		});
-		assert.deepEqual(createProjectClearedMessage("req-3"), {
-			type: "EDITOR_PROJECT_CLEARED",
-			requestId: "req-3",
-		});
-	});
 
 	it("keeps all exported mocks schema-valid", () => {
 		for (const message of [
@@ -374,52 +243,5 @@ describe("iframe contract helpers", () => {
 				`Mock failed schema validation: ${JSON.stringify(message)}`,
 			);
 		}
-	});
-});
-
-describe("EDITOR_SET_AUTH", () => {
-	it("accepts a non-empty token", () => {
-		assert.equal(
-			parentToEditorMessageSchema.safeParse({ type: "EDITOR_SET_AUTH", token: "abc.123" }).success,
-			true,
-		);
-	});
-
-	it("rejects an empty token", () => {
-		assert.equal(
-			parentToEditorMessageSchema.safeParse({ type: "EDITOR_SET_AUTH", token: "" }).success,
-			false,
-		);
-	});
-
-	it("rejects when token is missing", () => {
-		assert.equal(parentToEditorMessageSchema.safeParse({ type: "EDITOR_SET_AUTH" }).success, false);
-	});
-});
-
-describe("createMediaSavedMessage", () => {
-	it("returns expected shape with each arg at its named key", () => {
-		const items = [{ type: "clip" as const, id: "media-1" }];
-		const msg = createMediaSavedMessage(
-			"My Clip",
-			true,
-			false,
-			"https://example.com/output/video.mp4",
-			"mp4",
-			items,
-			"550e8400-e29b-41d4-a716-446655440000",
-			["ch-1"],
-		);
-		assert.deepEqual(msg, {
-			type: "EDITOR_MEDIA_SAVED",
-			mediaId: "550e8400-e29b-41d4-a716-446655440000",
-			mediaName: "My Clip",
-			downloadToComputer: true,
-			saveToPersonalChannel: false,
-			selectedUnitChannelIds: ["ch-1"],
-			url: "https://example.com/output/video.mp4",
-			exportType: "mp4",
-			items,
-		});
 	});
 });

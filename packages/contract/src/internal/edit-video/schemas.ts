@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { OverlayType } from "../../../../../shared/domain/OverlayType.ts";
+import { OverlayType } from "../shared/overlay-type.js";
 
 export const textOverlaySchema = z.object({
 	id: z.uuid(),
@@ -43,7 +43,7 @@ export const videoOverlaySchema = z.object({
 	sourceUrl: z.string().url(),
 	start: z.number().min(0),
 	end: z.number().positive(),
-	trackOrder: z.number(),
+	trackOrder: z.number().optional(),
 	left: z.number(),
 	top: z.number(),
 	width: z.number().min(1).max(10000).optional(),
@@ -105,8 +105,8 @@ export const shapeOverlaySchema = z.object({
 	start: z.number().min(0),
 	end: z.number().positive(),
 	trackOrder: z.number().optional(),
-	x: z.number(),
-	y: z.number(),
+	x: z.number().min(0).max(100),
+	y: z.number().min(0).max(100),
 	width: z.number().min(1).max(10000).optional(),
 	height: z.number().min(1).max(10000).optional(),
 	opacity: z.number().min(0).max(1).optional(),
@@ -140,7 +140,7 @@ export const audioSourceSchema = z.object({
 	audioTrimStart: z.number().min(0).optional(),
 	audioTrimEnd: z.number().positive().optional(),
 	sourceType: z.union([z.literal("audio"), z.literal("video")]).optional(),
-	volume: z.number().min(0).max(1),
+	volume: z.number().min(0).max(1).default(1),
 	muted: z.boolean().optional(),
 	solo: z.boolean().optional(),
 });
@@ -170,3 +170,14 @@ export const editVideoRequestSchema = z.object({
 		})
 		.optional(),
 });
+
+export type TextOverlay = z.infer<typeof textOverlaySchema>;
+export type ImageOverlay = z.infer<typeof imageOverlaySchema>;
+export type VideoOverlay = z.infer<typeof videoOverlaySchema>;
+export type RectangleOverlay = z.infer<typeof rectangleOverlaySchema>;
+export type CircleOverlay = z.infer<typeof circleOverlaySchema>;
+export type ShapeOverlay = z.infer<typeof shapeOverlaySchema>;
+export type Overlay = z.infer<typeof overlaySchema>;
+export type VideoSource = z.infer<typeof sourceSchema>;
+export type AudioSource = z.infer<typeof audioSourceSchema>;
+export type RenderRequest = z.infer<typeof editVideoRequestSchema>;

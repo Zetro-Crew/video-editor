@@ -1,4 +1,4 @@
-import type { TimeRange } from "../../../../../shared/domain/TimeRange.ts";
+import type { TimeRange } from "@video-editor/contract/internal/shared";
 
 export interface EditVideoJobState {
 	status: "PROCESSING" | "COMPLETED" | "FAILED";

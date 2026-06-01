@@ -50,7 +50,9 @@ docker compose up -d   # from repo root
 | `FFMPEG_PRESET` | `veryfast` | FFmpeg encoding preset |
 | `FFMPEG_CRF` | `20` | FFmpeg quality (lower = better) |
 | `SERVER_BASE_URL` | `http://localhost:4001` | Public server URL (used in signed URLs) |
-| `CHANNEL_PLAY_API_BASE_URL` | `""` | External preview API (empty = demo mode) |
+| `CORE_BASE_URL` | required | Upstream Core service base URL. **Includes the `/private` prefix.** Dev: `http://localhost:8002/private` |
+| `MOCK_VOD_BASE_URL` | `http://localhost:5050` | Boot-only — logs the active mock-vod fixture window when `CORE_BASE_URL` is localhost |
+| `PREVIEW_SIGNING_SECRET` | required | HMAC-SHA256 secret (min 32 chars) used to sign segment-proxy URLs. Without this, `/editor/segment` would be an SSRF vector |
 | `RABBITMQ_URL` | required | AMQP connection URL for export event publishing |
 
 ## Architecture
@@ -74,45 +76,58 @@ src/
         └── domain/             # Domain logic
 ```
 
-## API Reference
+## Messaging (RabbitMQ)
 
-All routes prefixed `/api`.
+Server publishes render-job lifecycle events to a single topic exchange:
+
+| Aspect | Value |
+|---|---|
+| Exchange | `video-editor` (topic, durable) |
+| Routing keys | `export.started`, `export.completed`, `export.failed` |
+| Envelope | `{ eventName, eventVersion, occurredAt, traceparent?, data }` — mirrored into AMQP headers `x-event-name`, `x-event-version` |
+| Guarantees | Publisher confirms + `mandatory: true`. Retry 3× with backoff. Failures logged and swallowed (controller never sees them) |
+| Startup | Eager connect after Redis. Fail-fast if broker unreachable |
+
+External consumers bind their own queue against `video-editor` and import schemas from `@video-editor/contract/events`. See [packages/contract/src/events/README.md](../../packages/contract/src/events/README.md) for envelope details, binding examples, and versioning policy.
+
+## API Reference
 
 ### Upload
 
 | Method | Path | Description |
 |---|---|---|
-| `POST` | `/api/upload/signed-url` | Generate presigned S3 upload URL |
-| `POST` | `/api/uploads/file` | Multipart upload to S3 (500 MB limit) |
-| `POST` | `/api/cleanup` | Remove S3 assets |
+| `POST` | `/upload/signed-url` | Generate presigned S3 upload URL |
+| `POST` | `/uploads/file` | Multipart upload to S3 (500 MB limit) |
+| `POST` | `/cleanup` | Remove S3 assets |
 
 ### Edit Video
 
 | Method | Path | Description |
 |---|---|---|
-| `POST` | `/api/edit-video` | Start FFmpeg processing job |
-| `GET` | `/api/edit-video/progress/:jobId` | Poll job progress |
+| `POST` | `/edit-video` | Start FFmpeg processing job |
+| `GET` | `/edit-video/progress/:jobId` | Poll job progress |
 
 ### Render
 
 | Method | Path | Description |
 |---|---|---|
-| `POST` | `/api/render` | Start Remotion render job |
-| `GET` | `/api/render` | Read render job status |
+| `POST` | `/render` | Start render job; publishes `export.started` when `saveMetadata` is present |
+| `GET` | `/render` | Read render job status |
+| `DELETE` | `/render` | Cancel render job — kills FFmpeg via AbortSignal, marks Redis state CANCELLED |
 
 ### Preview
 
 | Method | Path | Description |
 |---|---|---|
-| `POST` | `/api/editor/preview-source` | Generate preview from MPD/HLS source |
-| `GET` | `/api/editor/segment` | Proxy signed HLS segment |
-| `GET` | `/api/editor/demo-assets/:filename` | Serve local demo media |
+| `POST` | `/editor/preview-source` | Generate preview from MPD/HLS source |
+| `GET` | `/editor/segment` | Proxy signed HLS segment (injects `vod-token` upstream) |
+| `GET` | `/editor/demo-assets/:filename` | Serve local demo media |
 
 ### Editor Export
 
 | Method | Path | Description |
 |---|---|---|
-| `POST` | `/api/editor/export` | Export editor state to video |
+| `POST` | `/editor/export` | Export editor state to video |
 
 ## Tests
 

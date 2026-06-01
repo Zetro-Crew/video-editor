@@ -63,6 +63,23 @@ describe("generateHlsPlaylist — BaseURL resolution (RFC3986)", () => {
 		expect(out.playlist).toContain('#EXT-X-MAP:URI="https://host.example.com/path/0_init.mp4"');
 		expect(out.playlist).toContain("https://host.example.com/path/segment_0_1.m4s");
 	});
+
+	it("preserves mpdUrl query string on segment URLs when no BaseURL provides its own", () => {
+		const out = generateHlsPlaylist({
+			mpdXml: singleAdaptationMpd,
+			mpdUrl: "https://host.example.com/path/manifest.mpd?session=abc&tenant=z",
+			segmentStartTimeMs: SEGMENT_START_MS,
+			requestedStartMs: SEGMENT_START_MS,
+			requestedEndMs: SEGMENT_START_MS + SEG_DURATION_MS,
+		});
+
+		expect(out.playlist).toContain(
+			'#EXT-X-MAP:URI="https://host.example.com/path/0_init.mp4?session=abc&tenant=z"',
+		);
+		expect(out.playlist).toContain(
+			"https://host.example.com/path/segment_0_1.m4s?session=abc&tenant=z",
+		);
+	});
 });
 
 describe("generateHlsPlaylist — AdaptationSet selection", () => {
@@ -129,5 +146,29 @@ describe("generateHlsPlaylist — AdaptationSet selection", () => {
 			requestedEndMs: SEGMENT_START_MS + SEG_DURATION_MS,
 		});
 		expect(out.playlist).toContain("v4_init.mp4");
+	});
+
+	it("accepts AdaptationSet without contentType when Representation declares video mimeType", () => {
+		const repOnlyMpd = `<?xml version="1.0" encoding="utf-8"?>
+<MPD xmlns="urn:mpeg:dash:schema:mpd:2011" type="static">
+	<Period id="P0">
+		<AdaptationSet startWithSAP="1">
+			<SegmentTemplate timescale="1000" duration="15000"
+				media="segment_$RepresentationID$_$Number$.m4s"
+				initialization="$RepresentationID$_init.mp4"
+				startNumber="1"/>
+			<Representation id="v" mimeType="video/mp4" width="640" height="360" bandwidth="100000"/>
+		</AdaptationSet>
+	</Period>
+</MPD>`;
+		const out = generateHlsPlaylist({
+			mpdXml: repOnlyMpd,
+			mpdUrl: "https://vod/manifest.mpd",
+			segmentStartTimeMs: SEGMENT_START_MS,
+			requestedStartMs: SEGMENT_START_MS,
+			requestedEndMs: SEGMENT_START_MS + SEG_DURATION_MS,
+		});
+		expect(out.playlist).toContain("segment_v_1.m4s");
+		expect(out.width).toBe(640);
 	});
 });

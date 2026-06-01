@@ -62,7 +62,7 @@ Global scene store: `src/store/use-scene-store.ts`
 
 ## iframe Embedding
 
-`useEditorPostMessage` hook (in `editor.tsx`) listens for `window.postMessage` from parent. Uses `@video-editor/iframe-contract` for typed schemas.
+`useEditorPostMessage` hook (in `editor.tsx`) listens for `window.postMessage` from parent. Uses `@video-editor/contract/iframe/from-parent` (parse incoming) and `@video-editor/contract/iframe/to-parent` (build responses) for typed schemas.
 
 Supported inbound messages:
 - `EDITOR_ADD_PREVIEW_ITEM` — adds video/audio track at end of timeline (`recording-range`, `media`, `audio-range` payloads)
@@ -71,6 +71,8 @@ Supported inbound messages:
 Outbound: `EDITOR_READY` on init, responses to each message.
 
 Allowed origins: `VITE_EDITOR_PARENT_ORIGINS` env var (comma-separated; defaults to `window.location.origin`).
+
+Auth: no token is passed via postMessage. The editor and its server share an origin (prod gateway; dev vite proxy), so the browser auto-attaches the HttpOnly `ztube-token` cookie on `fetch('/editor/preview-source', …)`. The server reads it from the `Cookie` header and forwards it upstream to Core.
 
 ## Styling
 
@@ -94,7 +96,7 @@ React Query via `src/components/query-provider.tsx`. Server state for API calls.
 - `@tanstack/react-query` v5 — server state
 - `react-router-dom` v7 — routing
 - `@radix-ui/*` — headless UI primitives
-- `@video-editor/iframe-contract` — postMessage types (workspace)
+- `@video-editor/contract` — postMessage + event schemas (workspace; use `/iframe/from-parent`, `/iframe/to-parent`, `/shared` subpaths)
 
 ## Environment
 
