@@ -35,43 +35,10 @@ export default defineConfig({
 			output: {
 				manualChunks(id) {
 					if (id.includes("framer-motion")) return "vendor-framer";
-					if (
-						id.includes("@radix-ui/react-accordion") ||
-						id.includes("@radix-ui/react-avatar") ||
-						id.includes("@radix-ui/react-checkbox") ||
-						id.includes("@radix-ui/react-dialog") ||
-						id.includes("@radix-ui/react-dropdown-menu") ||
-						id.includes("@radix-ui/react-label") ||
-						id.includes("@radix-ui/react-popover") ||
-						id.includes("@radix-ui/react-scroll-area") ||
-						id.includes("@radix-ui/react-select") ||
-						id.includes("@radix-ui/react-separator") ||
-						id.includes("@radix-ui/react-slider") ||
-						id.includes("@radix-ui/react-slot") ||
-						id.includes("@radix-ui/react-switch") ||
-						id.includes("@radix-ui/react-tabs") ||
-						id.includes("@radix-ui/react-toggle") ||
-						id.includes("@radix-ui/react-tooltip")
-					)
-						return "vendor-radix";
-					if (
-						id.includes("@designcombo/state") ||
-						id.includes("@designcombo/timeline") ||
-						id.includes("@designcombo/animations") ||
-						id.includes("@designcombo/events") ||
-						id.includes("@designcombo/types") ||
-						id.includes("@designcombo/frames")
-					)
-						return "vendor-designcombo";
-					if (
-						id.includes("@remotion/player") ||
-						id.includes("@remotion/media-utils") ||
-						id.includes("@remotion/media") ||
-						id.includes("@remotion/shapes") ||
-						id.includes("remotion")
-					)
-						return "vendor-remotion";
-					if (id.includes("react-dom") || id.includes("react-router-dom") || id.includes("/react/"))
+					if (id.includes("@radix-ui/")) return "vendor-radix";
+					if (id.includes("@designcombo/")) return "vendor-designcombo";
+					if (id.includes("remotion")) return "vendor-remotion";
+					if (/node_modules\/(react|react-dom|scheduler|react-router|react-router-dom)\//.test(id))
 						return "vendor-react";
 				},
 			},
