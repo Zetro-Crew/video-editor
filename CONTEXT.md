@@ -32,6 +32,20 @@ Every TS type in the package is `z.infer<typeof schema>` so schemas and types ca
 
 **Event Envelope** — versioned wrapper around the domain payload: `{ eventName, eventVersion, occurredAt, traceparent, data }`. Same shape stamped into AMQP headers (`x-event-name`, `x-event-version`) so subscribers can filter without parsing the body.
 
+## Render Pipeline
+
+**Render Worker** — separate `video-editor-worker` Deployment, same image as the API, entrypoint `apps/server/src/worker.ts`. Consumes `render.requested` and runs FFmpeg. Probe + metrics on port 8081. See [ADR 0005](docs/adr/0005-render-worker-deployment.md).
+
+**Render Command** — internal AMQP message published by `POST /render` to the `video-editor.commands` direct exchange with routing key `render.requested`. Envelope wraps the full render input (sources, overlays, audio, format, optional `saveMetadata`). Server-internal — not part of the public `@video-editor/contract` surface.
+
+**render.requested queue** — quorum, durable, `x-delivery-limit=5`, `x-overflow=reject-publish`, `x-max-length=10000`. Quorum + per-message delivery counter is what makes broker-side retry work without the server tracking attempts.
+
+**Dead-Letter Queue** — `render.dead`, bound to DLX `video-editor.commands.dlx`. Receives messages whose delivery count exceeds `x-delivery-limit`. A consumer co-located in the worker process reads it and publishes terminal `export.failed { error: "max retries exceeded" }`, so subscribers always see a terminal event for every `jobId` that left the API.
+
+**Command publish failure** — `publishCommand` retries 3× with backoff and a per-attempt confirm-timeout race. On exhaustion the controller returns 503 (not the swallow-on-exhaustion behavior used for outbound events) — the client must know enqueue failed.
+
+**Idempotent re-delivery** — the worker derives a deterministic S3 output key from `jobId`. If `storage.exists(outputKey)` is true on consume, it publishes `export.completed` with the existing URL and acks without re-running FFmpeg. Protects against a worker SIGKILL between upload and ack.
+
 ## Preview & VOD
 
 **Core Service** — external HTTP service hosting `/private/users/me`, channel list, and `/private/channels/:id/play`. Mocked locally by `apps/core-mock` (port 8002).

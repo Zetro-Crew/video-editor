@@ -1,11 +1,7 @@
 import Fastify from "fastify";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { ExportEventPublisherPort } from "../../../../../../infrastructure/messaging/RabbitMQPublisher.ts";
-import type {
-	RenderJobState,
-	RenderJobStatePort,
-} from "../../../../application/ports/outbound/RenderJobStatePort.ts";
-import type { VideoRenderUseCase } from "../../../../application/use-cases/VideoRenderUseCase.ts";
+import { PublishExhaustedError } from "../../../../../../infrastructure/messaging/RabbitMQPublisher.ts";
+import type { RenderCommandPort } from "../../../../application/ports/outbound/RenderCommandPort.ts";
 import { renderController } from "../render.controller.ts";
 
 const validDesign = {
@@ -26,51 +22,22 @@ const validSaveMetadata = {
 	items: [],
 };
 
-function makePublisherSpy(): ExportEventPublisherPort & {
-	publishExportStarted: ReturnType<typeof vi.fn>;
-	publishExportCompleted: ReturnType<typeof vi.fn>;
-	publishExportFailed: ReturnType<typeof vi.fn>;
+function makeCommandPortSpy(): RenderCommandPort & {
+	enqueueRender: ReturnType<typeof vi.fn>;
 } {
 	return {
-		publishExportStarted: vi.fn().mockResolvedValue(undefined),
-		publishExportCompleted: vi.fn().mockResolvedValue(undefined),
-		publishExportFailed: vi.fn().mockResolvedValue(undefined),
+		enqueueRender: vi.fn().mockResolvedValue(undefined),
 	};
-}
-
-function makeJobState(overrides: Partial<RenderJobState> = {}): RenderJobState {
-	return { status: "PROCESSING", progress: 0, ...overrides };
 }
 
 describe("renderController", () => {
 	let app: ReturnType<typeof Fastify>;
-	let videoRenderUseCase: { execute: ReturnType<typeof vi.fn> };
-	let renderJobStatePort: {
-		saveState: ReturnType<typeof vi.fn>;
-		getState: ReturnType<typeof vi.fn>;
-	};
-	let publisher: ReturnType<typeof makePublisherSpy>;
+	let renderCommandPort: ReturnType<typeof makeCommandPortSpy>;
 
 	beforeEach(async () => {
 		app = Fastify({ logger: false });
-		videoRenderUseCase = {
-			execute: vi.fn().mockResolvedValue({
-				s3Key: "output/video.mp4",
-				url: "https://s3.example.com/out.mp4",
-				segments: [],
-			}),
-		};
-		renderJobStatePort = {
-			saveState: vi.fn().mockResolvedValue(undefined),
-			getState: vi.fn().mockResolvedValue(makeJobState()),
-		};
-		publisher = makePublisherSpy();
-		await app.register(renderController, {
-			videoRenderUseCase: videoRenderUseCase as unknown as VideoRenderUseCase,
-			renderJobStatePort: renderJobStatePort as unknown as RenderJobStatePort,
-			s3OutputPrefix: "output",
-			exportEventPublisher: publisher,
-		});
+		renderCommandPort = makeCommandPortSpy();
+		await app.register(renderController, { renderCommandPort });
 		await app.ready();
 	});
 
@@ -88,77 +55,56 @@ describe("renderController", () => {
 		expect((res.json() as { id: string }).id).toBeTruthy();
 	});
 
-	it("POST /render with saveMetadata calls publishExportStarted", async () => {
+	it("POST /render publishes RenderRequested command with jobId + exportType", async () => {
 		const res = await app.inject({
 			method: "POST",
 			url: "/render",
-			payload: { design: validDesign, options: { format: "mp4" }, saveMetadata: validSaveMetadata },
+			payload: { design: validDesign, options: { format: "mp4" } },
 		});
-		expect(res.statusCode).toBe(202);
-		expect(publisher.publishExportStarted).toHaveBeenCalledWith(
-			expect.objectContaining({ mediaName: "clip", exportType: "mp4" }),
+		const { id } = res.json() as { id: string };
+		expect(renderCommandPort.enqueueRender).toHaveBeenCalledWith(
+			expect.objectContaining({ jobId: id, exportType: "mp4", format: "mp4" }),
 		);
 	});
 
-	it("POST /render without saveMetadata does NOT call publishExportStarted", async () => {
+	it("POST /render with saveMetadata forwards saveMetadata to command", async () => {
+		await app.inject({
+			method: "POST",
+			url: "/render",
+			payload: {
+				design: validDesign,
+				options: { format: "mp4" },
+				saveMetadata: validSaveMetadata,
+			},
+		});
+		expect(renderCommandPort.enqueueRender).toHaveBeenCalledWith(
+			expect.objectContaining({
+				saveMetadata: expect.objectContaining({ mediaName: "clip" }),
+				exportType: "mp4",
+			}),
+		);
+	});
+
+	it("POST /render without saveMetadata omits saveMetadata from command", async () => {
 		await app.inject({
 			method: "POST",
 			url: "/render",
 			payload: { design: validDesign, options: { format: "mp4" } },
 		});
-		expect(publisher.publishExportStarted).not.toHaveBeenCalled();
-	});
-
-	it("on render COMPLETED publishExportCompleted called with url", async () => {
-		await app.inject({
-			method: "POST",
-			url: "/render",
-			payload: { design: validDesign, options: { format: "mp4" } },
-		});
-		await vi.waitFor(
-			() =>
-				expect(publisher.publishExportCompleted).toHaveBeenCalledWith(
-					expect.objectContaining({ url: "https://s3.example.com/out.mp4", exportType: "mp4" }),
-				),
-			{ timeout: 5000 },
-		);
-	});
-
-	it("on render FAILED publishExportFailed called with error", async () => {
-		videoRenderUseCase.execute.mockRejectedValueOnce(new Error("ffmpeg error"));
-		await app.inject({
-			method: "POST",
-			url: "/render",
-			payload: { design: validDesign, options: { format: "mp4" } },
-		});
-		await vi.waitFor(
-			() =>
-				expect(publisher.publishExportFailed).toHaveBeenCalledWith(
-					expect.objectContaining({ error: "ffmpeg error" }),
-				),
-			{ timeout: 5000 },
-		);
+		const call = renderCommandPort.enqueueRender.mock.calls[0]?.[0] as {
+			saveMetadata?: unknown;
+		};
+		expect(call.saveMetadata).toBeUndefined();
 	});
 
 	it("exportType is webp when format is webp", async () => {
 		await app.inject({
 			method: "POST",
 			url: "/render",
-			payload: {
-				design: validDesign,
-				options: { format: "webp" },
-				saveMetadata: validSaveMetadata,
-			},
+			payload: { design: validDesign, options: { format: "webp" } },
 		});
-		expect(publisher.publishExportStarted).toHaveBeenCalledWith(
-			expect.objectContaining({ exportType: "webp" }),
-		);
-		await vi.waitFor(
-			() =>
-				expect(publisher.publishExportCompleted).toHaveBeenCalledWith(
-					expect.objectContaining({ exportType: "webp" }),
-				),
-			{ timeout: 5000 },
+		expect(renderCommandPort.enqueueRender).toHaveBeenCalledWith(
+			expect.objectContaining({ exportType: "webp", format: "webp" }),
 		);
 	});
 
@@ -171,14 +117,41 @@ describe("renderController", () => {
 		expect(res.statusCode).toBe(400);
 		const body = res.json() as { error: string };
 		expect(body.error).toMatch(/^[\w.]+:\s/);
+		expect(renderCommandPort.enqueueRender).not.toHaveBeenCalled();
 	});
 
-	it("POST /render forwards full SavedMediaPayload to publishExportStarted", async () => {
+	it("POST /render with invalid saveMetadata returns 400", async () => {
+		const res = await app.inject({
+			method: "POST",
+			url: "/render",
+			payload: {
+				design: validDesign,
+				options: { format: "mp4" },
+				saveMetadata: { mediaId: "" },
+			},
+		});
+		expect(res.statusCode).toBe(400);
+		expect(renderCommandPort.enqueueRender).not.toHaveBeenCalled();
+	});
+
+	it("POST /render returns 503 when enqueueRender throws PublishExhaustedError", async () => {
+		renderCommandPort.enqueueRender.mockRejectedValueOnce(
+			new PublishExhaustedError("render.requested", 3, new Error("broker down")),
+		);
+		const res = await app.inject({
+			method: "POST",
+			url: "/render",
+			payload: { design: validDesign, options: { format: "mp4" } },
+		});
+		expect(res.statusCode).toBe(503);
+	});
+
+	it("POST /render forwards full SavedMediaPayload to command saveMetadata", async () => {
 		const items = [
 			{ type: "image" as const, id: "img-1" },
 			{ type: "clip" as const, id: "media-1" },
 		];
-		const res = await app.inject({
+		await app.inject({
 			method: "POST",
 			url: "/render",
 			payload: {
@@ -187,65 +160,14 @@ describe("renderController", () => {
 				saveMetadata: { ...validSaveMetadata, items },
 			},
 		});
-		const { id: jobId } = res.json() as { id: string };
-		expect(publisher.publishExportStarted).toHaveBeenCalledWith({
-			jobId,
-			mediaId: validSaveMetadata.mediaId,
-			mediaName: validSaveMetadata.mediaName,
-			downloadToComputer: validSaveMetadata.downloadToComputer,
-			saveToPersonalChannel: validSaveMetadata.saveToPersonalChannel,
-			selectedUnitChannelIds: validSaveMetadata.selectedUnitChannelIds,
-			items,
-			exportType: "mp4",
-		});
-	});
-
-	it("on render COMPLETED renderJobStatePort.saveState is called with COMPLETED + 100 + url", async () => {
-		await app.inject({
-			method: "POST",
-			url: "/render",
-			payload: { design: validDesign, options: { format: "mp4" } },
-		});
-		await vi.waitFor(
-			() =>
-				expect(renderJobStatePort.saveState).toHaveBeenCalledWith(
-					expect.any(String),
-					expect.objectContaining({
-						status: "COMPLETED",
-						progress: 100,
-						url: "https://s3.example.com/out.mp4",
-					}),
-				),
-			{ timeout: 5000 },
-		);
-	});
-
-	describe("GET /render", () => {
-		it("returns 400 when id is missing", async () => {
-			const res = await app.inject({ method: "GET", url: "/render" });
-			expect(res.statusCode).toBe(400);
-		});
-
-		it("returns 404 when state is null", async () => {
-			renderJobStatePort.getState.mockResolvedValueOnce(null);
-			const res = await app.inject({ method: "GET", url: "/render?id=missing" });
-			expect(res.statusCode).toBe(404);
-		});
-
-		it("returns 200 with status/progress/url/presigned_url when state exists", async () => {
-			renderJobStatePort.getState.mockResolvedValueOnce(
-				makeJobState({ status: "COMPLETED", progress: 100, url: "https://s3.example.com/x.mp4" }),
-			);
-			const res = await app.inject({ method: "GET", url: "/render?id=abc" });
-			expect(res.statusCode).toBe(200);
-			expect(res.json()).toEqual(
-				expect.objectContaining({
-					status: "COMPLETED",
-					progress: 100,
-					url: "https://s3.example.com/x.mp4",
-					presigned_url: "https://s3.example.com/x.mp4",
+		expect(renderCommandPort.enqueueRender).toHaveBeenCalledWith(
+			expect.objectContaining({
+				saveMetadata: expect.objectContaining({
+					mediaId: validSaveMetadata.mediaId,
+					mediaName: validSaveMetadata.mediaName,
+					items,
 				}),
-			);
-		});
+			}),
+		);
 	});
 });

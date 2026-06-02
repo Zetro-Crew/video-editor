@@ -5,7 +5,9 @@
 	"main": "src/index.ts",
 	"scripts": {
 		"dev": "node --env-file=.env --watch-path=./src src/index.ts",
+		"dev:worker": "node --env-file=.env --watch-path=./src src/worker.ts",
 		"start": "node src/index.ts",
+		"start:worker": "node src/worker.ts",
 		"test": "vitest run",
 		"type-check": "tsc --noEmit",
 		"lint": "biome check .  --write && node -e \"console.log('\\n✓ All server files pass Biome checks.')\""
@@ -27,13 +29,11 @@
 		"fastify": "catalog:",
 		"fastify-type-provider-zod": "^6.1.0",
 		"ffprobe-static": "^3.0.0",
-		"redis": "^5.11.0",
 		"sharp": "^0.34.5",
 		"zod": "catalog:"
 	},
 	"devDependencies": {
 		"@testcontainers/rabbitmq": "^12.0.1",
-		"@types/amqplib": "^0.10.8",
 		"@types/ffprobe-static": "^2.0.0",
 		"@types/node": "catalog:",
 		"@video-editor/core-mock": "workspace:*",

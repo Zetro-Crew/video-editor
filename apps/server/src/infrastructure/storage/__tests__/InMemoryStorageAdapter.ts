@@ -20,12 +20,16 @@ export class InMemoryStorageAdapter implements StoragePort {
 		return `internal://${key}`;
 	}
 
-	async getPresignedUploadUrl(): Promise<string> {
+	async getPresignedUploadUrl(_key: string): Promise<string> {
 		throw new Error("getPresignedUploadUrl not implemented in InMemoryStorageAdapter");
 	}
 
 	async deleteFile(key: string): Promise<void> {
 		this.objects.delete(key);
+	}
+
+	async exists(key: string): Promise<boolean> {
+		return this.objects.has(key);
 	}
 
 	async ensureBucketExists(): Promise<void> {

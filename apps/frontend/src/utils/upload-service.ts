@@ -64,7 +64,7 @@ async function processFileUpload(
 	try {
 		const { data: signed } = await axios.post<GetSignedUrlResponse>(
 			"/upload/signed-url",
-			{ filename: file.name, mimetype },
+			{ filename: file.name, mimetype, size: file.size },
 			{ validateStatus: () => true },
 		);
 
@@ -73,7 +73,7 @@ async function processFileUpload(
 		}
 
 		const putResponse = await axios.put(signed.uploadUrl, file, {
-			headers: { "Content-Type": mimetype },
+			headers: { "Content-Type": mimetype, "Content-Length": String(file.size) },
 			onUploadProgress: (progressEvent) => {
 				const percent = Math.round((progressEvent.loaded * 100) / (progressEvent.total || 1));
 				callbacks.onProgress(uploadId, percent);

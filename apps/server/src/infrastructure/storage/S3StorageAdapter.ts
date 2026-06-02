@@ -13,7 +13,10 @@ import {
 import { Upload } from "@aws-sdk/lib-storage";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { Logger } from "@ztube/observability";
-import type { StoragePort } from "../../shared/application/ports/outbound/StoragePort.ts";
+import type {
+	PresignedUploadOptions,
+	StoragePort,
+} from "../../shared/application/ports/outbound/StoragePort.ts";
 import { downloadFile as downloadHttpFile } from "../../shared/utils/file.utils.ts";
 
 export interface S3StorageConfig {
@@ -152,17 +155,23 @@ export class S3StorageAdapter implements StoragePort {
 
 	public getPresignedUploadUrl = async (
 		key: string,
-		contentType?: string,
-		expiresIn = 3600,
+		options: PresignedUploadOptions = {},
 	): Promise<string> => {
+		const { contentType, contentLength, expiresIn = 3600 } = options;
 		if (expiresIn <= 0) {
 			throw new Error(`expiresIn must be positive, got ${expiresIn}`);
 		}
-		Logger.logInfo("[s3] generating presigned upload URL", { key, expiresIn });
+		if (contentLength !== undefined && contentLength <= 0) {
+			throw new Error(`contentLength must be positive, got ${contentLength}`);
+		}
+		Logger.logInfo("[s3] generating presigned upload URL", { key, expiresIn, contentLength });
+		// ContentLength gets baked into the SigV4 signed headers — the client
+		// must PUT with a matching Content-Length, otherwise S3/MinIO rejects.
 		const command = new PutObjectCommand({
 			Bucket: this.bucket,
 			Key: key,
 			ContentType: contentType,
+			ContentLength: contentLength,
 		});
 
 		return getSignedUrl(this.client, command, { expiresIn });
@@ -186,18 +195,38 @@ export class S3StorageAdapter implements StoragePort {
 			});
 			await this.client.send(command);
 			return true;
-		} catch {
-			return false;
+		} catch (err) {
+			// Narrow to "not found" only. A transient 5xx must throw so the caller
+			// can decide (retry / fail). Swallowing all errors here makes idempotency
+			// checks lie: a flaky HEAD turns into "object missing", which re-runs
+			// the render even when output already exists.
+			if (isNotFoundError(err)) return false;
+			throw err;
 		}
 	};
+
+	public exists = async (key: string): Promise<boolean> => this.fileExists(key);
 
 	public ensureBucketExists = async (): Promise<void> => {
 		try {
 			await this.client.send(new HeadBucketCommand({ Bucket: this.bucket }));
 			return;
-		} catch {
-			/* bucket does not exist, create it */
+		} catch (err) {
+			if (!isNotFoundError(err)) throw err;
 		}
 		await this.client.send(new CreateBucketCommand({ Bucket: this.bucket }));
 	};
+}
+
+function isNotFoundError(err: unknown): boolean {
+	if (typeof err !== "object" || err === null) return false;
+	const candidate = err as {
+		name?: string;
+		$metadata?: { httpStatusCode?: number };
+		Code?: string;
+	};
+	if (candidate.name === "NotFound" || candidate.name === "NoSuchKey") return true;
+	if (candidate.Code === "NotFound" || candidate.Code === "NoSuchKey") return true;
+	if (candidate.$metadata?.httpStatusCode === 404) return true;
+	return false;
 }

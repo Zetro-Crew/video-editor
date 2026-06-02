@@ -54,14 +54,20 @@ const envSchema = z.object({
 	S3_UPLOAD_PREFIX: z.string().default("uploads"),
 	S3_OUTPUT_PREFIX: z.string().default("output"),
 	S3_AUTO_CREATE_BUCKET: boolEnv(true),
-	// Redis
-	REDIS_HOST: z.string(),
-	REDIS_PORT: z.coerce.number(),
-	REDIS_PASSWORD: z.string().default(""),
-	JOB_PROGRESS_TTL_SECONDS: z.coerce.number().default(600),
 	RENDER_URL_EXPIRY_SECONDS: z.coerce.number().default(86400),
+	// Max accepted upload size in bytes. Default mirrors the prior multipart cap
+	// (500 MB). Enforced server-side AND bound into the presigned PUT via the
+	// signed Content-Length so S3 rejects mismatched uploads.
+	UPLOAD_MAX_SIZE_BYTES: z.coerce.number().int().positive().default(524_288_000),
 	// Messaging
 	RABBITMQ_URL: z.string(),
+	COMMAND_PUBLISH_CONFIRM_TIMEOUT_MS: z.coerce.number().int().positive().default(10_000),
+	EVENT_PUBLISH_CONFIRM_TIMEOUT_MS: z.coerce.number().int().positive().default(30_000),
+	AMQP_INITIAL_CONNECT_TIMEOUT_MS: z.coerce.number().int().positive().default(15_000),
+	RENDER_REQUEST_TTL_MS: z.coerce.number().int().positive().optional(),
+	// Worker
+	WORKER_CONCURRENCY: z.coerce.number().int().min(1).default(1),
+	WORKER_PROBE_PORT: z.coerce.number().int().positive().default(8081),
 });
 
 export type EnvConfig = z.infer<typeof envSchema>;

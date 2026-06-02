@@ -6,14 +6,14 @@
 
 A full-stack, browser-based video editor built on [Remotion](https://www.remotion.dev/) and React 19. Compose scenes on a drag-and-drop timeline, apply transitions and overlays, then export to video — all from the browser.
 
-> **Deployment target:** Closed, air-gapped network environments. All infrastructure (MinIO, Redis, FFmpeg) is self-hosted. No public internet access is required or expected at runtime.
+> **Deployment target:** Closed, air-gapped network environments. All infrastructure (MinIO, RabbitMQ, FFmpeg) is self-hosted. No public internet access is required or expected at runtime.
 
 ## Architecture
 
 | App / Package | Description | Port |
 |---|---|---|
 | `apps/frontend` | Vite + React 19 SPA — the editor UI | 3000 |
-| `apps/server` | Fastify + Node.js API — upload, render, FFmpeg, RabbitMQ publisher | 4001 |
+| `apps/server` | Fastify + Node.js. **API** (port 4001) handles uploads + enqueues render jobs; **Worker** (probe port 8081) consumes the queue + runs FFmpeg | 4001 / 8081 |
 | `apps/iframe-demo` | Angular 21 harness for iframe integration testing | 8080 |
 | `apps/core-mock` | Dev-only Fastify mock of the upstream Core service | 8002 |
 | `apps/mock-vod` | Dev-only Fastify mock of the upstream VOD service | 5050 |
@@ -24,7 +24,7 @@ A full-stack, browser-based video editor built on [Remotion](https://www.remotio
 
 - Node.js 22.18+
 - pnpm 10+
-- Docker (for MinIO + Redis)
+- Docker (for MinIO + RabbitMQ)
 - FFmpeg (installed automatically via `@ffmpeg-installer/ffmpeg`)
 
 ## Getting Started
@@ -41,7 +41,7 @@ pnpm install
 docker compose up -d
 ```
 
-This starts MinIO (S3-compatible storage, port 9000/9001) and Redis (port 6379).
+This starts MinIO (S3-compatible storage, port 9000/9001) and RabbitMQ (port 5672, management UI 15672).
 
 **3. Configure the server**
 
@@ -59,7 +59,6 @@ Key variables (all have defaults for local dev):
 | `S3_ENDPOINT` | `http://localhost:9000` | MinIO endpoint |
 | `S3_ACCESS_KEY_ID` | `minioadmin` | MinIO access key |
 | `S3_SECRET_ACCESS_KEY` | `minioadmin123` | MinIO secret |
-| `REDIS_HOST` | `localhost` | Redis host |
 | `CORE_BASE_URL` | required | Upstream Core service base URL (includes `/private`). Dev: `http://localhost:8002/private` |
 | `PREVIEW_SIGNING_SECRET` | required | HMAC-SHA256 secret (min 32 chars) for signed segment-proxy URLs |
 | `RABBITMQ_URL` | required | AMQP connection URL for export event publishing |
@@ -111,7 +110,7 @@ See [packages/contract/README.md](packages/contract/README.md) and [apps/iframe-
 
 **Frontend:** React 19, Vite, Remotion, Zustand, TanStack Query, Tailwind v4, shadcn/ui, `@designcombo/*`
 
-**Server:** Fastify 5, Node.js 22, FFmpeg (bundled via `@ffmpeg-installer/ffmpeg`), Redis, AWS SDK v3 (S3/MinIO), `amqplib`, Zod, Sharp
+**Server:** Fastify 5, Node.js 22, FFmpeg (bundled via `@ffmpeg-installer/ffmpeg`), AWS SDK v3 (S3/MinIO), `amqplib`, Zod, Sharp
 
 **Observability:** OpenTelemetry tracing + metrics, Pyroscope profiling, Pino logging (via `@ztube/observability`)
 
