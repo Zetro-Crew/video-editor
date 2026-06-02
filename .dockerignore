@@ -3,6 +3,7 @@
 **/dist
 **/.git
 **/*.log
+**/images
 apps/iframe-demo
 .env
 .env.*

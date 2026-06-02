@@ -41,14 +41,15 @@ RUN pnpm --filter @video-editor/server deploy --prod --legacy /prod/server
 # ── Stage 3: runtime ─────────────────────────────────────────────────────────
 FROM ${NODE_IMAGE}
 
-# System ffmpeg for ffprobe; @ffmpeg-installer/ffmpeg provides the ffmpeg binary via npm
-RUN apt-get update && apt-get install -y --no-install-recommends ffmpeg \
-    && rm -rf /var/lib/apt/lists/*
-
 WORKDIR /app
 
 # OpenShift runs as arbitrary UID in group 0 — make app dir group-writable
 COPY --from=deps --chown=1001:0 /prod/server ./
+
+# Drop ffprobe-static sibling-platform binaries (darwin/win32/linux-ia32) — runtime is linux/amd64 only
+RUN find /app/node_modules -path '*ffprobe-static/bin/*' -type f \
+        ! -path '*/linux/x64/*' -delete \
+ && find /app/node_modules -path '*ffprobe-static/bin/*' -type d -empty -delete
 
 RUN chmod -R g+rwx /app
 
