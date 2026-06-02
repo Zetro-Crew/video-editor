@@ -6,6 +6,9 @@ settings:
 
 catalogs:
   default:
+    '@biomejs/biome':
+      specifier: 2.4.15
+      version: 2.4.15
     '@types/node':
       specifier: ^25.9.1
       version: 25.9.1
@@ -56,6 +59,9 @@ importers:
         specifier: 'catalog:'
         version: 5.8.5
     devDependencies:
+      '@testcontainers/rabbitmq':
+        specifier: ^12.0.1
+        version: 12.0.1
       '@types/node':
         specifier: 'catalog:'
         version: 25.9.1
@@ -138,9 +144,6 @@ importers:
         specifier: ^4.0.465
         version: 4.0.468(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
       '@remotion/player':
-        specifier: ^4.0.465
-        version: 4.0.468(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
-      '@remotion/shapes':
         specifier: ^4.0.465
         version: 4.0.468(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
       '@tanstack/react-query':
@@ -3822,17 +3825,8 @@ packages:
       react: '>=16.8.0'
       react-dom: '>=16.8.0'
 
-  '@remotion/paths@4.0.468':
-    resolution: {integrity: sha512-eRfspZzkOmuLm78uMWZyNJm3GLNhNNeBNmwrQpzFkgwiil+VYZhISkOc4EMQI0EKav280rPvMNbWEXTrHMQWMQ==}
-
   '@remotion/player@4.0.468':
     resolution: {integrity: sha512-M0kdFnAZvstMctK2ypoTkFOahI61kUE9HnQAh5/9dPb+FlOwCDLRDnM2LBkltZsJxgqgH1nDe1iNPsry0QCjmw==}
-    peerDependencies:
-      react: '>=16.8.0'
-      react-dom: '>=16.8.0'
-
-  '@remotion/shapes@4.0.468':
-    resolution: {integrity: sha512-yIJfGXAVocFgG2dOGKkrT5GPrKbrqdZ4iFBghd0a4zj+3Knget4ZL4xU7NKEqostUQfxt0LX/PkT8JyDITku9Q==}
     peerDependencies:
       react: '>=16.8.0'
       react-dom: '>=16.8.0'
@@ -12202,19 +12196,11 @@ snapshots:
       remotion: 4.0.468(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
       zod: 4.3.6
 
-  '@remotion/paths@4.0.468': {}
-
   '@remotion/player@4.0.468(react-dom@19.2.6(react@19.2.6))(react@19.2.6)':
     dependencies:
       react: 19.2.6
       react-dom: 19.2.6(react@19.2.6)
       remotion: 4.0.468(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
-
-  '@remotion/shapes@4.0.468(react-dom@19.2.6(react@19.2.6))(react@19.2.6)':
-    dependencies:
-      '@remotion/paths': 4.0.468
-      react: 19.2.6
-      react-dom: 19.2.6(react@19.2.6)
 
   '@rolldown/binding-android-arm64@1.0.0-rc.4':
     optional: true

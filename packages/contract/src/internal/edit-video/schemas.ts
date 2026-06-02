@@ -2,7 +2,7 @@ import { z } from "zod";
 import { OverlayType } from "../shared/overlay-type.js";
 
 export const textOverlaySchema = z.object({
-	id: z.uuid(),
+	id: z.string().min(1),
 	type: z.literal(OverlayType.text),
 	text: z.string(),
 	start: z.number().min(0),
@@ -24,7 +24,7 @@ export const textOverlaySchema = z.object({
 });
 
 export const imageOverlaySchema = z.object({
-	id: z.uuid(),
+	id: z.string().min(1),
 	type: z.literal(OverlayType.image),
 	imageUrl: z.string().url(),
 	start: z.number().min(0),
@@ -38,7 +38,7 @@ export const imageOverlaySchema = z.object({
 });
 
 export const videoOverlaySchema = z.object({
-	id: z.uuid(),
+	id: z.string().min(1),
 	type: z.literal(OverlayType.video),
 	sourceUrl: z.string().url(),
 	start: z.number().min(0),
@@ -67,7 +67,7 @@ export const videoOverlaySchema = z.object({
 });
 
 export const rectangleOverlaySchema = z.object({
-	id: z.uuid(),
+	id: z.string().min(1),
 	type: z.literal(OverlayType.rectangle),
 	start: z.number().min(0),
 	end: z.number().positive(),
@@ -83,7 +83,7 @@ export const rectangleOverlaySchema = z.object({
 });
 
 export const circleOverlaySchema = z.object({
-	id: z.uuid(),
+	id: z.string().min(1),
 	type: z.literal(OverlayType.circle),
 	start: z.number().min(0),
 	end: z.number().positive(),
@@ -99,7 +99,7 @@ export const circleOverlaySchema = z.object({
 });
 
 export const shapeOverlaySchema = z.object({
-	id: z.uuid(),
+	id: z.string().min(1),
 	type: z.literal(OverlayType.shape),
 	svgData: z.string().min(1),
 	start: z.number().min(0),

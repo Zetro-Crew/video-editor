@@ -2,15 +2,19 @@ import { EXCHANGE_NAME, exportCompletedEnvelopeSchema } from "@video-editor/cont
 import { connect } from "amqplib";
 import type { ExportResultStore } from "./export-result-store.ts";
 
+export interface ExportConsumerHandle {
+	stop(): Promise<void>;
+}
+
 export async function startExportConsumer(
 	rabbitmqUrl: string,
 	store: ExportResultStore,
-): Promise<void> {
+): Promise<ExportConsumerHandle> {
 	const conn = await connect(rabbitmqUrl);
 	const ch = await conn.createChannel();
 	await ch.assertExchange(EXCHANGE_NAME, "topic", { durable: true });
 	const { queue } = await ch.assertQueue("", { exclusive: true, autoDelete: true });
-	await ch.bindQueue(queue, EXCHANGE_NAME, "export.completed");
+	await ch.bindQueue(queue, EXCHANGE_NAME, "export.#");
 	ch.consume(queue, (msg) => {
 		if (!msg) return;
 		try {
@@ -21,4 +25,19 @@ export async function startExportConsumer(
 		}
 		ch.ack(msg);
 	});
+
+	return {
+		async stop() {
+			try {
+				await ch.close();
+			} catch {
+				// channel may already be closed by broker shutdown
+			}
+			try {
+				await conn.close();
+			} catch {
+				// connection may already be closed by broker shutdown
+			}
+		},
+	};
 }
