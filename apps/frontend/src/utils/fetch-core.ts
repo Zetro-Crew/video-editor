@@ -1,5 +1,8 @@
-const coreBase = import.meta.env.VITE_BASE_URL + import.meta.env.VITE_CORE_EXTENSION;
+const coreExtension = import.meta.env.VITE_CORE_EXTENSION ?? "";
 
 export function fetchCore(path: string, init?: RequestInit): Promise<Response> {
-	return fetch(`${coreBase}${path}`, { ...init, credentials: "include" });
+	return fetch(`${window.location.origin}${coreExtension}${path}`, {
+		...init,
+		credentials: "include",
+	});
 }

@@ -1,3 +1,5 @@
+import { fetchServer } from "@/utils/fetch-server";
+
 export interface PreviewSourceResponse {
 	type: "hls";
 	playlistUrl: string;
@@ -22,7 +24,7 @@ export const resolvePreviewSource = async (
 	startTimeMs: number,
 	endTimeMs: number,
 ): Promise<PreviewSourceResponse> => {
-	const response = await fetch("/editor/preview-source", {
+	const response = await fetchServer("/editor/preview-source", {
 		method: "POST",
 		headers: { "Content-Type": "application/json" },
 		body: JSON.stringify({

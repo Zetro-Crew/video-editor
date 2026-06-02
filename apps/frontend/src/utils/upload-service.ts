@@ -1,5 +1,6 @@
 import type { GetSignedUrlResponse } from "@video-editor/contract/internal/upload";
 import axios from "axios";
+import { serverUrl } from "./fetch-server";
 
 const EXT_MIME_FALLBACK: Record<string, string> = {
 	".mp4": "video/mp4",
@@ -63,7 +64,7 @@ async function processFileUpload(
 	const mimetype = resolveMimetype(file);
 	try {
 		const { data: signed } = await axios.post<GetSignedUrlResponse>(
-			"/upload/signed-url",
+			serverUrl("/upload/signed-url"),
 			{ filename: file.name, mimetype, size: file.size },
 			{ validateStatus: () => true },
 		);

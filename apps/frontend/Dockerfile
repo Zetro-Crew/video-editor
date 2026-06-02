@@ -2,7 +2,7 @@ ARG NODE_IMAGE=node:22-alpine
 ARG NGINX_IMAGE=nginx:1.27-alpine
 
 # ── Stage 1: prune workspace ─────────────────────────────────────────────────
-FROM ${NODE_IMAGE} AS pruner
+FROM --platform=linux/amd64 ${NODE_IMAGE} AS pruner
 
 WORKDIR /app
 
@@ -17,9 +17,9 @@ COPY . .
 RUN turbo prune @video-editor/frontend --docker
 
 # ── Stage 2: build ────────────────────────────────────────────────────────────
-FROM ${NODE_IMAGE} AS builder
+FROM --platform=linux/amd64 ${NODE_IMAGE} AS builder
 
-ARG VITE_EDITOR_PARENT_ORIGINS
+ARG BUILD_MODE=production
 
 WORKDIR /app
 
@@ -34,11 +34,15 @@ RUN pnpm install --frozen-lockfile
 # Full pruned source
 COPY --from=pruner /app/out/full/ .
 
+# Vite mode-specific env files (turbo prune excludes dotfiles by default)
+COPY apps/frontend/.env* apps/frontend/
+
 RUN pnpm --filter @video-editor/contract build
-RUN pnpm --filter @video-editor/frontend build
+RUN pnpm --filter @video-editor/frontend exec tsc \
+ && pnpm --filter @video-editor/frontend exec vite build --mode ${BUILD_MODE}
 
 # ── Stage 3: serve ────────────────────────────────────────────────────────────
-FROM ${NGINX_IMAGE}
+FROM --platform=linux/amd64 ${NGINX_IMAGE}
 
 # OpenShift runs as arbitrary UID in group 0.
 # Nginx must use port 8080 (non-privileged) and write to group-writable dirs.

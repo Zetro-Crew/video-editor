@@ -10,7 +10,7 @@ describe("resolvePreviewSource", () => {
 		vi.unstubAllGlobals();
 	});
 
-	it("POSTs JSON to /editor/preview-source with channel-range body and no credentials option", async () => {
+	it("POSTs JSON to /editor/preview-source with channel-range body and include credentials", async () => {
 		const fetchSpy = globalThis.fetch as unknown as ReturnType<typeof vi.fn>;
 		fetchSpy.mockResolvedValueOnce(
 			new Response(
@@ -36,7 +36,7 @@ describe("resolvePreviewSource", () => {
 		expect(url).toBe("/editor/preview-source");
 		expect(init.method).toBe("POST");
 		expect(init.headers).toEqual({ "Content-Type": "application/json" });
-		expect((init as RequestInit & { credentials?: string }).credentials).toBeUndefined();
+		expect((init as RequestInit & { credentials?: string }).credentials).toBe("include");
 		expect(JSON.parse(init.body as string)).toEqual({
 			source: { type: "channel-range", channelId: "ch", startTimeMs: 0, endTimeMs: 1000 },
 		});

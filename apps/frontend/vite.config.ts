@@ -4,6 +4,7 @@ import { defineConfig } from "vite";
 import type { UserConfig } from "vitest/config";
 
 export default defineConfig({
+	base: process.env.VITE_PUBLIC_PATH ?? "/",
 	test: {
 		environment: "node",
 		include: ["src/**/*.test.ts", "src/**/*.test.tsx"],

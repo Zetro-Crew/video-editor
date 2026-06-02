@@ -1,5 +1,6 @@
 import type { IDesign, ITrackItem } from "@designcombo/types";
 import { create } from "zustand";
+import { fetchServer } from "@/utils/fetch-server";
 import { extractSavedItems } from "../utils/extract-saved-items";
 import { getSafeCurrentFrame } from "../utils/time";
 import useCompositionStore from "./use-composition-store";
@@ -70,7 +71,7 @@ export const useDownloadState = create<DownloadState>((set, get) => ({
 				const safeFps = fps > 0 ? fps : 30;
 				const frameTimeMs = Math.round((currentFrame / safeFps) * 1000);
 
-				const response = await fetch("/render", {
+				const response = await fetchServer("/render", {
 					method: "POST",
 					headers: { "Content-Type": "application/json" },
 					body: JSON.stringify({
