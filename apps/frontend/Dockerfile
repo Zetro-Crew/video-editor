@@ -6,6 +6,9 @@ FROM ${NODE_IMAGE} AS pruner
 
 WORKDIR /app
 
+ENV PNPM_HOME=/pnpm
+ENV PATH=$PNPM_HOME:$PATH
+
 RUN corepack enable && corepack prepare pnpm@10.13.1 --activate && \
     pnpm add --global turbo@2.9.14
 

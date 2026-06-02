@@ -5,12 +5,15 @@ FROM ${NODE_IMAGE} AS pruner
 
 WORKDIR /app
 
+ENV PNPM_HOME=/pnpm
+ENV PATH=$PNPM_HOME:$PATH
+
 RUN corepack enable && corepack prepare pnpm@10.13.1 --activate && \
     pnpm add --global turbo@2.9.14
 
 COPY . .
 
-RUN turbo prune server --docker
+RUN turbo prune @video-editor/server --docker
 
 # ── Stage 2: install + build ──────────────────────────────────────────────────
 FROM ${NODE_IMAGE} AS deps
@@ -33,7 +36,7 @@ RUN pnpm --filter @ztube/observability build
 RUN pnpm --filter @video-editor/contract build
 
 # Isolate production deps + source into a clean directory
-RUN pnpm --filter server deploy --prod /prod/server
+RUN pnpm --filter @video-editor/server deploy --prod --legacy /prod/server
 
 # ── Stage 3: runtime ─────────────────────────────────────────────────────────
 FROM ${NODE_IMAGE}
