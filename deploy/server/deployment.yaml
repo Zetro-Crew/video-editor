@@ -3,8 +3,17 @@ kind: Deployment
 metadata:
   name: video-editor-server
   namespace: # TODO: your-ocp-namespace
+  labels:
+    app: video-editor-server
 spec:
-  replicas: 1
+  replicas: 2
+  revisionHistoryLimit: 10
+  progressDeadlineSeconds: 600
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 50%
   selector:
     matchLabels:
       app: video-editor-server
@@ -13,13 +22,39 @@ spec:
       labels:
         app: video-editor-server
     spec:
+      # Long-running renders (TRANSCODE_TIMEOUT_MS=2h) cannot finish within k8s
+      # grace; this just gives in-flight HTTP requests + LB endpoint removal
+      # time to drain before SIGTERM-induced fastify close.
+      terminationGracePeriodSeconds: 60
       imagePullSecrets:
         - name: internal-registry-secret
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    app: video-editor-server
+                topologyKey: kubernetes.io/hostname
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app: video-editor-server
       containers:
         - name: server
           image: # TODO: your-registry.internal/video-editor-server:latest
           ports:
-            - containerPort: 4001
+            - containerPort: 8080
+          lifecycle:
+            preStop:
+              exec:
+                # Sleep before SIGTERM so Service endpoints depropagate first;
+                # prevents new requests routing to a pod about to shut down.
+                command: ["/bin/sh", "-c", "sleep 15"]
           envFrom:
             - configMapRef:
                 name: video-editor-server-config
@@ -28,21 +63,21 @@ spec:
           readinessProbe:
             httpGet:
               path: /health
-              port: 4001
+              port: 8080
             initialDelaySeconds: 15
             periodSeconds: 10
             failureThreshold: 3
           livenessProbe:
             httpGet:
               path: /health
-              port: 4001
+              port: 8080
             initialDelaySeconds: 30
             periodSeconds: 30
             failureThreshold: 3
           resources:
             requests:
               cpu: "500m"
-              memory: "512Mi"
+              memory: "1Gi"
             limits:
               cpu: "2000m"
-              memory: "2Gi"
+              memory: "4Gi"

@@ -7,5 +7,5 @@ spec:
   selector:
     app: video-editor-server
   ports:
-    - port: 4001
-      targetPort: 4001
+    - port: 8080
+      targetPort: 8080

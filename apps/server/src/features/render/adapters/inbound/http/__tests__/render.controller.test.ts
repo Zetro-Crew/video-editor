@@ -248,42 +248,4 @@ describe("renderController", () => {
 			);
 		});
 	});
-
-	describe("DELETE /render", () => {
-		it("returns 400 when id is missing", async () => {
-			const res = await app.inject({ method: "DELETE", url: "/render" });
-			expect(res.statusCode).toBe(400);
-		});
-
-		it("returns 404 when no abortController registered and state is null", async () => {
-			renderJobStatePort.getState.mockResolvedValueOnce(null);
-			const res = await app.inject({ method: "DELETE", url: "/render?id=ghost" });
-			expect(res.statusCode).toBe(404);
-		});
-
-		it("returns 204 and triggers CANCELLED saveState when job is in-flight", async () => {
-			videoRenderUseCase.execute.mockImplementationOnce(
-				(_input, _key, _onProgress, signal: AbortSignal) =>
-					new Promise((_resolve, reject) => {
-						signal.addEventListener("abort", () => reject(new Error("aborted")));
-					}),
-			);
-			const startRes = await app.inject({
-				method: "POST",
-				url: "/render",
-				payload: { design: validDesign, options: { format: "mp4" } },
-			});
-			const { id: jobId } = startRes.json() as { id: string };
-			const delRes = await app.inject({ method: "DELETE", url: `/render?id=${jobId}` });
-			expect(delRes.statusCode).toBe(204);
-			await vi.waitFor(
-				() =>
-					expect(renderJobStatePort.saveState).toHaveBeenCalledWith(
-						jobId,
-						expect.objectContaining({ status: "CANCELLED" }),
-					),
-				{ timeout: 5000 },
-			);
-		});
-	});
 });

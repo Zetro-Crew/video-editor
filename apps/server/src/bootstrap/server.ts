@@ -1,9 +1,6 @@
 import cors from "@fastify/cors";
-import multipart from "@fastify/multipart";
 import { fastifyLoggingPlugin } from "@ztube/observability/fastify";
 import type { EnvConfig } from "../config/env.ts";
-import { editVideoController } from "../features/edit-video/adapters/inbound/http/edit-video.controller.ts";
-import { editorExportController } from "../features/editor-export/adapters/inbound/http/editor-export.controller.ts";
 import { previewController } from "../features/preview/adapters/inbound/http/preview.controller.ts";
 import { renderController } from "../features/render/adapters/inbound/http/render.controller.ts";
 import { uploadController } from "../features/upload/adapters/inbound/http/upload.controller.ts";
@@ -25,9 +22,6 @@ export class Server {
 		this.app.get("/health", async () => ({ status: "ok" }));
 
 		await this.app.register(cors, { origin: true });
-		await this.app.register(multipart, {
-			limits: { fileSize: 500 * 1024 * 1024 },
-		});
 		await this.app.register(fastifyLoggingPlugin, {
 			enableByDefault: true,
 			logStarted: false,
@@ -36,12 +30,6 @@ export class Server {
 
 		await this.app.register(uploadController, {
 			uploadUseCase: this.container.uploadUseCase,
-		});
-
-		await this.app.register(editVideoController, {
-			videoRenderUseCase: this.container.videoRenderUseCase,
-			editVideoJobStatePort: this.container.editVideoJobStatePort,
-			s3OutputPrefix: this.config.S3_OUTPUT_PREFIX,
 		});
 
 		await this.app.register(renderController, {
@@ -54,11 +42,6 @@ export class Server {
 		await this.app.register(previewController, {
 			storage: this.container.storage,
 			config: this.config,
-		});
-
-		await this.app.register(editorExportController, {
-			videoRenderUseCase: this.container.videoRenderUseCase,
-			s3OutputPrefix: this.config.S3_OUTPUT_PREFIX,
 		});
 
 		if (this.config.S3_AUTO_CREATE_BUCKET) {

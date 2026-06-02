@@ -1,13 +1,5 @@
-export type {
-	CleanupRequest,
-	CleanupResponse,
-	GetSignedUrlRequest,
-	GetSignedUrlResponse,
-} from "./schemas.js";
+export type { GetSignedUrlRequest, GetSignedUrlResponse } from "./schemas.js";
 export {
-	cleanupBodySchema,
-	cleanupRequestSchema,
-	cleanupResponseSchema,
 	getSignedUrlBodySchema,
 	getSignedUrlRequestSchema,
 	getSignedUrlResponseSchema,

@@ -50,31 +50,19 @@ src/
 ### upload
 | Method | Path | Description |
 |--------|------|-------------|
-| POST | `/upload/signed-url` | Generate presigned S3 upload URL |
-| POST | `/uploads/file` | Multipart file upload to S3 (500 MB limit) |
-| POST | `/cleanup` | Remove uploaded S3 assets |
+| POST | `/upload/signed-url` | Generate presigned S3 PUT URL. Client uploads file directly to MinIO/S3 |
 
 Controller: `src/features/upload/adapters/inbound/http/upload.controller.ts`
-
-### edit-video
-| Method | Path | Description |
-|--------|------|-------------|
-| POST | `/edit-video` | Start FFmpeg edit-video processing job |
-| GET | `/edit-video/progress/:jobId` | Poll job progress from Redis |
-
-Controller: `src/features/edit-video/adapters/inbound/http/edit-video.controller.ts`
-
-Source processors (HLS, DASH, image, audio, `internal://blank`):
-`src/features/edit-video/adapters/outbound/ffmpeg/source-processors/`
 
 ### render
 | Method | Path | Description |
 |--------|------|-------------|
 | POST | `/render` | Start render job; returns `{ id }`. If `saveMetadata` present, publishes `export.started` to RabbitMQ |
 | GET | `/render` | Poll render job status |
-| DELETE | `/render` | Cancel render job — kills FFmpeg via AbortSignal, marks Redis state CANCELLED |
 
 Controller: `src/features/render/adapters/inbound/http/render.controller.ts`
+
+FFmpeg source processors (HLS, DASH, image, audio): `src/infrastructure/ffmpeg/source-processors/`
 
 ### preview
 | Method | Path | Description |
@@ -86,13 +74,6 @@ Controller: `src/features/preview/adapters/inbound/http/preview.controller.ts`
 
 Outbound adapter: `src/features/preview/adapters/outbound/http/HttpPreviewSourceAdapter.ts` (implements `PreviewSourcePort` with `play()` + `fetchManifest()`). Same adapter is used against real Core/VOD and against `apps/core-mock`/`apps/mock-vod`. No demo branches.
 
-### editor-export
-| Method | Path | Description |
-|--------|------|-------------|
-| POST | `/editor/export` | Export editor state to video via render pipeline |
-
-Controller: `src/features/editor-export/adapters/inbound/http/editor-export.controller.ts`
-
 ## Infrastructure Adapters
 
 | File | Purpose |
@@ -101,7 +82,6 @@ Controller: `src/features/editor-export/adapters/inbound/http/editor-export.cont
 | `src/infrastructure/messaging/RabbitMQPublisher.ts` | RabbitMQ AMQP publisher — exchange `video-editor` (topic), routing keys: `export.started`, `export.completed`, `export.failed`. See *Messaging* below |
 | `src/infrastructure/ffmpeg/FfmpegVideoProcessor.ts` | FFmpeg video processing via raw `spawn` |
 | `src/features/render/adapters/outbound/redis/RedisRenderJobStateAdapter.ts` | Render job state in Redis |
-| `src/features/edit-video/adapters/outbound/redis/RedisEditVideoJobStateAdapter.ts` | Edit-video job progress in Redis |
 | `src/infrastructure/fastify/fastify.ts` | Typed Fastify instance factory |
 
 ## Shared Domain (`src/shared/`)

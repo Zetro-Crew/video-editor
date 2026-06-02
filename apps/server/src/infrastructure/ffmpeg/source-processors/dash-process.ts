@@ -2,7 +2,7 @@ import { promises as fsp } from "node:fs";
 import type { VideoSource } from "@video-editor/contract/internal/edit-video";
 import { Logger } from "@ztube/observability";
 import type { EnvConfig } from "../../../config/env.ts";
-import { validateMpdRestrictions } from "../../../features/edit-video/domain/video-segment.policy.ts";
+import { validateMpdRestrictions } from "../../../features/render/domain/video-segment.policy.ts";
 import { FFMPEG_COMMAND, FFMPEG_FLAG } from "../ffmpeg.consts.ts";
 import { runFfmpeg } from "../ffmpeg.utils.ts";
 
@@ -17,7 +17,9 @@ export const processMpdSource = async (
 ): Promise<void> => {
 	Logger.logInfo("[ffmpeg] processing MPD stream", { url: source.url });
 
-	await validateMpdRestrictions(source.url);
+	if (config.ENABLE_MPD_RESTRICTIONS) {
+		await validateMpdRestrictions(source.url);
+	}
 	const mpdCrf = hasMpdSource ? config.MPD_TRANSCODE_CRF_MULTI : config.MPD_TRANSCODE_CRF_SINGLE;
 	Logger.logInfo("[ffmpeg] transcoding MPD to MP4", { crf: mpdCrf });
 

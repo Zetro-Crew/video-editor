@@ -53,12 +53,9 @@ export const renderController: FastifyPluginAsync<RenderControllerOptions> = asy
 ): Promise<void> => {
 	const { videoRenderUseCase, renderJobStatePort, s3OutputPrefix, exportEventPublisher } = opts;
 
-	const abortRegistry = new Map<string, AbortController>();
-
 	const runRender = async (
 		jobId: string,
 		request: RenderRequest,
-		signal: AbortSignal,
 		exportType: "mp4" | "webp",
 		startPromise: Promise<void>,
 	): Promise<void> => {
@@ -68,58 +65,55 @@ export const renderController: FastifyPluginAsync<RenderControllerOptions> = asy
 		Logger.logInfo("[render] job started", { jobId, format: request.format });
 		const start = Date.now();
 
+		const awaitStart = async (): Promise<void> => {
+			try {
+				await startPromise;
+			} catch (publishErr) {
+				const message = publishErr instanceof Error ? publishErr.message : "publish failed";
+				Logger.logError(
+					"[render] export.started publish failed",
+					publishErr instanceof Error ? publishErr : new Error(message),
+					{ jobId },
+				);
+			}
+		};
+
 		try {
-			const result = await videoRenderUseCase.execute(
-				renderInput,
-				s3Key,
-				async (p) => {
-					if (!signal.aborted) {
-						await renderJobStatePort.saveState(jobId, {
-							status: "PROCESSING",
-							progress: p,
-						});
-					}
-				},
-				signal,
-			);
-			if (!signal.aborted) {
+			const result = await videoRenderUseCase.execute(renderInput, s3Key, async (p) => {
 				await renderJobStatePort.saveState(jobId, {
-					status: "COMPLETED",
-					progress: 100,
-					url: result.url,
+					status: "PROCESSING",
+					progress: p,
 				});
-				Logger.logInfo("[render] job completed", {
-					jobId,
-					durationMs: Date.now() - start,
-					url: result.url,
-				});
-				await startPromise;
-				await exportEventPublisher.publishExportCompleted({
-					jobId,
-					url: result.url,
-					exportType,
-				});
-			}
+			});
+			await renderJobStatePort.saveState(jobId, {
+				status: "COMPLETED",
+				progress: 100,
+				url: result.url,
+			});
+			Logger.logInfo("[render] job completed", {
+				jobId,
+				durationMs: Date.now() - start,
+				url: result.url,
+			});
+			await awaitStart();
+			await exportEventPublisher.publishExportCompleted({
+				jobId,
+				url: result.url,
+				exportType,
+			});
 		} catch (err) {
-			if (signal.aborted) {
-				Logger.logInfo("[render] job cancelled", { jobId, durationMs: Date.now() - start });
-				await renderJobStatePort.saveState(jobId, { status: "CANCELLED", progress: 0 });
-			} else {
-				const message = err instanceof Error ? err.message : "Render failed";
-				Logger.logError("[render] job failed", err instanceof Error ? err : new Error(message), {
-					jobId,
-					durationMs: Date.now() - start,
-				});
-				await renderJobStatePort.saveState(jobId, {
-					status: "FAILED",
-					progress: 0,
-					error: message,
-				});
-				await startPromise;
-				await exportEventPublisher.publishExportFailed({ jobId, error: message });
-			}
-		} finally {
-			abortRegistry.delete(jobId);
+			const message = err instanceof Error ? err.message : "Render failed";
+			Logger.logError("[render] job failed", err instanceof Error ? err : new Error(message), {
+				jobId,
+				durationMs: Date.now() - start,
+			});
+			await renderJobStatePort.saveState(jobId, {
+				status: "FAILED",
+				progress: 0,
+				error: message,
+			});
+			await awaitStart();
+			await exportEventPublisher.publishExportFailed({ jobId, error: message });
 		}
 	};
 
@@ -148,9 +142,6 @@ export const renderController: FastifyPluginAsync<RenderControllerOptions> = asy
 			progress: 0,
 		});
 
-		const abortController = new AbortController();
-		abortRegistry.set(jobId, abortController);
-
 		req.log.info({ jobId, format }, "render job accepted");
 
 		const exportType: "mp4" | "webp" = format === "webp" ? "webp" : "mp4";
@@ -173,7 +164,7 @@ export const renderController: FastifyPluginAsync<RenderControllerOptions> = asy
 			});
 		}
 
-		void runRender(jobId, renderRequest, abortController.signal, exportType, startPromise);
+		void runRender(jobId, renderRequest, exportType, startPromise);
 
 		return reply.status(HttpStatus.ACCEPTED).send({ id: jobId });
 	});
@@ -197,26 +188,5 @@ export const renderController: FastifyPluginAsync<RenderControllerOptions> = asy
 			error: state.error,
 			presigned_url: state.url,
 		});
-	});
-
-	fastify.delete("/render", async (req: FastifyRequest, reply: FastifyReply) => {
-		const { id: jobId } = req.query as StatusQuery;
-
-		if (!jobId) {
-			return reply.status(HttpStatus.BAD_REQUEST).send({ error: "id query param is required" });
-		}
-
-		const controller = abortRegistry.get(jobId);
-		if (controller) {
-			controller.abort();
-		} else {
-			const state = await renderJobStatePort.getState(jobId);
-			if (!state) {
-				return reply.status(HttpStatus.NOT_FOUND).send({ error: "Job not found" });
-			}
-		}
-
-		req.log.info({ jobId }, "render job cancel requested");
-		return reply.status(HttpStatus.NO_CONTENT).send();
 	});
 };

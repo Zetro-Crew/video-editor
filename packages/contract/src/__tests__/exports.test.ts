@@ -9,7 +9,6 @@ describe("package.json subpath exports", () => {
 		"@video-editor/contract/internal/edit-video",
 		"@video-editor/contract/internal/render",
 		"@video-editor/contract/internal/upload",
-		"@video-editor/contract/internal/editor-export",
 		"@video-editor/contract/internal/shared",
 	];
 

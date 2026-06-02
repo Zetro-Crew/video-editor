@@ -4,7 +4,7 @@ import type { VideoRenderPort } from "../../../../shared/application/ports/outbo
 import {
 	calculateKeepSegments,
 	calculateTotalDurationSegments,
-} from "../../../edit-video/domain/video-segment.policy.ts";
+} from "../../domain/video-segment.policy.ts";
 
 export interface VideoRenderInput {
 	sources: VideoSource[];

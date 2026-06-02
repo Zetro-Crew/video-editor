@@ -1,11 +1,9 @@
 import path from "node:path";
 import {
-	type CleanupRequest,
-	cleanupRequestSchema,
 	type GetSignedUrlRequest,
 	getSignedUrlRequestSchema,
 } from "@video-editor/contract/internal/upload";
-import type { FastifyPluginAsync, FastifyReply, FastifyRequest } from "fastify";
+import type { FastifyPluginAsync, FastifyReply } from "fastify";
 import type { Request } from "../../../../../infrastructure/fastify/fastify.ts";
 import { HttpStatus } from "../../../../../shared/utils/http-status.ts";
 import type { UploadUseCase } from "../../../application/use-cases/UploadUseCase.ts";
@@ -93,67 +91,4 @@ export const uploadController: FastifyPluginAsync<UploadControllerOptions> = asy
 			}
 		},
 	);
-
-	fastify.post(
-		"/cleanup",
-		{ schema: cleanupRequestSchema },
-		async (request: Request<CleanupRequest>, reply: FastifyReply) => {
-			const { s3Keys } = request.body;
-
-			if (!Array.isArray(s3Keys) || s3Keys.length === 0) {
-				return reply.status(HttpStatus.BAD_REQUEST).send({ error: "s3Keys array is required" });
-			}
-
-			const result = await uploadUseCase.deleteFiles({ s3Keys });
-			return reply.status(HttpStatus.OK).send(result);
-		},
-	);
-
-	fastify.post("/uploads/file", async (request: FastifyRequest, reply: FastifyReply) => {
-		try {
-			const parts = request.parts();
-			let fileName: string | undefined;
-			let contentType: string | undefined;
-			let uploadResult: Awaited<ReturnType<UploadUseCase["uploadFile"]>> | undefined;
-
-			for await (const part of parts) {
-				if (part.type === "file" && part.fieldname === "file") {
-					fileName = part.filename;
-					contentType = part.mimetype;
-
-					if (!isAllowedUpload(fileName, contentType)) {
-						return reply.status(HttpStatus.BAD_REQUEST).send({
-							error: `File type not allowed: ${contentType || path.extname(fileName).toLowerCase()}. Allowed types: ${ALLOWED_MIMES.join(", ")}`,
-						});
-					}
-
-					uploadResult = await uploadUseCase.uploadFile({
-						filename: fileName,
-						mimetype: contentType,
-						stream: part.file,
-					});
-				} else if (part.type === "field") {
-					void part.value;
-				}
-			}
-
-			if (!fileName || !contentType) {
-				return reply.status(HttpStatus.BAD_REQUEST).send({ error: "file field is required" });
-			}
-			if (!uploadResult) {
-				return reply
-					.status(HttpStatus.INTERNAL_SERVER_ERROR)
-					.send({ error: "Upload failed: no result returned" });
-			}
-
-			return reply.status(HttpStatus.OK).send({
-				success: true,
-				upload: { ...uploadResult, folder: null },
-			});
-		} catch (err) {
-			return reply.status(HttpStatus.INTERNAL_SERVER_ERROR).send({
-				error: err instanceof Error ? err.message : "Unknown error",
-			});
-		}
-	});
 };

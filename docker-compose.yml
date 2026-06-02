@@ -8,7 +8,8 @@ services:
     environment:
       MINIO_ACCESS_KEY: minioadmin
       MINIO_SECRET_KEY: minioadmin123
-    command: server /data
+      MINIO_API_CORS_ALLOW_ORIGIN: "http://localhost:3000,http://localhost:8080"
+    command: server /data --console-address ":9001"
     volumes:
       - minio-data:/data
 

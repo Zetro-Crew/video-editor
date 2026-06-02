@@ -86,7 +86,7 @@ React Query via `src/components/query-provider.tsx`. Server state for API calls.
 
 ## Uploads
 
-`src/utils/upload-service.ts` — routes to `POST /api/uploads/file` (file) or `POST /api/uploads/url` (URL). UserId currently hardcoded.
+`src/utils/upload-service.ts` — two-phase presigned-URL flow: `POST /upload/signed-url` (gets MinIO PUT URL) → axios PUT direct to MinIO. Browser uploads never traverse the server. Requires MinIO CORS allowing the frontend origin (configured in root `docker-compose.yml`).
 
 ## Key Dependencies
 

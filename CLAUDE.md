@@ -86,7 +86,7 @@ MinIO (S3-compatible storage) and Redis must be running before the app works:
 docker compose up -d
 ```
 
-Configure `apps/server/.env`. Frontend needs no `.env` in dev. The server defaults to `http://localhost:4001`. Vite proxies `/render`, `/editor`, and `/uploads` to it during local development; `/api/media` proxies to the media API.
+Configure `apps/server/.env`. Frontend needs no `.env` in dev. The server defaults to `http://localhost:4001`. Vite proxies `/render`, `/editor`, and `/upload` to it during local development. Uploads use the presigned-URL flow: client requests a signed URL from `/upload/signed-url`, then PUTs the file directly to MinIO on `http://localhost:9000` (MinIO CORS in `docker-compose.yml` allows `http://localhost:3000` and `http://localhost:8080`).
 
 **Optional frontend env:**
 - `VITE_EDITOR_PARENT_ORIGINS` — comma-separated allowed origins for iframe postMessage (required when embedding the editor in an iframe).
@@ -103,23 +103,17 @@ Vite + React 19 SPA on port 3000. Core feature is `src/features/editor/` — the
 
 Fastify + Node.js 22.18+ API on port 4000. Follows **hexagonal architecture** (Ports & Adapters): features live in `src/features/<name>/` with `adapters/inbound/http/` (controllers), `adapters/outbound/` (Redis, FFmpeg, S3), `application/use-cases/`, and `domain/`. Shared domain types and ports in `src/shared/`. Infrastructure adapters in `src/infrastructure/`.
 
-Five features: `upload`, `edit-video`, `render`, `preview`, `editor-export`.
+Three features: `upload`, `render`, `preview`.
 
 Routes:
 | Method | Path | Feature |
 |--------|------|---------|
 | POST | `/upload/signed-url` | upload |
-| POST | `/uploads/file` | upload |
-| POST | `/cleanup` | upload |
-| POST | `/edit-video` | edit-video |
-| GET | `/edit-video/progress/:jobId` | edit-video |
 | POST | `/render` | render |
 | GET | `/render` | render |
-| DELETE | `/render` | render |
 | POST | `/editor/preview-source` | preview |
 | GET | `/editor/segment` | preview |
 | GET | `/editor/demo-assets/:filename` | preview |
-| POST | `/editor/export` | editor-export |
 
 → See [apps/server/CLAUDE.md](apps/server/CLAUDE.md) for full detail.
 

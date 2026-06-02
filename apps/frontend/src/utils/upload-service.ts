@@ -1,4 +1,31 @@
+import type { GetSignedUrlResponse } from "@video-editor/contract/internal/upload";
 import axios from "axios";
+
+const EXT_MIME_FALLBACK: Record<string, string> = {
+	".mp4": "video/mp4",
+	".m4v": "video/x-m4v",
+	".webm": "video/webm",
+	".mov": "video/quicktime",
+	".mpd": "application/dash+xml",
+	".mp3": "audio/mpeg",
+	".m4a": "audio/mp4",
+	".wav": "audio/wav",
+	".ogg": "audio/ogg",
+	".aac": "audio/aac",
+	".flac": "audio/flac",
+	".jpg": "image/jpeg",
+	".jpeg": "image/jpeg",
+	".png": "image/png",
+	".gif": "image/gif",
+	".webp": "image/webp",
+};
+
+function resolveMimetype(file: File): string {
+	if (file.type) return file.type;
+	const dot = file.name.lastIndexOf(".");
+	const ext = dot >= 0 ? file.name.slice(dot).toLowerCase() : "";
+	return EXT_MIME_FALLBACK[ext] ?? "application/octet-stream";
+}
 
 type UploadProgressCallback = (uploadId: string, progress: number) => void;
 
@@ -33,12 +60,20 @@ async function processFileUpload(
 	file: File,
 	callbacks: UploadCallbacks,
 ): Promise<UploadData> {
+	const mimetype = resolveMimetype(file);
 	try {
-		const formData = new FormData();
-		formData.append("userId", "PJ1nkaufw0hZPyhN7bWCP");
-		formData.append("file", file);
+		const { data: signed } = await axios.post<GetSignedUrlResponse>(
+			"/upload/signed-url",
+			{ filename: file.name, mimetype },
+			{ validateStatus: () => true },
+		);
 
-		const uploadResponse = await axios.post("/uploads/file", formData, {
+		if (!signed?.uploadUrl) {
+			throw new Error("Failed to get signed upload URL");
+		}
+
+		const putResponse = await axios.put(signed.uploadUrl, file, {
+			headers: { "Content-Type": mimetype },
 			onUploadProgress: (progressEvent) => {
 				const percent = Math.round((progressEvent.loaded * 100) / (progressEvent.total || 1));
 				callbacks.onProgress(uploadId, percent);
@@ -46,26 +81,19 @@ async function processFileUpload(
 			validateStatus: () => true,
 		});
 
-		if (uploadResponse.status < 200 || uploadResponse.status >= 300) {
-			throw new Error(`Upload failed with status ${uploadResponse.status}`);
+		if (putResponse.status < 200 || putResponse.status >= 300) {
+			throw new Error(`Upload failed with status ${putResponse.status}`);
 		}
 
-		const { upload: uploadInfo } = uploadResponse.data;
-
-		if (!uploadInfo) {
-			throw new Error("Upload route returned no upload payload");
-		}
-
-		// Construct upload data from uploadInfo
-		const uploadData = {
-			fileName: uploadInfo.fileName,
-			filePath: uploadInfo.filePath,
+		const uploadData: UploadData = {
+			fileName: signed.filename,
+			filePath: signed.s3Key,
 			fileSize: file.size,
-			contentType: uploadInfo.contentType,
-			url: uploadInfo.url,
-			metadata: { uploadedUrl: uploadInfo.url },
-			folder: uploadInfo.folder || null,
-			type: uploadInfo.contentType.split("/")[0],
+			contentType: mimetype,
+			url: signed.publicUrl,
+			metadata: { uploadedUrl: signed.publicUrl },
+			folder: null,
+			type: mimetype.split("/")[0],
 			method: "direct",
 			origin: "user",
 			status: "uploaded",

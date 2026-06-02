@@ -3,8 +3,17 @@ kind: Deployment
 metadata:
   name: video-editor-frontend
   namespace: # TODO: your-ocp-namespace
+  labels:
+    app: video-editor-frontend
 spec:
-  replicas: 1
+  replicas: 2
+  revisionHistoryLimit: 10
+  progressDeadlineSeconds: 600
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 50%
   selector:
     matchLabels:
       app: video-editor-frontend
@@ -15,6 +24,15 @@ spec:
     spec:
       imagePullSecrets:
         - name: internal-registry-secret
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    app: video-editor-frontend
+                topologyKey: kubernetes.io/hostname
       containers:
         - name: frontend
           image: # TODO: your-registry.internal/video-editor-frontend:latest
