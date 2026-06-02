@@ -4,6 +4,7 @@ import { ADD_AUDIO, ADD_VIDEO } from "@designcombo/state";
 import { generateId } from "@designcombo/timeline";
 import type { ITrackItem } from "@designcombo/types";
 import type { PreviewItemPayload } from "@video-editor/contract/iframe/from-parent";
+import { resetEditorForNewProject } from "../state/reset-editor";
 import { resolvePreviewSource } from "./preview-source-api";
 
 export type ExternalMetadata = {
@@ -374,4 +375,5 @@ export const clearProject = (stateManager: StateManager) => {
 			kind: "design:load",
 		},
 	);
+	resetEditorForNewProject();
 };

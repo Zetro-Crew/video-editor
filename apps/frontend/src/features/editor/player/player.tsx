@@ -11,6 +11,7 @@ const Player = () => {
 
 	useEffect(() => {
 		setPlayerRef(playerRef as React.RefObject<PlayerRef>);
+		return () => setPlayerRef(null);
 	}, [setPlayerRef]);
 
 	return (

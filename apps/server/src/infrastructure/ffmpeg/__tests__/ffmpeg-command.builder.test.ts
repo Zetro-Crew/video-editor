@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
-import type { EnvConfig } from "../../../config/env.ts";
+import type { CommonEnvConfig } from "../../../config/env.ts";
 import { FfmpegCommandBuilder } from "../ffmpeg-command.builder.ts";
 
 const config = {
 	FFMPEG_PRESET: "veryfast",
 	FFMPEG_CRF: "20",
 	FFMPEG_AUDIO_BITRATE: "192k",
-} as unknown as EnvConfig;
+} as unknown as CommonEnvConfig;
 
 const buildMp4Args = (needsProcessing: boolean, withWatermark = false): string[] => {
 	const builder = new FfmpegCommandBuilder(config);

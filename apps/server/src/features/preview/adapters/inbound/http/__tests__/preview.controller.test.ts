@@ -1,10 +1,10 @@
 import Fastify from "fastify";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { EnvConfig } from "../../../../../../config/env.ts";
+import type { ApiEnvConfig } from "../../../../../../config/env.ts";
 import { InMemoryStorageAdapter } from "../../../../../../infrastructure/storage/__tests__/InMemoryStorageAdapter.ts";
 import { previewController } from "../preview.controller.ts";
 
-function makeConfig(): EnvConfig {
+function makeConfig(): ApiEnvConfig {
 	return {
 		CORE_BASE_URL: "http://core.local/private",
 		SERVER_BASE_URL: "http://server.local",
@@ -12,7 +12,7 @@ function makeConfig(): EnvConfig {
 		PREVIEW_JOB_TTL_SECONDS: 86400,
 		S3_PREVIEW_PREFIX: "preview",
 		PREVIEW_SIGNING_SECRET: "test-secret-for-url-signing-32characters",
-	} as unknown as EnvConfig;
+	} as unknown as ApiEnvConfig;
 }
 
 describe("previewController POST /editor/preview-source", () => {

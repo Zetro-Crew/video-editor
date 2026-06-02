@@ -1,71 +1,24 @@
-import { spawn } from "node:child_process";
 import fs, { existsSync, promises as fsp } from "node:fs";
 import path from "node:path";
-import { PassThrough } from "node:stream";
 import type { Overlay, VideoSource } from "@video-editor/contract/internal/edit-video";
 import type { TimeRange } from "@video-editor/contract/internal/shared";
 import sharp from "sharp";
-import type { EnvConfig } from "../../config/env.ts";
+import type { CommonEnvConfig } from "../../config/env.ts";
 import type { StoragePort } from "../../shared/application/ports/outbound/StoragePort.ts";
 import { normalizeFfmpegDuration, normalizeFfmpegTime } from "../../shared/utils/time.utils.ts";
 import { FFMPEG_COMMAND, FFMPEG_FLAG } from "./ffmpeg.consts.ts";
-import { ffmpegSemaphore, getFfmpegPath, hasAudioStream, runFfmpeg } from "./ffmpeg.utils.ts";
+import { type FfmpegRunner, hasAudioStream } from "./ffmpeg.utils.ts";
 import { FfmpegCommandBuilder } from "./ffmpeg-command.builder.ts";
 import type { PreparedOverlayInput } from "./overlays/overlay.service.ts";
 
 const FFMPEG_PREFLIGHT_CONCAT = process.env.FFMPEG_PREFLIGHT_CONCAT !== "0";
 
-const parseProgressFromLine = (
-	line: string,
-	totalDuration: number,
-	onProgress: (percent: number) => void,
-): void => {
-	if (totalDuration <= 0) return;
-
-	const match = /time=(\d{2}:\d{2}:\d{2}\.\d+)/.exec(line);
-	if (!match?.[1]) return;
-
-	const [hoursText, minsText, secsText] = match[1].split(":");
-	if (hoursText === undefined || minsText === undefined || secsText === undefined) {
-		return;
-	}
-
-	const hours = Number.parseFloat(hoursText);
-	const mins = Number.parseFloat(minsText);
-	const secs = Number.parseFloat(secsText);
-	const currentSeconds = hours * 3600 + mins * 60 + secs;
-	const percent = (currentSeconds / totalDuration) * 100;
-	onProgress(Math.min(99, Math.max(0, Math.round(percent))));
-};
-
-const makeStderrHandler = (
-	totalDuration: number,
-	onProgress?: (percent: number) => void,
-): { onData: (chunk: Buffer) => void; getBuffer: () => string } => {
-	let stderrBuffer = "";
-	let lineBuffer = "";
-	return {
-		onData: (chunk: Buffer): void => {
-			const text = chunk.toString();
-			stderrBuffer = `${stderrBuffer + text}\n`.slice(-32768);
-			if (onProgress) {
-				lineBuffer += text;
-				const lines = lineBuffer.split("\n");
-				lineBuffer = lines.pop() ?? "";
-				for (const line of lines) {
-					parseProgressFromLine(line, totalDuration, onProgress);
-				}
-			}
-		},
-		getBuffer: () => stderrBuffer,
-	};
-};
-
 export async function extractSegments(
 	sourcePath: string,
 	keepSegments: TimeRange[],
 	tempDir: string,
-	config: EnvConfig,
+	config: CommonEnvConfig,
+	runner: FfmpegRunner,
 	signal?: AbortSignal,
 ): Promise<string[]> {
 	return Promise.all(
@@ -98,7 +51,7 @@ export async function extractSegments(
 				segmentPath,
 			];
 
-			await runFfmpeg(args, 0, signal);
+			await runner.run(args, 0, signal);
 
 			return segmentPath;
 		}),
@@ -114,7 +67,7 @@ function validateConcatSegmentsExist(segmentPaths: string[]): void {
 	}
 }
 
-async function preflightConcat(concatFilePath: string): Promise<void> {
+async function preflightConcat(concatFilePath: string, runner: FfmpegRunner): Promise<void> {
 	const args = [
 		...FFMPEG_COMMAND.CONCAT_SAFE_0,
 		FFMPEG_FLAG.INPUT,
@@ -126,10 +79,14 @@ async function preflightConcat(concatFilePath: string): Promise<void> {
 		"null",
 		"-",
 	];
-	await runFfmpeg(args);
+	await runner.run(args);
 }
 
-const createConcatFile = async (segmentPaths: string[], tempDir: string): Promise<string> => {
+const createConcatFile = async (
+	segmentPaths: string[],
+	tempDir: string,
+	runner: FfmpegRunner,
+): Promise<string> => {
 	validateConcatSegmentsExist(segmentPaths);
 	const concatFile = path.join(tempDir, "concat.txt");
 	const content = segmentPaths
@@ -139,7 +96,7 @@ const createConcatFile = async (segmentPaths: string[], tempDir: string): Promis
 	await fsp.writeFile(concatFile, content, "utf8");
 	if (FFMPEG_PREFLIGHT_CONCAT) {
 		try {
-			await preflightConcat(concatFile);
+			await preflightConcat(concatFile, runner);
 		} catch (err) {
 			const msg = err instanceof Error ? err.message : String(err);
 			throw new Error(`Concat preflight failed: ${msg}. Set FFMPEG_PREFLIGHT_CONCAT=0 to skip.`);
@@ -180,153 +137,11 @@ const clampFrameTimeMs = (
 	return Math.min(maxFrameTimeMs, Math.max(0, Math.round(frameTimeMs)));
 };
 
-const runCommandToStream = async (
-	args: string[],
-	totalDuration: number,
-	storage: StoragePort,
-	s3Key: string,
-	contentType: string,
-	onProgress?: (percent: number) => void,
-	signal?: AbortSignal,
-): Promise<void> => {
-	if (signal?.aborted) throw new Error("Render cancelled");
-	await ffmpegSemaphore.acquire();
-	if (signal?.aborted) {
-		ffmpegSemaphore.release();
-		throw new Error("Render cancelled");
-	}
-	try {
-		const pass = new PassThrough();
-		const ffmpegPath = getFfmpegPath();
-		// Append pipe:1 so FFmpeg writes encoded output to its stdout
-		const fullArgs = [...args, FFMPEG_FLAG.PIPE_OUTPUT];
-
-		console.log("[ffmpeg]", ffmpegPath, fullArgs.join(" "));
-		const proc = spawn(ffmpegPath, fullArgs);
-
-		const ffmpegPromise = new Promise<void>((resolve, reject) => {
-			const { onData, getBuffer } = makeStderrHandler(totalDuration, onProgress);
-
-			proc.stderr.on("data", onData);
-
-			proc.stdout.pipe(pass, { end: false });
-
-			const isCancelled = { value: false };
-
-			const onAbort = (): void => {
-				isCancelled.value = true;
-				proc.kill("SIGKILL");
-				pass.destroy(new Error("Render cancelled"));
-				reject(new Error("Render cancelled"));
-			};
-			signal?.addEventListener("abort", onAbort, { once: true });
-
-			proc.on("close", (code) => {
-				signal?.removeEventListener("abort", onAbort);
-				if (isCancelled.value) return;
-				if (code === 0) {
-					pass.end();
-					resolve();
-				} else {
-					const buf = getBuffer();
-					const err = new Error(
-						buf.trim().length > 0
-							? `FFmpeg exited with code ${code}\n\nFFmpeg stderr (tail):\n${buf}`
-							: `FFmpeg exited with code ${code}`,
-					);
-					pass.destroy(err);
-					reject(err);
-				}
-			});
-
-			proc.on("error", (err) => {
-				signal?.removeEventListener("abort", onAbort);
-				if (!isCancelled.value) {
-					pass.destroy(err);
-					reject(err);
-				}
-			});
-		});
-
-		try {
-			await Promise.all([ffmpegPromise, storage.uploadStream(pass, s3Key, contentType)]);
-		} catch (err) {
-			try {
-				proc.kill("SIGKILL");
-			} catch {}
-			pass.destroy();
-			throw err;
-		}
-	} finally {
-		ffmpegSemaphore.release();
-	}
-};
-
-const runCommandToFile = async (
-	args: string[],
-	outputPath: string,
-	totalDuration: number,
-	onProgress?: (percent: number) => void,
-	signal?: AbortSignal,
-): Promise<void> => {
-	if (signal?.aborted) throw new Error("Render cancelled");
-	await ffmpegSemaphore.acquire();
-	if (signal?.aborted) {
-		ffmpegSemaphore.release();
-		throw new Error("Render cancelled");
-	}
-	try {
-		await new Promise<void>((resolve, reject) => {
-			const ffmpegPath = getFfmpegPath();
-			const fullArgs = [...args, outputPath];
-
-			console.log("[ffmpeg]", ffmpegPath, fullArgs.join(" "));
-			const proc = spawn(ffmpegPath, fullArgs);
-
-			const { onData, getBuffer } = makeStderrHandler(totalDuration, onProgress);
-
-			proc.stderr.on("data", onData);
-
-			const isCancelled = { value: false };
-
-			const onAbort = (): void => {
-				isCancelled.value = true;
-				proc.kill("SIGKILL");
-				reject(new Error("Render cancelled"));
-			};
-			signal?.addEventListener("abort", onAbort, { once: true });
-
-			proc.on("close", (code) => {
-				signal?.removeEventListener("abort", onAbort);
-				if (isCancelled.value) return;
-				if (code === 0) {
-					resolve();
-				} else {
-					const buf = getBuffer();
-					reject(
-						new Error(
-							buf.trim().length > 0
-								? `FFmpeg exited with code ${code}\n\nFFmpeg stderr (tail):\n${buf}`
-								: `FFmpeg exited with code ${code}`,
-						),
-					);
-				}
-			});
-
-			proc.on("error", (err) => {
-				signal?.removeEventListener("abort", onAbort);
-				if (!isCancelled.value) reject(err);
-			});
-		});
-	} finally {
-		ffmpegSemaphore.release();
-	}
-};
-
 const extractFrameToImage = async (
 	inputPath: string,
 	outputPath: string,
 	frameTimeMs: number,
+	runner: FfmpegRunner,
 ): Promise<void> => {
 	const seekTimeSeconds = String(normalizeFfmpegTime(frameTimeMs / 1000));
 
@@ -343,13 +158,14 @@ const extractFrameToImage = async (
 		"image2",
 	];
 
-	await runFfmpeg([...args, outputPath]);
+	await runner.run([...args, outputPath]);
 };
 
 const packToDash = async (
 	inputMp4: string,
 	outputDir: string,
 	videoHasAudio: boolean,
+	runner: FfmpegRunner,
 	segmentDurationS = 4,
 ): Promise<void> => {
 	const manifestPath = path.join(outputDir, "manifest.mpd");
@@ -375,7 +191,7 @@ const packToDash = async (
 		manifestPath,
 	];
 
-	await runFfmpeg(args);
+	await runner.run(args);
 };
 
 const uploadDashToS3 = async (
@@ -410,14 +226,15 @@ export const finalRenderToS3 = async (
 	frameTimeMs: number | undefined,
 	s3Key: string,
 	storage: StoragePort,
-	config: EnvConfig,
+	config: CommonEnvConfig,
+	runner: FfmpegRunner,
 	expiresInSeconds = 86400,
 	onProgress?: (percent: number) => void,
 	cropRegion?: { x: number; y: number; width: number; height: number },
 	signal?: AbortSignal,
 	wmLogoPath?: string,
 ): Promise<{ s3Key: string; url: string }> => {
-	const concatFile = await createConcatFile(segmentPaths, tempDir);
+	const concatFile = await createConcatFile(segmentPaths, tempDir, runner);
 
 	const videoHasAudio =
 		segmentPaths.length > 0 ? await hasAudioStream(segmentPaths[0]).catch(() => false) : false;
@@ -465,8 +282,8 @@ export const finalRenderToS3 = async (
 		const renderedWebpPath = path.join(tempDir, `rendered-${ts}.webp`);
 		const safeFrameTimeMs = clampFrameTimeMs(frameTimeMs, totalDuration);
 
-		await runCommandToFile(args, renderedVideoPath, totalDuration, onProgress, signal);
-		await extractFrameToImage(renderedVideoPath, renderedFramePath, safeFrameTimeMs);
+		await runner.runToFile(args, renderedVideoPath, totalDuration, onProgress, signal);
+		await extractFrameToImage(renderedVideoPath, renderedFramePath, safeFrameTimeMs, runner);
 		await sharp(renderedFramePath).webp().toFile(renderedWebpPath);
 		await storage.uploadStream(
 			fs.createReadStream(renderedWebpPath),
@@ -479,17 +296,17 @@ export const finalRenderToS3 = async (
 		const dashOutputDir = path.join(tempDir, `dash-${ts}`);
 		await fsp.mkdir(dashOutputDir, { recursive: true });
 
-		await runCommandToFile(args, renderedVideoPath, totalDuration, onProgress, signal);
+		await runner.runToFile(args, renderedVideoPath, totalDuration, onProgress, signal);
 
 		const renderedHasAudio = await hasAudioStream(renderedVideoPath).catch(() => false);
-		await packToDash(renderedVideoPath, dashOutputDir, renderedHasAudio);
+		await packToDash(renderedVideoPath, dashOutputDir, renderedHasAudio, runner);
 		await uploadDashToS3(dashOutputDir, s3Key, storage);
 
 		const manifestKey = `${s3Key}/manifest.mpd`;
 		const url = await storage.getPresignedUrl(manifestKey, expiresInSeconds);
 		return { s3Key: manifestKey, url };
 	} else {
-		await runCommandToStream(
+		await runner.runToStream(
 			args,
 			totalDuration,
 			storage,

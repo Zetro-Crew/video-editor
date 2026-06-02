@@ -3,7 +3,7 @@ import type { VideoSource } from "@video-editor/contract/internal/edit-video";
 import sharp from "sharp";
 import type { StoragePort } from "../../../shared/application/ports/outbound/StoragePort.ts";
 import { FFMPEG_COMMAND, FFMPEG_FLAG } from "../ffmpeg.consts.ts";
-import { runFfmpeg } from "../ffmpeg.utils.ts";
+import type { FfmpegRunner } from "../ffmpeg.utils.ts";
 
 export const getImageExtension = (url: string): string => {
 	const clean = url.split("?")[0] || url;
@@ -26,6 +26,7 @@ export const processImageSource = async (
 	sourcePath: string,
 	tempDir: string,
 	storage: StoragePort,
+	runner: FfmpegRunner,
 ): Promise<void> => {
 	const originalExt = getImageExtension(source.url);
 	const downloadedImagePath = createImagePath(tempDir, originalExt);
@@ -65,5 +66,5 @@ export const processImageSource = async (
 		sourcePath,
 	];
 
-	await runFfmpeg(args);
+	await runner.run(args);
 };

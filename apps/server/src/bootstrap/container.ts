@@ -1,5 +1,5 @@
-import { createZMonitor } from "@ztube/observability";
-import type { EnvConfig } from "../config/env.ts";
+import { createZMonitor, Logger } from "@ztube/observability";
+import type { ApiEnvConfig, CommonEnvConfig, WorkerEnvConfig } from "../config/env.ts";
 import { GeneratePreviewUseCase } from "../features/preview/application/use-cases/GeneratePreviewUseCase.ts";
 import { RenderDLQConsumer } from "../features/render/adapters/inbound/amqp/RenderDLQConsumer.ts";
 import { RenderRequestedConsumer } from "../features/render/adapters/inbound/amqp/RenderRequestedConsumer.ts";
@@ -8,11 +8,12 @@ import type { RenderCommandPort } from "../features/render/application/ports/out
 import { VideoRenderUseCase } from "../features/render/application/use-cases/VideoRenderUseCase.ts";
 import { UploadUseCase } from "../features/upload/application/use-cases/UploadUseCase.ts";
 import { FfmpegVideoProcessingAdapter } from "../infrastructure/ffmpeg/FfmpegVideoProcessingAdapter.ts";
+import { FfmpegRunner } from "../infrastructure/ffmpeg/ffmpeg.utils.ts";
 import { RabbitMQPublisher } from "../infrastructure/messaging/RabbitMQPublisher.ts";
 import { S3StorageAdapter } from "../infrastructure/storage/S3StorageAdapter.ts";
 import type { StoragePort } from "../shared/application/ports/outbound/StoragePort.ts";
 
-function buildStorage(config: EnvConfig): StoragePort {
+function buildStorage(config: CommonEnvConfig): StoragePort {
 	return new S3StorageAdapter({
 		bucket: config.S3_BUCKET,
 		region: config.S3_REGION,
@@ -23,7 +24,7 @@ function buildStorage(config: EnvConfig): StoragePort {
 	});
 }
 
-function buildPublisher(config: EnvConfig): RabbitMQPublisher {
+function buildPublisher(config: CommonEnvConfig): RabbitMQPublisher {
 	return new RabbitMQPublisher(config.RABBITMQ_URL, createZMonitor, {
 		commandConfirmTimeoutMs: config.COMMAND_PUBLISH_CONFIRM_TIMEOUT_MS,
 		eventConfirmTimeoutMs: config.EVENT_PUBLISH_CONFIRM_TIMEOUT_MS,
@@ -40,7 +41,7 @@ export interface ApiContainer {
 	renderCommandPort: RenderCommandPort;
 }
 
-export function buildApiContainer(config: EnvConfig): ApiContainer {
+export function buildApiContainer(config: ApiEnvConfig): ApiContainer {
 	const storage = buildStorage(config);
 	const exportEventPublisher = buildPublisher(config);
 
@@ -69,10 +70,20 @@ export interface WorkerContainer {
 	renderDLQConsumer: RenderDLQConsumer;
 }
 
-export function buildWorkerContainer(config: EnvConfig): WorkerContainer {
+export function buildWorkerContainer(config: WorkerEnvConfig): WorkerContainer {
+	if (config.WORKER_CONCURRENCY > config.FFMPEG_MAX_CONCURRENT) {
+		Logger.logWarning(
+			"WORKER_CONCURRENCY exceeds FFMPEG_MAX_CONCURRENT — extra prefetched messages will block on the FFmpeg semaphore and risk x-message-ttl redeliveries",
+			{
+				WORKER_CONCURRENCY: config.WORKER_CONCURRENCY,
+				FFMPEG_MAX_CONCURRENT: config.FFMPEG_MAX_CONCURRENT,
+			},
+		);
+	}
 	const storage = buildStorage(config);
 	const exportEventPublisher = buildPublisher(config);
-	const videoProcessing = new FfmpegVideoProcessingAdapter(storage, config);
+	const ffmpegRunner = new FfmpegRunner({ maxConcurrent: config.FFMPEG_MAX_CONCURRENT });
+	const videoProcessing = new FfmpegVideoProcessingAdapter(storage, config, ffmpegRunner);
 	const videoRenderUseCase = new VideoRenderUseCase(videoProcessing);
 
 	const renderRequestedConsumer = new RenderRequestedConsumer({

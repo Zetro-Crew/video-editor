@@ -157,80 +157,9 @@ External teams subscribe to events by binding their own queue to the `video-edit
 
 ## Environment
 
-All variables are validated by Zod in [`src/config/env.ts`](./src/config/env.ts) — that file is the source of truth.
+All variables are validated by Zod in [`src/config/env.ts`](./src/config/env.ts) — that file is the source of truth. The schema is split into three Zod objects: `commonEnvSchema` (loaded by both processes), `apiEnvSchema` (extends common, loaded by `parseApiEnv()`), and `workerEnvSchema` (extends common, loaded by `parseWorkerEnv()`). Unknown env keys are silently stripped.
 
-### Server (API)
-
-| Variable | Default | Description |
-|---|---|---|
-| `PORT` | `4001` | HTTP port (API) |
-| `HOST` | `127.0.0.1` | Bind host |
-
-### FFmpeg / transcoding
-
-| Variable | Default | Description |
-|---|---|---|
-| `FFMPEG_PRESET` | `veryfast` | Encoder preset |
-| `FFMPEG_CRF` | `20` | Quality (lower = better) |
-| `FFMPEG_AUDIO_BITRATE` | `192k` | Audio bitrate |
-| `FFMPEG_MAX_CONCURRENT` | `2` | Max concurrent FFmpeg processes |
-| `MIN_TRANSCODE_SEGMENT_SECONDS` | `0.35` | Minimum segment length before transcoding |
-
-### Preview (MPD → HLS)
-
-| Variable | Default | Description |
-|---|---|---|
-| `CORE_BASE_URL` | required | Upstream Core base URL. **Includes the `/private` prefix.** Dev: `http://localhost:8002/private` |
-| `MOCK_VOD_BASE_URL` | optional | Boot-only — logs the active mock-vod fixture window when `CORE_BASE_URL` is localhost. Defaults to `http://localhost:5050` |
-| `SERVER_BASE_URL` | required | Public server URL — used in signed segment URLs |
-| `PREVIEW_SIGNING_SECRET` | required | HMAC-SHA256 secret for `/editor/segment` URL signing. Min 32 chars. Without this, the segment proxy would be an SSRF vector |
-| `MAX_PREVIEW_DURATION_MS` | `3600000` | Max preview window length (1h) |
-| `PREVIEW_JOB_TTL_SECONDS` | `86400` | Preview-job retention TTL |
-| `S3_PREVIEW_PREFIX` | `preview` | Key prefix for preview playlists/segments |
-
-### MPD transcoding (preview)
-
-| Variable | Default | Description |
-|---|---|---|
-| `ENABLE_MPD_RESTRICTIONS` | `false` | Apply preview-source restrictions when MPD is multi-period/multi-AS |
-| `TRANSCODE_TIMEOUT_MS` | `7200000` | MPD transcode hard timeout (2h) |
-| `MAX_TEMP_FILE_SIZE_MB` | `5000` | MPD transcode temp-file size cap |
-| `MPD_TRANSCODE_CRF_MULTI` | `10` | CRF when MPD has multiple representations |
-| `MPD_TRANSCODE_CRF_SINGLE` | `18` | CRF when MPD has a single representation |
-| `MPD_TRANSCODE_PRESET` | `medium` | FFmpeg preset for MPD transcoding |
-
-### S3 / MinIO
-
-| Variable | Default | Description |
-|---|---|---|
-| `S3_BUCKET` | required | Bucket name |
-| `S3_ENDPOINT` | required | Endpoint URL |
-| `S3_REGION` | `us-east-1` | Region |
-| `S3_FORCE_PATH_STYLE` | `true` | Path-style addressing (required for MinIO) |
-| `S3_ACCESS_KEY_ID` | required | Access key |
-| `S3_SECRET_ACCESS_KEY` | required | Secret |
-| `S3_UPLOAD_PREFIX` | `uploads` | Key prefix for uploaded assets |
-| `S3_OUTPUT_PREFIX` | `output` | Key prefix for render output |
-| `S3_AUTO_CREATE_BUCKET` | `true` | Auto-create bucket on startup if missing |
-| `RENDER_URL_EXPIRY_SECONDS` | `86400` | TTL for signed render output URLs |
-| `UPLOAD_MAX_SIZE_BYTES` | `524288000` | Max accepted upload size (500 MB). Enforced server-side and bound into the presigned PUT |
-
-### Messaging
-
-| Variable | Default | Description |
-|---|---|---|
-| `RABBITMQ_URL` | required | AMQP connection URL — neither API nor worker starts without it |
-| `COMMAND_PUBLISH_CONFIRM_TIMEOUT_MS` | `10000` | Per-attempt broker-confirm timeout for `publishCommand` (3 retries; exhaustion → 503) |
-| `EVENT_PUBLISH_CONFIRM_TIMEOUT_MS` | `30000` | Per-attempt broker-confirm timeout for event publishes |
-| `AMQP_INITIAL_CONNECT_TIMEOUT_MS` | `15000` | Initial AMQP connect timeout |
-| `RENDER_REQUEST_TTL_MS` | optional | If set, `x-message-ttl` on the `render.requested` queue |
-
-### Worker
-
-| Variable | Default | Description |
-|---|---|---|
-| `WORKER_CONCURRENCY` | `1` | AMQP prefetch + in-process render concurrency |
-| `WORKER_PROBE_PORT` | `8081` | Probe + metrics port |
+## Common (both API and Worker)
 
 ### Observability
 
@@ -240,7 +169,74 @@ All variables are validated by Zod in [`src/config/env.ts`](./src/config/env.ts)
 | `SERVICE_VERSION` | `1.0.0` | Logger / OTel service version |
 | `LOG_LEVEL` | `info` | Pino log level |
 | `OTEL_ENDPOINT` | optional | OTel collector endpoint. OTel is disabled when absent |
-| `PYROSCOPE_SERVER_ADDRESS` | optional | Pyroscope profiling endpoint |
+
+### FFmpeg / transcoding
+
+| Variable | Default | Description |
+|---|---|---|
+| `FFMPEG_PRESET` | `veryfast` | Encoder preset |
+| `FFMPEG_CRF` | `20` | Quality (lower = better) |
+| `FFMPEG_AUDIO_BITRATE` | `192k` | Audio bitrate |
+| `FFMPEG_MAX_CONCURRENT` | `2` | Max concurrent FFmpeg processes — drives the `FfmpegRunner` semaphore wired through DI |
+| `MIN_TRANSCODE_SEGMENT_SECONDS` | `0.35` | Minimum segment length before transcoding |
+
+### MPD / source transcoding
+
+| Variable | Default | Description |
+|---|---|---|
+| `ENABLE_MPD_RESTRICTIONS` | `false` | Apply restrictions when MPD is multi-period/multi-AS |
+| `TRANSCODE_TIMEOUT_MS` | `7200000` | MPD/HLS/audio transcode hard timeout (2h) |
+| `MAX_TEMP_FILE_SIZE_MB` | `5000` | MPD transcode temp-file size cap |
+| `MPD_TRANSCODE_CRF_MULTI` | `10` | CRF when MPD has multiple representations |
+| `MPD_TRANSCODE_CRF_SINGLE` | `18` | CRF when MPD has a single representation |
+| `MPD_TRANSCODE_PRESET` | `medium` | FFmpeg preset for MPD transcoding |
+
+### S3 / MinIO (shared connection)
+
+| Variable | Default | Description |
+|---|---|---|
+| `S3_BUCKET` | required | Bucket name |
+| `S3_ENDPOINT` | required | Endpoint URL |
+| `S3_REGION` | `us-east-1` | Region |
+| `S3_FORCE_PATH_STYLE` | `true` | Path-style addressing (required for MinIO) |
+| `S3_ACCESS_KEY_ID` | required | Access key |
+| `S3_SECRET_ACCESS_KEY` | required | Secret |
+| `S3_OUTPUT_PREFIX` | `output` | Key prefix for render output. **Worker writes; API derives idempotency keys.** Must match across both pods |
+| `RENDER_URL_EXPIRY_SECONDS` | `86400` | TTL for signed render output URLs |
+
+### Messaging
+
+| Variable | Default | Description |
+|---|---|---|
+| `RABBITMQ_URL` | required | AMQP connection URL — neither API nor worker starts without it |
+| `COMMAND_PUBLISH_CONFIRM_TIMEOUT_MS` | `10000` | Per-attempt broker-confirm timeout for `publishCommand` (3 retries; exhaustion → 503). Common because both processes share `buildPublisher()` |
+| `EVENT_PUBLISH_CONFIRM_TIMEOUT_MS` | `30000` | Per-attempt broker-confirm timeout for event publishes |
+| `AMQP_INITIAL_CONNECT_TIMEOUT_MS` | `15000` | Initial AMQP connect timeout |
+| `RENDER_REQUEST_TTL_MS` | optional | If set, `x-message-ttl` on the `render.requested` queue. Common because both processes assert topology |
+
+## API-only
+
+| Variable | Default | Description |
+|---|---|---|
+| `PORT` | `4001` | HTTP port |
+| `HOST` | `127.0.0.1` | Bind host |
+| `CORE_BASE_URL` | required | Upstream Core base URL. **Includes the `/private` prefix.** Dev: `http://localhost:8002/private` |
+| `MOCK_VOD_BASE_URL` | optional | Boot-only — logs the active mock-vod fixture window when `CORE_BASE_URL` is localhost. Defaults to `http://localhost:5050` |
+| `SERVER_BASE_URL` | required | Public server URL — used in signed segment URLs |
+| `PREVIEW_SIGNING_SECRET` | required | HMAC-SHA256 secret for `/editor/segment` URL signing. Min 32 chars. Without this, the segment proxy would be an SSRF vector |
+| `MAX_PREVIEW_DURATION_MS` | `3600000` | Max preview window length (1h) |
+| `PREVIEW_JOB_TTL_SECONDS` | `86400` | Preview-job retention TTL |
+| `S3_PREVIEW_PREFIX` | `preview` | Key prefix for preview playlists/segments |
+| `S3_UPLOAD_PREFIX` | `uploads` | Key prefix for uploaded assets |
+| `UPLOAD_MAX_SIZE_BYTES` | `524288000` | Max accepted upload size (500 MB). Enforced server-side and bound into the presigned PUT |
+| `S3_AUTO_CREATE_BUCKET` | `true` | Auto-create bucket on API startup if missing |
+
+## Worker-only
+
+| Variable | Default | Description |
+|---|---|---|
+| `WORKER_CONCURRENCY` | `1` | AMQP prefetch + in-process render concurrency |
+| `WORKER_PROBE_PORT` | `8081` | Probe + metrics port |
 
 ## Tests
 

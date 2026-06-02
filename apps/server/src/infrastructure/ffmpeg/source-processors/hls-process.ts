@@ -1,8 +1,8 @@
 import type { VideoSource } from "@video-editor/contract/internal/edit-video";
 import { Logger } from "@ztube/observability";
-import type { EnvConfig } from "../../../config/env.ts";
+import type { CommonEnvConfig } from "../../../config/env.ts";
 import { FFMPEG_COMMAND, FFMPEG_FLAG } from "../ffmpeg.consts.ts";
-import { runFfmpeg } from "../ffmpeg.utils.ts";
+import type { FfmpegRunner } from "../ffmpeg.utils.ts";
 
 export const isHlsUrl = (url: string): boolean => {
 	try {
@@ -15,7 +15,8 @@ export const isHlsUrl = (url: string): boolean => {
 export const processHlsSource = async (
 	source: VideoSource,
 	sourcePath: string,
-	config: EnvConfig,
+	config: CommonEnvConfig,
+	runner: FfmpegRunner,
 	signal?: AbortSignal,
 ): Promise<void> => {
 	Logger.logInfo("[ffmpeg] transcoding HLS to MP4", { url: source.url });
@@ -49,7 +50,7 @@ export const processHlsSource = async (
 		sourcePath,
 	];
 
-	await runFfmpeg(args, config.ENABLE_MPD_RESTRICTIONS ? config.TRANSCODE_TIMEOUT_MS : 0, signal);
+	await runner.run(args, config.ENABLE_MPD_RESTRICTIONS ? config.TRANSCODE_TIMEOUT_MS : 0, signal);
 
 	Logger.logInfo("[ffmpeg] HLS transcoded");
 };

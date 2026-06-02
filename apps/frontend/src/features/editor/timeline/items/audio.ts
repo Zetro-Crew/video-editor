@@ -29,6 +29,7 @@ class Audio extends Trimmable {
 
 	public scrollLeft = 0;
 	private isDirty = true;
+	private destroyed = false;
 	declare playbackRate: number;
 	public bars: any[] = [];
 
@@ -91,15 +92,18 @@ class Audio extends Trimmable {
 	private async initialize() {
 		try {
 			const audioData = await getAudioData(this.src);
+			if (this.destroyed) return;
 			this.barData = audioData;
 			this.bars = this.getBars(0, 0) as any;
 		} catch (error) {
+			if (this.destroyed) return;
 			this.barData = undefined;
 			this.bars = [];
 			if (!isLikelyHlsSrc(this.src)) {
 				console.error(`Failed to load audio waveform for ${this.src}:`, error);
 			}
 		}
+		if (this.destroyed) return;
 		this.canvas?.requestRenderAll();
 		this.onScrollChange({ scrollLeft: 0 });
 	}
@@ -263,6 +267,14 @@ class Audio extends Trimmable {
 	public onScale() {
 		this.bars = this.getBars(0, 0) as any;
 		this.onScrollChange({ scrollLeft: this.scrollLeft });
+	}
+
+	public destroy(): void {
+		this.destroyed = true;
+		this.offscreenCanvas = null;
+		this.offscreenCtx = null;
+		this.barData = undefined;
+		this.bars = [];
 	}
 }
 

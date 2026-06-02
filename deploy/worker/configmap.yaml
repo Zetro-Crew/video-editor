@@ -9,20 +9,14 @@ data:
   # AMQP prefetch and in-process render concurrency. Broker is the only backpressure.
   WORKER_CONCURRENCY: "1"
 
-  # Render output (must match the API's S3_OUTPUT_PREFIX — idempotency depends on
-  # a deterministic key derived from jobId).
+  # Render output. Must match the API's S3_OUTPUT_PREFIX — idempotency depends on
+  # a deterministic key derived from jobId.
   S3_BUCKET: "# TODO: your-bucket-name"
   S3_REGION: "us-east-1"
   S3_ENDPOINT: "# TODO: https://your-minio.internal"
   S3_FORCE_PATH_STYLE: "true"
-  S3_UPLOAD_PREFIX: "uploads"
   S3_OUTPUT_PREFIX: "output"
-  S3_AUTO_CREATE_BUCKET: "false"
   RENDER_URL_EXPIRY_SECONDS: "86400"
-
-  # Must match the API config — both processes assert the same render queue
-  # topology, so a mismatch causes PRECONDITION_FAILED on startup.
-  UPLOAD_MAX_SIZE_BYTES: "524288000"
 
   # FFmpeg
   FFMPEG_PRESET: "veryfast"
@@ -35,12 +29,4 @@ data:
   MPD_TRANSCODE_CRF_MULTI: "10"
   MPD_TRANSCODE_CRF_SINGLE: "18"
   MPD_TRANSCODE_PRESET: "medium"
-
-  # Preview-source vars are not used by the worker, but the same image's env
-  # schema requires them. Keep parity with server config for safety.
-  CORE_BASE_URL: "http://core:8080/private"
-  SERVER_BASE_URL: "http://video-editor-worker:8081"
-  MAX_PREVIEW_DURATION_MS: "3600000"
-  PREVIEW_JOB_TTL_SECONDS: "86400"
-  S3_PREVIEW_PREFIX: "preview"
   ENABLE_MPD_RESTRICTIONS: "true"

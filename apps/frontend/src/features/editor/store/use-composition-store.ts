@@ -5,6 +5,7 @@ export interface ICompositionStore {
 	tracks: ITrack[];
 	trackItemIds: string[];
 	trackItemsMap: Record<string, ITrackItem>;
+	activeIds: string[];
 	duration: number;
 	fps: number;
 	background: {
@@ -23,6 +24,7 @@ const useCompositionStore = create<ICompositionStore>((set) => ({
 	tracks: [],
 	trackItemIds: [],
 	trackItemsMap: {},
+	activeIds: [],
 	duration: 1000,
 	fps: 30,
 	background: {

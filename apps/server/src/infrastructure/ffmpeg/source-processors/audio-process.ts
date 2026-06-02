@@ -1,11 +1,11 @@
 import { promises as fsp } from "node:fs";
 import path from "node:path";
 import type { AudioSource } from "@video-editor/contract/internal/edit-video";
-import type { EnvConfig } from "../../../config/env.ts";
+import type { CommonEnvConfig } from "../../../config/env.ts";
 import type { StoragePort } from "../../../shared/application/ports/outbound/StoragePort.ts";
 import { normalizeFfmpegDuration, normalizeFfmpegTime } from "../../../shared/utils/time.utils.ts";
 import { FFMPEG_COMMAND, FFMPEG_FLAG } from "../ffmpeg.consts.ts";
-import { hasAudioStream, runFfmpeg } from "../ffmpeg.utils.ts";
+import { type FfmpegRunner, hasAudioStream } from "../ffmpeg.utils.ts";
 import { isMpdUrl } from "./dash-process.ts";
 import { isHlsUrl } from "./hls-process.ts";
 
@@ -98,6 +98,7 @@ const processAudioFile = async (
 	index: number,
 	tempDir: string,
 	totalDurationSegments: number,
+	runner: FfmpegRunner,
 	signal?: AbortSignal,
 ): Promise<string> => {
 	const processing = calculateAudioProcessing(audio, totalDurationSegments);
@@ -153,7 +154,7 @@ const processAudioFile = async (
 		processedPath,
 	);
 
-	await runFfmpeg(args, 0, signal);
+	await runner.run(args, 0, signal);
 
 	return processedPath;
 };
@@ -161,7 +162,8 @@ const processAudioFile = async (
 const materializeStreamingAudioSource = async (
 	audio: AudioSource,
 	audioPath: string,
-	config: EnvConfig,
+	config: CommonEnvConfig,
+	runner: FfmpegRunner,
 	signal?: AbortSignal,
 ): Promise<void> => {
 	const args = [
@@ -181,7 +183,7 @@ const materializeStreamingAudioSource = async (
 		audioPath,
 	];
 
-	await runFfmpeg(args, config.TRANSCODE_TIMEOUT_MS, signal);
+	await runner.run(args, config.TRANSCODE_TIMEOUT_MS, signal);
 };
 
 export const prepareAudioSources = async (
@@ -189,7 +191,8 @@ export const prepareAudioSources = async (
 	tempDir: string,
 	totalDurationSegments: number,
 	storage: StoragePort,
-	config: EnvConfig,
+	config: CommonEnvConfig,
+	runner: FfmpegRunner,
 	signal?: AbortSignal,
 ): Promise<{
 	audioPaths: { path: string; startTime: number; volume: number }[];
@@ -220,7 +223,7 @@ export const prepareAudioSources = async (
 							return null;
 						}
 					}
-					await materializeStreamingAudioSource(audio, audioPath, config, signal);
+					await materializeStreamingAudioSource(audio, audioPath, config, runner, signal);
 				} else {
 					await storage.downloadToFile(audio.url, audioPath);
 				}
@@ -241,6 +244,7 @@ export const prepareAudioSources = async (
 					index,
 					tempDir,
 					totalDurationSegments,
+					runner,
 					signal,
 				);
 

@@ -1,7 +1,7 @@
 import { initTelemetry, Logger } from "@ztube/observability";
-import { parseEnv } from "./config/env.ts";
+import { parseWorkerEnv } from "./config/env.ts";
 
-const config = parseEnv();
+const config = parseWorkerEnv();
 
 if (config.OTEL_ENDPOINT) {
 	initTelemetry({

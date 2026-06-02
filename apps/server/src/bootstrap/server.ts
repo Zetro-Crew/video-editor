@@ -1,6 +1,6 @@
 import cors from "@fastify/cors";
 import { fastifyLoggingPlugin } from "@ztube/observability/fastify";
-import type { EnvConfig } from "../config/env.ts";
+import type { ApiEnvConfig } from "../config/env.ts";
 import { previewController } from "../features/preview/adapters/inbound/http/preview.controller.ts";
 import { renderController } from "../features/render/adapters/inbound/http/render.controller.ts";
 import { uploadController } from "../features/upload/adapters/inbound/http/upload.controller.ts";
@@ -10,9 +10,9 @@ import type { ApiContainer } from "./container.ts";
 export class Server {
 	private readonly app: TypedFastify;
 	private readonly container: ApiContainer;
-	private readonly config: EnvConfig;
+	private readonly config: ApiEnvConfig;
 
-	constructor(container: ApiContainer, config: EnvConfig) {
+	constructor(container: ApiContainer, config: ApiEnvConfig) {
 		this.app = createFastifyInstance();
 		this.container = container;
 		this.config = config;

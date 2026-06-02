@@ -1,5 +1,5 @@
 import { Logger } from "@ztube/observability";
-import type { EnvConfig } from "../config/env.ts";
+import type { WorkerEnvConfig } from "../config/env.ts";
 import { RabbitMQConsumer } from "../infrastructure/messaging/RabbitMQConsumer.ts";
 import {
 	DLX_EXCHANGE,
@@ -19,13 +19,13 @@ const RENDER_QUEUE_MAX_LENGTH = 10_000;
 const RENDER_DELIVERY_LIMIT = 5;
 
 export interface WorkerOptions {
-	config: EnvConfig;
+	config: WorkerEnvConfig;
 	container?: WorkerContainer;
 	probe?: WorkerProbeServer;
 }
 
 export class Worker {
-	private readonly config: EnvConfig;
+	private readonly config: WorkerEnvConfig;
 	private readonly container: WorkerContainer;
 	private readonly renderConsumer: RabbitMQConsumer;
 	private readonly dlqConsumer: RabbitMQConsumer;

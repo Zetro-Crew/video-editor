@@ -1,14 +1,14 @@
 import { Logger } from "@ztube/observability";
-import type { EnvConfig } from "../config/env.ts";
+import type { ApiEnvConfig } from "../config/env.ts";
 import { type ApiContainer, buildApiContainer } from "./container.ts";
 import { Server } from "./server.ts";
 
 export class System {
 	private readonly container: ApiContainer;
 	private readonly server: Server;
-	private readonly config: EnvConfig;
+	private readonly config: ApiEnvConfig;
 
-	constructor(config: EnvConfig, container?: ApiContainer, server?: Server) {
+	constructor(config: ApiEnvConfig, container?: ApiContainer, server?: Server) {
 		this.config = config;
 		this.container = container ?? buildApiContainer(config);
 		this.server = server ?? new Server(this.container, config);

@@ -9,7 +9,6 @@ import { useShallow } from "zustand/react/shallow";
 import useCompositionStore from "../store/use-composition-store";
 import useEditorRefs from "../store/use-editor-refs";
 import useLayoutStore from "../store/use-layout-store";
-import useSelectionStore from "../store/use-selection-store";
 import { getIdFromClassName } from "../utils/scene";
 import {
 	emptySelection,
@@ -60,7 +59,7 @@ export function SceneInteractions({
 	const [selection, setSelection] = useState<Selection>();
 	const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
 	const [iconPos, setIconPos] = useState<{ x: number; y: number } | null>(null);
-	const activeIds = useSelectionStore((s) => s.activeIds);
+	const activeIds = useCompositionStore((s) => s.activeIds);
 	const { setControlItemOpen } = useLayoutStore(
 		useShallow((s) => ({ setControlItemOpen: s.setControlItemOpen })),
 	);
@@ -251,7 +250,8 @@ export function SceneInteractions({
 	useEffect(() => {
 		const activeSelectionSubscription = stateManager.subscribeToActiveIds((newState) => {
 			const { activeIds: newIds } = newState as { activeIds: string[] };
-			useSelectionStore.setState(newState as { activeIds: string[] });
+			if (!Array.isArray(newIds)) return;
+			useCompositionStore.setState({ activeIds: newIds });
 			if (newIds.length === 1) {
 				setTimeout(() => setIconPos(computeIconPos(newIds[0])), 0);
 			} else {
@@ -270,7 +270,8 @@ export function SceneInteractions({
 
 	useEffect(() => {
 		setSceneMoveableRef(moveableRef as React.RefObject<Moveable>);
-	}, [moveableRef]);
+		return () => setSceneMoveableRef(null);
+	}, [setSceneMoveableRef]);
 	return (
 		<>
 			{contextMenu && (

@@ -1,5 +1,5 @@
 import type { Overlay, VideoSource } from "@video-editor/contract/internal/edit-video";
-import type { EnvConfig } from "../../config/env.ts";
+import type { CommonEnvConfig } from "../../config/env.ts";
 import { FFMPEG_COMMAND, FFMPEG_FLAG } from "./ffmpeg.consts.ts";
 import { buildOverlayFilters, type PreparedOverlayInput } from "./overlays/overlay.service.ts";
 import { buildWatermarkFilterParts } from "./overlays/watermark.service.ts";
@@ -12,10 +12,10 @@ export class FfmpegCommandBuilder {
 	private readonly inputBlocks: string[][] = [];
 	private filterParts: string[] = [];
 	private readonly outputArgs: string[] = [];
-	private readonly config: EnvConfig;
+	private readonly config: CommonEnvConfig;
 	private wmInputIndex: number | null = null;
 
-	constructor(config: EnvConfig) {
+	constructor(config: CommonEnvConfig) {
 		this.config = config;
 	}
 

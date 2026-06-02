@@ -1,6 +1,6 @@
 import { promises as fsp } from "node:fs";
 import { Logger } from "@ztube/observability";
-import type { EnvConfig } from "../../config/env.ts";
+import type { CommonEnvConfig } from "../../config/env.ts";
 import type { StoragePort } from "../../shared/application/ports/outbound/StoragePort.ts";
 import type {
 	RenderJob,
@@ -9,6 +9,7 @@ import type {
 } from "../../shared/application/ports/outbound/VideoRenderPort.ts";
 import { createTempDir } from "../../shared/utils/file.utils.ts";
 import { extractSegments, finalRenderToS3 } from "./FfmpegVideoProcessor.ts";
+import type { FfmpegRunner } from "./ffmpeg.utils.ts";
 import { prepareOverlays } from "./overlays/overlay.service.ts";
 import { prepareWatermarkLogo } from "./overlays/watermark.service.ts";
 import { prepareAudioSources } from "./source-processors/audio-process.ts";
@@ -16,11 +17,13 @@ import { processSources } from "./source-processors/process-sources.ts";
 
 export class FfmpegVideoProcessingAdapter implements VideoRenderPort {
 	private readonly storage: StoragePort;
-	private readonly config: EnvConfig;
+	private readonly config: CommonEnvConfig;
+	private readonly runner: FfmpegRunner;
 
-	constructor(storage: StoragePort, config: EnvConfig) {
+	constructor(storage: StoragePort, config: CommonEnvConfig, runner: FfmpegRunner) {
 		this.storage = storage;
 		this.config = config;
+		this.runner = runner;
 	}
 
 	async render(job: RenderJob): Promise<RenderResult> {
@@ -34,6 +37,7 @@ export class FfmpegVideoProcessingAdapter implements VideoRenderPort {
 				tempDir,
 				this.storage,
 				this.config,
+				this.runner,
 				job.signal,
 			);
 			Logger.logInfo("[ffmpeg] sources processed", { durationMs: Date.now() - stageStart });
@@ -45,6 +49,7 @@ export class FfmpegVideoProcessingAdapter implements VideoRenderPort {
 				job.keepSegments,
 				tempDir,
 				this.config,
+				this.runner,
 				job.signal,
 			);
 			Logger.logInfo("[ffmpeg] segments extracted", {
@@ -56,13 +61,21 @@ export class FfmpegVideoProcessingAdapter implements VideoRenderPort {
 			stageStart = Date.now();
 			const [{ overlayInputs, hasOverlays }, { audioPaths, hasAudio }, wmLogoPath] =
 				await Promise.all([
-					prepareOverlays(job.overlays, tempDir, this.storage, this.config, job.signal),
+					prepareOverlays(
+						job.overlays,
+						tempDir,
+						this.storage,
+						this.config,
+						this.runner,
+						job.signal,
+					),
 					prepareAudioSources(
 						job.audioSources,
 						tempDir,
 						job.totalDuration,
 						this.storage,
 						this.config,
+						this.runner,
 						job.signal,
 					),
 					prepareWatermarkLogo(),
@@ -92,6 +105,7 @@ export class FfmpegVideoProcessingAdapter implements VideoRenderPort {
 				job.s3Key,
 				this.storage,
 				this.config,
+				this.runner,
 				this.config.RENDER_URL_EXPIRY_SECONDS,
 				job.onProgress ? (p: number) => void job.onProgress?.(30 + Math.round(p * 0.7)) : undefined,
 				job.cropRegion,

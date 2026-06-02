@@ -17,6 +17,7 @@ class AudioDataManager {
 	private readonly MAX_CACHE_SIZE = 10;
 	private frameCache: Map<number, number[]> = new Map();
 	private readonly CACHE_TTL = 1000 * 60 * 5; // 5 minutes
+	private loadEpoch = 0;
 
 	public setAudioDataManager(fps: number) {
 		this.fps = fps;
@@ -26,8 +27,10 @@ class AudioDataManager {
 		if (isLikelyHlsSrc(src)) {
 			return;
 		}
+		const epoch = this.loadEpoch;
 		try {
 			const data = await getAudioData(src);
+			if (epoch !== this.loadEpoch) return;
 			this.audioDatas[id] = {
 				data,
 				lastAccessed: Date.now(),
@@ -171,6 +174,14 @@ class AudioDataManager {
 		}
 
 		return result;
+	}
+
+	public reset() {
+		this.loadEpoch++;
+		this.items = [];
+		this.dataBars = [];
+		this.audioDatas = {};
+		this.frameCache.clear();
 	}
 }
 

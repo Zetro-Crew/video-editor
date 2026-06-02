@@ -2,7 +2,7 @@ import { buildCoreMock, type CoreMockHandle } from "@video-editor/core-mock";
 import { buildMockVod, type MockVodHandle } from "@video-editor/mock-vod";
 import Fastify, { type FastifyInstance } from "fastify";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import type { EnvConfig } from "../../../../../../config/env.ts";
+import type { ApiEnvConfig } from "../../../../../../config/env.ts";
 import { InMemoryStorageAdapter } from "../../../../../../infrastructure/storage/__tests__/InMemoryStorageAdapter.ts";
 import { previewController } from "../preview.controller.ts";
 
@@ -36,7 +36,7 @@ describe("preview.controller E2E (core-mock + mock-vod + server)", () => {
 			PREVIEW_JOB_TTL_SECONDS: 86400,
 			S3_PREVIEW_PREFIX: "preview",
 			PREVIEW_SIGNING_SECRET: "test-secret-for-url-signing-32characters",
-		} as unknown as EnvConfig;
+		} as unknown as ApiEnvConfig;
 		await server.register(previewController, { storage, config });
 	});
 

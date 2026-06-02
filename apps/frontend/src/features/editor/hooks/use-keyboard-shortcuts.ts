@@ -16,7 +16,6 @@ import { PLAYER_SEEK, PLAYER_TOGGLE_PLAY } from "../constants/events";
 import useCompositionStore from "../store/use-composition-store";
 import useEditorRefs from "../store/use-editor-refs";
 import useLayoutStore from "../store/use-layout-store";
-import useSelectionStore from "../store/use-selection-store";
 import useTimelineViewStore from "../store/use-timeline-view-store";
 import { getTargetById } from "../utils/target";
 import { getCurrentTime } from "../utils/time";
@@ -32,7 +31,7 @@ const useKeyboardShortcuts = () => {
 	const { playerRef, sceneMoveableRef } = useEditorRefs(
 		useShallow((s) => ({ playerRef: s.playerRef, sceneMoveableRef: s.sceneMoveableRef })),
 	);
-	const activeIds = useSelectionStore((s) => s.activeIds);
+	const activeIds = useCompositionStore((s) => s.activeIds);
 	const trackItemsMap = useCompositionStore((s) => s.trackItemsMap);
 	const scale = useTimelineViewStore((s) => s.scale);
 

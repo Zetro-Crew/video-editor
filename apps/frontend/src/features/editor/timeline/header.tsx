@@ -16,9 +16,9 @@ import { PLAYER_PAUSE, PLAYER_PLAY } from "../constants/events";
 import { useCurrentPlayerFrame } from "../hooks/use-current-frame";
 import { useTimelineOffsetX } from "../hooks/use-timeline-offset";
 import useUpdateAnsestors from "../hooks/use-update-ansestors";
+import { useHasSelection } from "../store/selectors";
 import useCompositionStore from "../store/use-composition-store";
 import useEditorRefs from "../store/use-editor-refs";
-import useSelectionStore from "../store/use-selection-store";
 import useTimelineViewStore from "../store/use-timeline-view-store";
 import { frameToTimeString, getCurrentTime, timeToString } from "../utils/time";
 import {
@@ -80,7 +80,7 @@ const Header = () => {
 	const { duration, fps } = useCompositionStore();
 	const { scale } = useTimelineViewStore();
 	const { playerRef } = useEditorRefs();
-	const { activeIds } = useSelectionStore();
+	const hasSelection = useHasSelection();
 	const isLargeScreen = useIsMediumScreen();
 	useUpdateAnsestors({ playing, playerRef });
 
@@ -165,7 +165,7 @@ const Header = () => {
 						<Tooltip>
 							<TooltipTrigger asChild>
 								<Button
-									disabled={!activeIds.length}
+									disabled={!hasSelection}
 									onClick={doActiveDelete}
 									variant={"ghost"}
 									size={isLargeScreen ? "default" : "icon"}
@@ -181,7 +181,7 @@ const Header = () => {
 						<Tooltip>
 							<TooltipTrigger asChild>
 								<Button
-									disabled={!activeIds.length}
+									disabled={!hasSelection}
 									onClick={doActiveSplit}
 									variant={"ghost"}
 									size={isLargeScreen ? "default" : "icon"}
@@ -196,7 +196,7 @@ const Header = () => {
 						<Tooltip>
 							<TooltipTrigger asChild>
 								<Button
-									disabled={!activeIds.length}
+									disabled={!hasSelection}
 									onClick={() => {
 										dispatch(LAYER_CLONE);
 									}}

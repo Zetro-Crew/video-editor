@@ -3,7 +3,6 @@ import { ENTER_EDIT_MODE } from "@designcombo/state";
 import type { PlayerRef } from "@remotion/player";
 import { type RefObject, useEffect } from "react";
 import useCompositionStore from "../store/use-composition-store";
-import useSelectionStore from "../store/use-selection-store";
 import { getTargetById, getTypeFromClassName } from "../utils/target";
 
 export default function useUpdateAnsestors({
@@ -13,8 +12,8 @@ export default function useUpdateAnsestors({
 	playing: boolean;
 	playerRef: RefObject<PlayerRef> | null;
 }) {
-	const { trackItemIds } = useCompositionStore();
-	const { activeIds } = useSelectionStore();
+	const trackItemIds = useCompositionStore((s) => s.trackItemIds);
+	const activeIds = useCompositionStore((s) => s.activeIds);
 
 	useEffect(() => {
 		if (!playing) {

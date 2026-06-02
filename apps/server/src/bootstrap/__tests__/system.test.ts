@@ -1,6 +1,6 @@
 import { Logger } from "@ztube/observability";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { EnvConfig } from "../../config/env.ts";
+import type { ApiEnvConfig } from "../../config/env.ts";
 import type { ApiContainer } from "../container.ts";
 import type { Server } from "../server.ts";
 import { System } from "../system.ts";
@@ -16,7 +16,7 @@ interface ServerFake {
 	stop: ReturnType<typeof vi.fn>;
 }
 
-const makeConfig = (): EnvConfig => ({}) as unknown as EnvConfig;
+const makeConfig = (): ApiEnvConfig => ({}) as unknown as ApiEnvConfig;
 
 const makePublisher = (): PublisherFake => ({
 	connect: vi.fn().mockResolvedValue(undefined),

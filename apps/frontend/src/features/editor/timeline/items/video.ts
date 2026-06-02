@@ -335,6 +335,10 @@ class Video extends Trimmable {
 					this.thumbnailCache.setThumbnail(thumbnail.ts, img);
 					resolve();
 				};
+				img.onerror = () => {
+					URL.revokeObjectURL(img.src);
+					resolve();
+				};
 			});
 		});
 

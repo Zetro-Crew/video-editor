@@ -26,15 +26,15 @@ node --env-file=.env src/worker.ts
 
 ## Entry & Bootstrap
 
-- `src/index.ts` — API entrypoint: parses env, builds `System`, registers shutdown handlers.
-- `src/worker.ts` — Worker entrypoint: parses env, builds `Worker`, registers shutdown handlers.
+- `src/index.ts` — API entrypoint: calls `parseApiEnv()`, builds `System`, registers shutdown handlers.
+- `src/worker.ts` — Worker entrypoint: calls `parseWorkerEnv()`, builds `Worker`, registers shutdown handlers.
 - `src/bootstrap/system.ts` — `System` class for the API: orchestrates publisher `connect()` → `Server.start()` → mock-vod fixture-window probe (local dev only). Shutdown: server stop → publisher drain (5s) → publisher close.
 - `src/bootstrap/container.ts` — `buildApiContainer` + `buildWorkerContainer`. API gets HTTP-facing services + `RenderCommandPort`; worker gets `VideoRenderUseCase`, `RenderRequestedConsumer`, `RenderDLQConsumer`.
 - `src/bootstrap/server.ts` — `Server` class wrapped by `System`: Fastify plugins + controllers + `GET /health`.
 - `src/bootstrap/worker.ts` — `Worker` class: opens AMQP consumers (each on its own channel), runs the probe server, drains in-flight work on SIGTERM.
 - `src/bootstrap/workerProbeServer.ts` — `/health`, `/ready`, `/metrics` (Prometheus).
 - `src/bootstrap/shutdown.ts` — `createShutdown()` factory: registers SIGTERM/SIGINT handlers, used by both entrypoints.
-- `src/config/env.ts` — Zod-validated env schema with defaults.
+- `src/config/env.ts` — Zod-validated env schemas (`commonEnvSchema` / `apiEnvSchema` / `workerEnvSchema`) with defaults; exports `parseApiEnv` + `parseWorkerEnv`.
 
 ## Architecture: Hexagonal (Ports & Adapters)
 
@@ -127,7 +127,9 @@ HTTP route schemas + their value types (`OverlayType`, `TimeRange`, `VideoMetada
 
 ## Environment Variables
 
-All validated by Zod in `src/config/env.ts` — that file is the source of truth; keep this table in sync.
+All validated by Zod in `src/config/env.ts` — that file is the source of truth; keep this table in sync. The schema is split into three Zod objects: `commonEnvSchema` (loaded by both processes), `apiEnvSchema` (extends common, loaded by `parseApiEnv()`), and `workerEnvSchema` (extends common, loaded by `parseWorkerEnv()`). Unknown env keys are silently stripped — the worker pod can safely receive API-only env vars from a shared Secret.
+
+### Common (both API and Worker)
 
 **Observability**
 
@@ -137,14 +139,6 @@ All validated by Zod in `src/config/env.ts` — that file is the source of truth
 | `SERVICE_VERSION` | `1.0.0` | Logger/OTel service version |
 | `LOG_LEVEL` | `info` | Pino log level |
 | `OTEL_ENDPOINT` | optional | OTel collector endpoint. OTel disabled when absent |
-| `PYROSCOPE_SERVER_ADDRESS` | optional | Pyroscope profiling endpoint |
-
-**Server (API)**
-
-| Var | Default | Description |
-|-----|---------|-------------|
-| `PORT` | `4001` | HTTP port (API) |
-| `HOST` | `127.0.0.1` | Bind host |
 
 **FFmpeg / transcoding**
 
@@ -153,33 +147,21 @@ All validated by Zod in `src/config/env.ts` — that file is the source of truth
 | `FFMPEG_PRESET` | `veryfast` | FFmpeg encoding preset |
 | `FFMPEG_CRF` | `20` | FFmpeg CRF quality |
 | `FFMPEG_AUDIO_BITRATE` | `192k` | FFmpeg audio bitrate |
-| `FFMPEG_MAX_CONCURRENT` | `2` | Max concurrent FFmpeg processes |
+| `FFMPEG_MAX_CONCURRENT` | `2` | Max concurrent FFmpeg processes — drives the `FfmpegRunner` semaphore wired through DI |
 | `MIN_TRANSCODE_SEGMENT_SECONDS` | `0.35` | Minimum segment length before transcoding |
 
-**Preview (MPD → HLS)**
+**MPD / source transcoding**
 
 | Var | Default | Description |
 |-----|---------|-------------|
-| `CORE_BASE_URL` | required | Core service base URL. **Includes the `/private` prefix** — real Core groups auth-required endpoints there, so the adapter appends `/channels/:id/play` to it. Dev: `http://localhost:8002/private` |
-| `MOCK_VOD_BASE_URL` | optional | Boot-only — used to log the active mock-vod fixture window when `CORE_BASE_URL` is localhost. Defaults to `http://localhost:5050` if unset |
-| `SERVER_BASE_URL` | required | Public server URL (used in signed segment URLs) |
-| `PREVIEW_SIGNING_SECRET` | required | HMAC-SHA256 secret used to sign segment-proxy URLs. Min 32 chars. Without this, `/editor/segment` would be an SSRF vector |
-| `MAX_PREVIEW_DURATION_MS` | `3600000` | Max preview window length (1h) |
-| `PREVIEW_JOB_TTL_SECONDS` | `86400` | Preview-job retention TTL (24h) |
-| `S3_PREVIEW_PREFIX` | `preview` | Key prefix for preview playlists/segments |
-
-**MPD transcoding (preview)**
-
-| Var | Default | Description |
-|-----|---------|-------------|
-| `ENABLE_MPD_RESTRICTIONS` | `false` | Apply preview-source restrictions when MPD is multi-period/multi-AS |
-| `TRANSCODE_TIMEOUT_MS` | `7200000` | MPD transcode hard timeout (2h) |
+| `ENABLE_MPD_RESTRICTIONS` | `false` | Apply restrictions when MPD is multi-period/multi-AS |
+| `TRANSCODE_TIMEOUT_MS` | `7200000` | MPD/HLS/audio transcode hard timeout (2h) |
 | `MAX_TEMP_FILE_SIZE_MB` | `5000` | MPD transcode temp-file size cap |
 | `MPD_TRANSCODE_CRF_MULTI` | `10` | CRF when MPD has multiple representations |
 | `MPD_TRANSCODE_CRF_SINGLE` | `18` | CRF when MPD has a single representation |
 | `MPD_TRANSCODE_PRESET` | `medium` | FFmpeg preset for MPD transcoding |
 
-**S3 / MinIO**
+**S3 / MinIO (shared connection)**
 
 | Var | Default | Description |
 |-----|---------|-------------|
@@ -189,9 +171,7 @@ All validated by Zod in `src/config/env.ts` — that file is the source of truth
 | `S3_FORCE_PATH_STYLE` | `true` | Path-style addressing (required for MinIO) |
 | `S3_ACCESS_KEY_ID` | required | S3 access key |
 | `S3_SECRET_ACCESS_KEY` | required | S3 secret |
-| `S3_UPLOAD_PREFIX` | `uploads` | Key prefix for uploads |
-| `S3_OUTPUT_PREFIX` | `output` | Key prefix for processed output |
-| `S3_AUTO_CREATE_BUCKET` | `true` | Auto-create bucket on startup |
+| `S3_OUTPUT_PREFIX` | `output` | Key prefix for processed output. **Worker writes; API derives idempotency keys.** Must match across both pods |
 | `RENDER_URL_EXPIRY_SECONDS` | `86400` | TTL for signed render output URLs |
 
 **Messaging**
@@ -199,12 +179,29 @@ All validated by Zod in `src/config/env.ts` — that file is the source of truth
 | Var | Default | Description |
 |-----|---------|-------------|
 | `RABBITMQ_URL` | required | AMQP connection URL — neither API nor worker starts without this |
-| `COMMAND_PUBLISH_CONFIRM_TIMEOUT_MS` | `10000` | Per-attempt broker-confirm timeout for `publishCommand` (POST /render). 3 attempts; exhaustion → 503 |
+| `COMMAND_PUBLISH_CONFIRM_TIMEOUT_MS` | `10000` | Per-attempt broker-confirm timeout for `publishCommand` (POST /render). 3 attempts; exhaustion → 503. Common because both processes share `buildPublisher()` |
 | `EVENT_PUBLISH_CONFIRM_TIMEOUT_MS` | `30000` | Per-attempt broker-confirm timeout for `publishExport*` events. Larger than the command timeout because confirm round-trip during recovery may exceed 10s. On exhaustion: swallowed (caller never sees the error) |
 | `AMQP_INITIAL_CONNECT_TIMEOUT_MS` | `15000` | Race timeout on initial broker connect. Required because `maxRetries: Infinity` would otherwise hang the process forever on unreachable brokers and prevent k8s from CrashLoopBackOff'ing the pod |
-| `RENDER_REQUEST_TTL_MS` | optional | If set, `x-message-ttl` on the `render.requested` queue |
+| `RENDER_REQUEST_TTL_MS` | optional | If set, `x-message-ttl` on the `render.requested` queue. **Common** because both API and worker assert topology — mismatch yields `PRECONDITION_FAILED` |
 
-**Worker**
+### API-only
+
+| Var | Default | Description |
+|-----|---------|-------------|
+| `PORT` | `4001` | HTTP port |
+| `HOST` | `127.0.0.1` | Bind host |
+| `CORE_BASE_URL` | required | Core service base URL. **Includes the `/private` prefix** — real Core groups auth-required endpoints there, so the adapter appends `/channels/:id/play` to it. Dev: `http://localhost:8002/private` |
+| `MOCK_VOD_BASE_URL` | optional | Boot-only — used to log the active mock-vod fixture window when `CORE_BASE_URL` is localhost. Defaults to `http://localhost:5050` if unset |
+| `SERVER_BASE_URL` | required | Public server URL (used in signed segment URLs) |
+| `PREVIEW_SIGNING_SECRET` | required | HMAC-SHA256 secret used to sign segment-proxy URLs. Min 32 chars. Without this, `/editor/segment` would be an SSRF vector |
+| `MAX_PREVIEW_DURATION_MS` | `3600000` | Max preview window length (1h) |
+| `PREVIEW_JOB_TTL_SECONDS` | `86400` | Preview-job retention TTL (24h) |
+| `S3_PREVIEW_PREFIX` | `preview` | Key prefix for preview playlists/segments |
+| `S3_UPLOAD_PREFIX` | `uploads` | Key prefix for direct-to-S3 uploads |
+| `UPLOAD_MAX_SIZE_BYTES` | `524288000` | Max accepted upload size (500 MB). Enforced server-side AND bound into the presigned PUT via signed Content-Length |
+| `S3_AUTO_CREATE_BUCKET` | `true` | Auto-create bucket on API startup |
+
+### Worker-only
 
 | Var | Default | Description |
 |-----|---------|-------------|
