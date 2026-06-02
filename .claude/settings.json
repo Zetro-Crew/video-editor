@@ -9,6 +9,6 @@
     "multi-stage-dockerfile": "user-invocable-only"
   },
   "enabledPlugins": {
-    "terraform@claude-plugins-official": true
+    "terraform@claude-plugins-official": false
   }
 }

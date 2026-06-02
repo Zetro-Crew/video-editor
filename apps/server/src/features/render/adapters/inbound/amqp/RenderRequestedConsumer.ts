@@ -99,10 +99,12 @@ export class RenderRequestedConsumer {
 
 		const parsed = renderRequestedEnvelopeSchema.safeParse(envelopeUnknown);
 		if (!parsed.success) {
-			Logger.logWarning("[render-consumer] envelope schema invalid — dropping", {
-				jobId: rawJobId,
-				issues: parsed.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`),
-			});
+			const issues = parsed.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`);
+			Logger.logError(
+				"[render-consumer] envelope schema invalid — dropping",
+				new Error(issues.join("; ")),
+				{ jobId: rawJobId, issues },
+			);
 			if (rawJobId) {
 				await this.tryPublishPoisonFailed(rawJobId);
 			}

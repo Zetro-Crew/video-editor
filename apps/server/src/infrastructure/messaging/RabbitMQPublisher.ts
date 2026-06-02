@@ -502,7 +502,7 @@ export class RabbitMQPublisher implements ExportEventPublisherPort {
 		};
 
 		const monitor = this.monitorFactory(
-			{ processName: "amqp-publish", businessId, stageName: eventName },
+			{ processName: "amqp-publish", businessId, stageName: `publish:${eventName}` },
 			{ eventVersion },
 		);
 		monitor.logStarted();

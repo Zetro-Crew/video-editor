@@ -72,14 +72,17 @@ describe("shapeOverlaySchema x/y bounds", () => {
 		end: 1,
 	};
 
-	it("rejects x > 100", () => {
+	// Shape overlays are unclamped — off-canvas positions are intentional (translator
+	// computes raw percent without Math.max/min so shapes can scroll/animate from outside
+	// the canvas). See DesignToRenderJobTranslator.ts shape branch.
+	it("accepts x > 100", () => {
 		const result = shapeOverlaySchema.safeParse({ ...baseShape, x: 150, y: 0 });
-		assert.equal(result.success, false);
+		assert.equal(result.success, true);
 	});
 
-	it("rejects y > 100", () => {
-		const result = shapeOverlaySchema.safeParse({ ...baseShape, x: 0, y: 150 });
-		assert.equal(result.success, false);
+	it("accepts negative y", () => {
+		const result = shapeOverlaySchema.safeParse({ ...baseShape, x: 0, y: -25 });
+		assert.equal(result.success, true);
 	});
 
 	it("accepts x/y within 0..100", () => {

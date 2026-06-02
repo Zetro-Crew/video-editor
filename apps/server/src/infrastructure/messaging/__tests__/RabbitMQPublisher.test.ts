@@ -555,7 +555,9 @@ describe("RabbitMQPublisher — closed/concurrent/drain edges", { timeout: 60_00
 			});
 			expect(internal.channel).not.toBeNull();
 			expect(internal.channel).not.toBe(firstChannel);
-			const completedEvents = events.filter((e) => e.config.stageName === EXPORT_COMPLETED);
+			const completedEvents = events.filter(
+				(e) => e.config.stageName === `publish:${EXPORT_COMPLETED}`,
+			);
 			expect(completedEvents.some((e) => e.type === "success")).toBe(true);
 		} finally {
 			await publisher.close();
