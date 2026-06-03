@@ -46,6 +46,23 @@ spec:
           labelSelector:
             matchLabels:
               app: video-editor-worker
+      volumes:
+        - name: rabbit-values
+          secret:
+            secretName: rabbit-values
+            items:
+              - key: rabbit_cert.pem
+                path: rabbit_cert.pem
+              - key: rabbit_key.pem
+                path: rabbit_key.pem
+            defaultMode: 0400
+        - name: ssl-values
+          secret:
+            secretName: ssl-values
+            items:
+              - key: bundle.pem
+                path: bundle.pem
+            defaultMode: 0400
       containers:
         - name: worker
           image: # TODO: your-registry.internal/video-editor-server:latest
@@ -59,6 +76,14 @@ spec:
                 name: video-editor-worker-config
             - secretRef:
                 name: video-editor-server-secrets
+          volumeMounts:
+            - name: rabbit-values
+              mountPath: /tmp/certificates/rabbitmq
+              readOnly: true
+            - name: ssl-values
+              mountPath: /bundle.pem
+              subPath: bundle.pem
+              readOnly: true
           readinessProbe:
             httpGet:
               path: /ready

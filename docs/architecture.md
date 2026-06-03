@@ -352,7 +352,7 @@ sequenceDiagram
 |---|---|---|---|
 | `CORE_BASE_URL` | server | yes | Real Core `/private` base URL. Dev default: `http://localhost:8002/private` |
 | `PREVIEW_SIGNING_SECRET` | server | yes | HMAC-SHA256 secret for segment proxy (min 32 chars). Prevents SSRF. |
-| `RABBITMQ_URL` | server | yes | AMQP connection URL. Server refuses to start without it. |
+| `QUEUE_URL` | server | yes | AMQP connection URL. Server refuses to start without it. `amqps://` triggers mTLS — process reads `/bundle.pem` and `/tmp/certificates/rabbitmq/rabbit_{cert,key}.pem` at boot. |
 | `S3_ENDPOINT` | server | yes | MinIO / S3 endpoint. Dev: `http://localhost:9000` |
 | `S3_BUCKET` | server | yes | Bucket name. Dev: `video-editor` |
 | `REDIS_HOST` / `REDIS_PORT` | server | yes | Redis connection. Dev defaults: `localhost:6379` |

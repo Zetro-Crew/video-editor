@@ -32,6 +32,8 @@ Every TS type in the package is `z.infer<typeof schema>` so schemas and types ca
 
 **Event Envelope** — versioned wrapper around the domain payload: `{ eventName, eventVersion, occurredAt, traceparent, data }`. Same shape stamped into AMQP headers (`x-event-name`, `x-event-version`) so subscribers can filter without parsing the body.
 
+**Broker TLS** — closed-network broker uses client mutual TLS. `QUEUE_URL` scheme drives the behavior: `amqps://` (prod) → process reads three PEM files at boot from hardcoded paths (`/bundle.pem` for the private CA, `/tmp/certificates/rabbitmq/rabbit_cert.pem` + `rabbit_key.pem` for client identity) and passes them as socket options to every `amqplib.connect()`. `amqp://` (dev) → plain connect, no file reads. URL carries no userinfo in prod — the broker authenticates clients by certificate.
+
 ## Editor Composition
 
 **IDesign** — the serialized editor state: tracks, track items, canvas size, FPS. This is the payload the frontend sends to `/render`. It is the single source of truth for what the rendered output will look like.

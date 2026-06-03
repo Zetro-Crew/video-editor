@@ -132,6 +132,7 @@ export interface RabbitMQPublisherOptions {
 	renderRequestTtlMs?: number;
 	renderQueueMaxLength?: number;
 	renderDeliveryLimit?: number;
+	socketOptions?: { cert: Buffer; key: Buffer; ca: Buffer };
 }
 
 export class RabbitMQPublisher implements ExportEventPublisherPort {
@@ -144,6 +145,7 @@ export class RabbitMQPublisher implements ExportEventPublisherPort {
 	private readonly renderRequestTtlMs?: number;
 	private readonly renderQueueMaxLength: number;
 	private readonly renderDeliveryLimit: number;
+	private readonly socketOptions?: { cert: Buffer; key: Buffer; ca: Buffer };
 	private model: RecoveringChannelModel | null = null;
 	private channel: ConfirmChannel | null = null;
 	private channelReady: Deferred<ConfirmChannel> | null = null;
@@ -163,6 +165,7 @@ export class RabbitMQPublisher implements ExportEventPublisherPort {
 		this.renderRequestTtlMs = options.renderRequestTtlMs;
 		this.renderQueueMaxLength = options.renderQueueMaxLength ?? 10_000;
 		this.renderDeliveryLimit = options.renderDeliveryLimit ?? 5;
+		this.socketOptions = options.socketOptions;
 	}
 
 	async connect(): Promise<void> {
@@ -192,7 +195,7 @@ export class RabbitMQPublisher implements ExportEventPublisherPort {
 	private async openPlainWithTimeout(): Promise<ChannelModel> {
 		let timedOut = false;
 		let timeoutHandle: NodeJS.Timeout | undefined;
-		const connectPromise = connect(this.url);
+		const connectPromise = connect(this.url, this.socketOptions);
 		const timeoutPromise = new Promise<never>((_, reject) => {
 			timeoutHandle = setTimeout(() => {
 				timedOut = true;
@@ -218,6 +221,7 @@ export class RabbitMQPublisher implements ExportEventPublisherPort {
 		let timedOut = false;
 		let timeoutHandle: NodeJS.Timeout | undefined;
 		const connectPromise = connect(this.url, {
+			...this.socketOptions,
 			recovery: {
 				initialDelay: RECOVERY_INITIAL_DELAY_MS,
 				maxDelay: this.recoveryMaxDelayMs,

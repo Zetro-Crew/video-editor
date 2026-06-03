@@ -23,6 +23,7 @@ export interface RabbitMQConsumerOptions {
 	assertTopology?: TopologyAsserter;
 	initialConnectTimeoutMs?: number;
 	recoveryMaxDelayMs?: number;
+	socketOptions?: { cert: Buffer; key: Buffer; ca: Buffer };
 }
 
 interface AmqpErrorFields {
@@ -105,6 +106,7 @@ export class RabbitMQConsumer {
 		let timedOut = false;
 		let timeoutHandle: NodeJS.Timeout | undefined;
 		const connectPromise = connect(this.options.url, {
+			...this.options.socketOptions,
 			recovery: {
 				initialDelay: RECOVERY_INITIAL_DELAY_MS,
 				maxDelay: this.recoveryMaxDelayMs,

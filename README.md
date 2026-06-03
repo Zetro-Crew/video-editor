@@ -61,7 +61,7 @@ Key variables (all have defaults for local dev):
 | `S3_SECRET_ACCESS_KEY` | `minioadmin123` | MinIO secret |
 | `CORE_BASE_URL` | required | Upstream Core service base URL (includes `/private`). Dev: `http://localhost:8002/private` |
 | `PREVIEW_SIGNING_SECRET` | required | HMAC-SHA256 secret (min 32 chars) for signed segment-proxy URLs |
-| `RABBITMQ_URL` | required | AMQP connection URL for export event publishing |
+| `QUEUE_URL` | required | AMQP connection URL for export event publishing. `amqps://` triggers mTLS (reads `/bundle.pem` + `/tmp/certificates/rabbitmq/rabbit_{cert,key}.pem` at boot) |
 
 See [apps/server/README.md](apps/server/README.md) for the full env schema.
 

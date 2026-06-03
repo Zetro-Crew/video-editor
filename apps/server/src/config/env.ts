@@ -39,8 +39,10 @@ const commonEnvSchema = z.object({
 	S3_SECRET_ACCESS_KEY: z.string(),
 	S3_OUTPUT_PREFIX: z.string().default("output"),
 	RENDER_URL_EXPIRY_SECONDS: z.coerce.number().default(86400),
-	// Messaging — both processes connect, assert topology, and use the publisher factory
-	RABBITMQ_URL: z.string(),
+	// Messaging — both processes connect, assert topology, and use the publisher factory.
+	// `amqps://` triggers mTLS: process reads /bundle.pem (CA),
+	// /tmp/certificates/rabbitmq/rabbit_cert.pem, and /tmp/certificates/rabbitmq/rabbit_key.pem at boot.
+	QUEUE_URL: z.string(),
 	COMMAND_PUBLISH_CONFIRM_TIMEOUT_MS: z.coerce.number().int().positive().default(10_000),
 	EVENT_PUBLISH_CONFIRM_TIMEOUT_MS: z.coerce.number().int().positive().default(30_000),
 	AMQP_INITIAL_CONNECT_TIMEOUT_MS: z.coerce.number().int().positive().default(15_000),

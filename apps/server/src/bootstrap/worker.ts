@@ -8,7 +8,7 @@ import {
 	RENDER_REQUESTED_QUEUE,
 } from "../infrastructure/messaging/schemas/commands.ts";
 import { assertRenderTopology } from "../infrastructure/messaging/topology.ts";
-import { buildWorkerContainer, type WorkerContainer } from "./container.ts";
+import { buildWorkerContainer, loadAmqpSocketOptions, type WorkerContainer } from "./container.ts";
 import { WorkerProbeServer } from "./workerProbeServer.ts";
 
 const INFLIGHT_DRAIN_BUDGET_MS = 540_000;
@@ -45,24 +45,28 @@ export class Worker {
 				renderDeliveryLimit: RENDER_DELIVERY_LIMIT,
 			});
 
+		const socketOptions = loadAmqpSocketOptions(this.config.QUEUE_URL);
+
 		this.renderConsumer = new RabbitMQConsumer({
-			url: this.config.RABBITMQ_URL,
+			url: this.config.QUEUE_URL,
 			queue: RENDER_REQUESTED_QUEUE,
 			prefetch: this.config.WORKER_CONCURRENCY,
 			consumerName: "render.requested",
 			initialConnectTimeoutMs: this.config.AMQP_INITIAL_CONNECT_TIMEOUT_MS,
 			assertTopology: topologyAsserter,
 			handler: (msg, ch) => this.container.renderRequestedConsumer.handle(msg, ch),
+			socketOptions,
 		});
 
 		this.dlqConsumer = new RabbitMQConsumer({
-			url: this.config.RABBITMQ_URL,
+			url: this.config.QUEUE_URL,
 			queue: RENDER_DEAD_QUEUE,
 			prefetch: 1,
 			consumerName: "render.dead",
 			initialConnectTimeoutMs: this.config.AMQP_INITIAL_CONNECT_TIMEOUT_MS,
 			assertTopology: topologyAsserter,
 			handler: (msg, ch) => this.container.renderDLQConsumer.handle(msg, ch),
+			socketOptions,
 		});
 
 		this.probe =

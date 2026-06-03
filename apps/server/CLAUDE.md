@@ -178,7 +178,7 @@ All validated by Zod in `src/config/env.ts` — that file is the source of truth
 
 | Var | Default | Description |
 |-----|---------|-------------|
-| `RABBITMQ_URL` | required | AMQP connection URL — neither API nor worker starts without this |
+| `QUEUE_URL` | required | AMQP connection URL — neither API nor worker starts without this. `amqps://` triggers mTLS: process reads `/bundle.pem` (CA), `/tmp/certificates/rabbitmq/rabbit_cert.pem`, and `/tmp/certificates/rabbitmq/rabbit_key.pem` at boot. `amqp://` skips file reads (local dev) |
 | `COMMAND_PUBLISH_CONFIRM_TIMEOUT_MS` | `10000` | Per-attempt broker-confirm timeout for `publishCommand` (POST /render). 3 attempts; exhaustion → 503. Common because both processes share `buildPublisher()` |
 | `EVENT_PUBLISH_CONFIRM_TIMEOUT_MS` | `30000` | Per-attempt broker-confirm timeout for `publishExport*` events. Larger than the command timeout because confirm round-trip during recovery may exceed 10s. On exhaustion: swallowed (caller never sees the error) |
 | `AMQP_INITIAL_CONNECT_TIMEOUT_MS` | `15000` | Race timeout on initial broker connect. Required because `maxRetries: Infinity` would otherwise hang the process forever on unreachable brokers and prevent k8s from CrashLoopBackOff'ing the pod |

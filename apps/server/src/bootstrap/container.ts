@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { createZMonitor, Logger } from "@ztube/observability";
 import type { ApiEnvConfig, CommonEnvConfig, WorkerEnvConfig } from "../config/env.ts";
 import { GeneratePreviewUseCase } from "../features/preview/application/use-cases/GeneratePreviewUseCase.ts";
@@ -13,6 +14,25 @@ import { RabbitMQPublisher } from "../infrastructure/messaging/RabbitMQPublisher
 import { S3StorageAdapter } from "../infrastructure/storage/S3StorageAdapter.ts";
 import type { StoragePort } from "../shared/application/ports/outbound/StoragePort.ts";
 
+const CA_PATH = "/bundle.pem";
+const CLIENT_CERT_PATH = "/tmp/certificates/rabbitmq/rabbit_cert.pem";
+const CLIENT_KEY_PATH = "/tmp/certificates/rabbitmq/rabbit_key.pem";
+
+export interface AmqpSocketOptions {
+	cert: Buffer;
+	key: Buffer;
+	ca: Buffer;
+}
+
+export function loadAmqpSocketOptions(url: string): AmqpSocketOptions | undefined {
+	if (!url.startsWith("amqps://")) return undefined;
+	return {
+		cert: readFileSync(CLIENT_CERT_PATH),
+		key: readFileSync(CLIENT_KEY_PATH),
+		ca: readFileSync(CA_PATH),
+	};
+}
+
 function buildStorage(config: CommonEnvConfig): StoragePort {
 	return new S3StorageAdapter({
 		bucket: config.S3_BUCKET,
@@ -25,11 +45,12 @@ function buildStorage(config: CommonEnvConfig): StoragePort {
 }
 
 function buildPublisher(config: CommonEnvConfig): RabbitMQPublisher {
-	return new RabbitMQPublisher(config.RABBITMQ_URL, createZMonitor, {
+	return new RabbitMQPublisher(config.QUEUE_URL, createZMonitor, {
 		commandConfirmTimeoutMs: config.COMMAND_PUBLISH_CONFIRM_TIMEOUT_MS,
 		eventConfirmTimeoutMs: config.EVENT_PUBLISH_CONFIRM_TIMEOUT_MS,
 		initialConnectTimeoutMs: config.AMQP_INITIAL_CONNECT_TIMEOUT_MS,
 		renderRequestTtlMs: config.RENDER_REQUEST_TTL_MS,
+		socketOptions: loadAmqpSocketOptions(config.QUEUE_URL),
 	});
 }
 

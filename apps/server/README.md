@@ -208,7 +208,7 @@ All variables are validated by Zod in [`src/config/env.ts`](./src/config/env.ts)
 
 | Variable | Default | Description |
 |---|---|---|
-| `RABBITMQ_URL` | required | AMQP connection URL — neither API nor worker starts without it |
+| `QUEUE_URL` | required | AMQP connection URL — neither API nor worker starts without it. `amqps://` triggers mTLS: process reads `/bundle.pem` (CA) + `/tmp/certificates/rabbitmq/rabbit_{cert,key}.pem` at boot |
 | `COMMAND_PUBLISH_CONFIRM_TIMEOUT_MS` | `10000` | Per-attempt broker-confirm timeout for `publishCommand` (3 retries; exhaustion → 503). Common because both processes share `buildPublisher()` |
 | `EVENT_PUBLISH_CONFIRM_TIMEOUT_MS` | `30000` | Per-attempt broker-confirm timeout for event publishes |
 | `AMQP_INITIAL_CONNECT_TIMEOUT_MS` | `15000` | Initial AMQP connect timeout |
