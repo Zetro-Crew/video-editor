@@ -1,10 +1,8 @@
 {
   "$schema": "https://unpkg.com/knip@latest/schema.json",
   "ignoreDependencies": [
-    "@remotion/shapes",
     "tailwindcss",
-    "tw-animate-css",
-    "@types/amqplib"
+    "tw-animate-css"
   ],
   "workspaces": {
     ".": {
@@ -16,7 +14,7 @@
       "project": ["src/**/*.{ts,tsx}"]
     },
     "apps/server": {
-      "entry": [],
+      "entry": ["src/worker.ts"],
       "project": ["src/**/*.ts"]
     },
     "apps/iframe-demo": {

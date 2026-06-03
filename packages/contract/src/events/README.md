@@ -92,3 +92,10 @@ Consumer-side concern. Each team binds its own queue with its own DLX policy. Th
 - **Publisher** uses confirms + `mandatory: true`. The server treats broker-ack as success; unrouted or unconfirmed messages are logged and retried.
 - **Consumer** must use manual ack. Ack only after processing succeeds. Nack-without-requeue on schema validation failure (route to your DLX).
 - **At-least-once**. Consumers must be idempotent (key on `data.jobId`).
+- **`export.started` may publish more than once for the same `jobId`.** Render
+  jobs run on a separate worker fronted by a quorum queue with broker-side
+  retry; every redelivery emits a fresh `export.started` before FFmpeg begins.
+  Dedupe on `data.jobId`.
+- **`export.failed` with `error: "max retries exceeded"`** is published by the
+  server's DLQ consumer after a render job is dead-lettered past the broker's
+  retry budget. Treat this as a terminal failure for that `jobId`.

@@ -36,7 +36,7 @@ class Timeline extends TimelineBase {
 
 	public purge(): void {
 		for (const obj of this.getObjects()) {
-			if (obj instanceof Video) {
+			if (obj instanceof Video || obj instanceof Audio) {
 				obj.destroy();
 			}
 		}

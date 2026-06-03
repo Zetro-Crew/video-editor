@@ -8,8 +8,8 @@ interface IEditorRefsStore {
 	sceneMoveableRef: React.RefObject<Moveable> | null;
 	timeline: Timeline | null;
 	setPlayerRef: (ref: React.RefObject<PlayerRef> | null) => void;
-	setSceneMoveableRef: (ref: React.RefObject<Moveable>) => void;
-	setTimeline: (timeline: Timeline) => void;
+	setSceneMoveableRef: (ref: React.RefObject<Moveable> | null) => void;
+	setTimeline: (timeline: Timeline | null) => void;
 }
 
 const useEditorRefs = create<IEditorRefsStore>((set) => ({

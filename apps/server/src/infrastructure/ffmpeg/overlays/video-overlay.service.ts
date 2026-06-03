@@ -1,11 +1,11 @@
 import { promises as fsp } from "node:fs";
 import path from "node:path";
 import type { VideoOverlay } from "@video-editor/contract/internal/edit-video";
-import type { EnvConfig } from "../../../config/env.ts";
+import type { CommonEnvConfig } from "../../../config/env.ts";
 import type { StoragePort } from "../../../shared/application/ports/outbound/StoragePort.ts";
 import { normalizeFfmpegDuration, normalizeFfmpegTime } from "../../../shared/utils/time.utils.ts";
 import { FFMPEG_COMMAND, FFMPEG_FLAG } from "../ffmpeg.consts.ts";
-import { runFfmpeg } from "../ffmpeg.utils.ts";
+import type { FfmpegRunner } from "../ffmpeg.utils.ts";
 import { isMpdUrl, processMpdSource } from "../source-processors/dash-process.ts";
 import { isHlsUrl, processHlsSource } from "../source-processors/hls-process.ts";
 import { buildEnableExpression } from "./overlay-utils.ts";
@@ -123,7 +123,8 @@ export const prepareVideoOverlay = async (
 	overlay: VideoOverlay,
 	tempDir: string,
 	storage: StoragePort,
-	config: EnvConfig,
+	config: CommonEnvConfig,
+	runner: FfmpegRunner,
 	signal?: AbortSignal,
 ): Promise<string> => {
 	const downloadedPath = path.join(tempDir, `video-overlay-src-${overlay.id}.mp4`);
@@ -141,6 +142,7 @@ export const prepareVideoOverlay = async (
 			downloadedPath,
 			false,
 			config,
+			runner,
 			signal,
 		);
 	} else if (isHlsUrl(overlay.sourceUrl)) {
@@ -154,6 +156,7 @@ export const prepareVideoOverlay = async (
 			},
 			downloadedPath,
 			config,
+			runner,
 			signal,
 		);
 	} else {
@@ -204,7 +207,7 @@ export const prepareVideoOverlay = async (
 		preparedPath,
 	);
 
-	await runFfmpeg(args, 0, signal);
+	await runner.run(args, 0, signal);
 
 	await fsp.unlink(downloadedPath).catch(() => undefined);
 	return preparedPath;

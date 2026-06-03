@@ -7,6 +7,9 @@ const errorResponseSchema = z.object({
 export const getSignedUrlBodySchema = z.object({
 	filename: z.string().min(1),
 	mimetype: z.string().min(1),
+	// Required for size enforcement: server signs Content-Length into the
+	// presigned PUT so S3 rejects payloads that don't match.
+	size: z.number().int().positive(),
 });
 
 export const getSignedUrlResponseSchema = z.object({

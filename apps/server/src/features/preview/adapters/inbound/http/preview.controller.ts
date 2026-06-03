@@ -1,5 +1,5 @@
 import type { FastifyPluginAsync } from "fastify";
-import type { EnvConfig } from "../../../../../config/env.ts";
+import type { ApiEnvConfig } from "../../../../../config/env.ts";
 import type { StoragePort } from "../../../../../shared/application/ports/outbound/StoragePort.ts";
 import { HttpStatus } from "../../../../../shared/utils/http-status.ts";
 import { verifyUrlSignature } from "../../../application/services/url-signing.ts";
@@ -19,7 +19,7 @@ interface PreviewSourceBody {
 
 interface PreviewControllerOptions {
 	storage: StoragePort;
-	config: EnvConfig;
+	config: ApiEnvConfig;
 }
 
 export const previewController: FastifyPluginAsync<PreviewControllerOptions> = async (

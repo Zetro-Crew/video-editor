@@ -1,0 +1,82 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: video-editor-worker
+  namespace: # TODO: your-ocp-namespace
+  labels:
+    app: video-editor-worker
+spec:
+  # Default to 1 replica. Scale based on render throughput; the broker is the
+  # only backpressure (WORKER_CONCURRENCY=1 prefetch per pod by default).
+  replicas: 1
+  revisionHistoryLimit: 10
+  progressDeadlineSeconds: 900
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 50%
+  selector:
+    matchLabels:
+      app: video-editor-worker
+  template:
+    metadata:
+      labels:
+        app: video-editor-worker
+    spec:
+      # SIGTERM cancels the AMQP consumer, then waits up to ~9m for the in-flight
+      # render to finish before SIGKILL. Sized to the typical render duration —
+      # not a typo. SIGKILL'd jobs are redelivered (x-delivery-limit=5).
+      terminationGracePeriodSeconds: 600
+      imagePullSecrets:
+        - name: internal-registry-secret
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    app: video-editor-worker
+                topologyKey: kubernetes.io/hostname
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app: video-editor-worker
+      containers:
+        - name: worker
+          image: # TODO: your-registry.internal/video-editor-server:latest
+          command: ["node"]
+          args: ["src/worker.ts"]
+          ports:
+            - name: probe
+              containerPort: 8081
+          envFrom:
+            - configMapRef:
+                name: video-editor-worker-config
+            - secretRef:
+                name: video-editor-server-secrets
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: probe
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: probe
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: "2000m"
+              memory: "2Gi"
+            limits:
+              cpu: "4000m"
+              memory: "8Gi"

@@ -102,7 +102,7 @@ const Timeline = ({ stateManager }: { stateManager: StateManager }) => {
 		const canvas = canvasRef.current;
 		if (!canvas) return;
 		for (const obj of canvas.getObjects()) {
-			if (obj instanceof Video && !trackItemIds.includes(obj.id)) {
+			if ((obj instanceof Video || obj instanceof Audio) && !trackItemIds.includes(obj.id)) {
 				obj.destroy();
 			}
 		}

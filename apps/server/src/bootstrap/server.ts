@@ -1,18 +1,18 @@
 import cors from "@fastify/cors";
 import { fastifyLoggingPlugin } from "@ztube/observability/fastify";
-import type { EnvConfig } from "../config/env.ts";
+import type { ApiEnvConfig } from "../config/env.ts";
 import { previewController } from "../features/preview/adapters/inbound/http/preview.controller.ts";
 import { renderController } from "../features/render/adapters/inbound/http/render.controller.ts";
 import { uploadController } from "../features/upload/adapters/inbound/http/upload.controller.ts";
 import { createFastifyInstance, type TypedFastify } from "../infrastructure/fastify/fastify.ts";
-import type { Container } from "./container.ts";
+import type { ApiContainer } from "./container.ts";
 
 export class Server {
 	private readonly app: TypedFastify;
-	private readonly container: Container;
-	private readonly config: EnvConfig;
+	private readonly container: ApiContainer;
+	private readonly config: ApiEnvConfig;
 
-	constructor(container: Container, config: EnvConfig) {
+	constructor(container: ApiContainer, config: ApiEnvConfig) {
 		this.app = createFastifyInstance();
 		this.container = container;
 		this.config = config;
@@ -33,10 +33,7 @@ export class Server {
 		});
 
 		await this.app.register(renderController, {
-			videoRenderUseCase: this.container.videoRenderUseCase,
-			renderJobStatePort: this.container.renderJobStatePort,
-			s3OutputPrefix: this.config.S3_OUTPUT_PREFIX,
-			exportEventPublisher: this.container.exportEventPublisher,
+			renderCommandPort: this.container.renderCommandPort,
 		});
 
 		await this.app.register(previewController, {

@@ -15,11 +15,10 @@ data:
   # URLs that the browser fetches and nginx proxies back to the server.
   SERVER_BASE_URL: "# TODO: https://video-editor.apps.yourcluster.com"
 
-  # FFmpeg
+  # FFmpeg (used by preview source prep; render runs in the worker)
   FFMPEG_PRESET: "veryfast"
   FFMPEG_CRF: "20"
   FFMPEG_AUDIO_BITRATE: "192k"
-  # Per-pod concurrency. With 2 replicas, total parallelism = 4.
   FFMPEG_MAX_CONCURRENT: "2"
   MIN_TRANSCODE_SEGMENT_SECONDS: "0.35"
 
@@ -37,6 +36,13 @@ data:
   MPD_TRANSCODE_PRESET: "medium"
 
   # S3 / object storage (non-secret parts)
+  #
+  # MinIO/S3 CORS PREREQUISITE: the browser PUTs uploads directly to S3_ENDPOINT,
+  # so the object store must allow CORS from the frontend origin. For MinIO set
+  # MINIO_API_CORS_ALLOW_ORIGIN on the MinIO deployment to the comma-separated
+  # list of allowed frontend origins (matching SERVER_BASE_URL host(s) the
+  # uploader runs from). Without this every browser upload will fail with a CORS
+  # preflight error. See docker-compose.yml for the dev setup.
   S3_BUCKET: "# TODO: your-bucket-name"
   S3_REGION: "us-east-1"
   S3_ENDPOINT: "# TODO: https://your-minio.internal"
@@ -45,12 +51,14 @@ data:
   S3_OUTPUT_PREFIX: "output"
   S3_AUTO_CREATE_BUCKET: "false"
 
-  # Redis (non-secret parts)
-  REDIS_HOST: "# TODO: your-redis.internal"
-  REDIS_PORT: "6379"
-  # Must exceed TRANSCODE_TIMEOUT_MS (7200000ms = 7200s) plus polling/grace,
-  # otherwise PROCESSING state expires mid-render and GET /render returns 404.
-  JOB_PROGRESS_TTL_SECONDS: "14400"
+  # Upload cap (server-enforced + signed Content-Length). Matches the previous
+  # 500 MB multipart limit so existing clients don't break.
+  UPLOAD_MAX_SIZE_BYTES: "524288000"
 
   # Render
   RENDER_URL_EXPIRY_SECONDS: "86400"
+
+  # Command publish (POST /render → render.requested queue).
+  # If broker confirm does not arrive within this window the publish is retried,
+  # and after 3 attempts the controller returns 503.
+  COMMAND_PUBLISH_CONFIRM_TIMEOUT_MS: "10000"

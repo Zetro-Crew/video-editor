@@ -299,3 +299,7 @@ export const ANIMATION_CONFIGS: Record<string, AnimationConfig> = {
 // Cache for rotation values
 export const captionRotationCache = new Map<string, number>();
 export const rotationOptions = [-10, 0, 10];
+
+export const clearCaptionRotationCache = () => {
+	captionRotationCache.clear();
+};

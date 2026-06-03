@@ -19,6 +19,7 @@ apps/
   mock-vod/    — Fastify mock of the VOD service (port 5050)
 packages/
   contract/         — shared postMessage + AMQP event contract (@video-editor/contract)
+  observability/    — OpenTelemetry + Pino + Pyroscope toolkit (@ztube/observability)
 ```
 
 `core-mock` and `mock-vod` coordinate via `POST /__internal/register-token` so cross-service `vod-token` trust mirrors the real Core/VOD relationship. See [docs/adr/0002-mock-vod-as-separate-app.md](docs/adr/0002-mock-vod-as-separate-app.md).
@@ -80,7 +81,7 @@ cd packages/contract && pnpm test   # builds then runs dist/**/*.test.js
 
 ## Local Dev Setup
 
-MinIO (S3-compatible storage) and Redis must be running before the app works:
+MinIO (S3-compatible storage) and RabbitMQ must be running before the app works:
 
 ```bash
 docker compose up -d
@@ -101,19 +102,25 @@ Vite + React 19 SPA on port 3000. Core feature is `src/features/editor/` — the
 
 ### Server (`apps/server`)
 
-Fastify + Node.js 22.18+ API on port 4000. Follows **hexagonal architecture** (Ports & Adapters): features live in `src/features/<name>/` with `adapters/inbound/http/` (controllers), `adapters/outbound/` (Redis, FFmpeg, S3), `application/use-cases/`, and `domain/`. Shared domain types and ports in `src/shared/`. Infrastructure adapters in `src/infrastructure/`.
+Fastify + Node.js 22.18+. Two entrypoints, one image:
+
+- **API** on port 4001 (`src/index.ts`) — HTTP only. Enqueues render commands on a RabbitMQ queue.
+- **Worker** on probe port 8081 (`src/worker.ts`) — consumes the queue, runs FFmpeg, publishes lifecycle events.
+
+Follows **hexagonal architecture** (Ports & Adapters): features live in `src/features/<name>/` with `adapters/inbound/{http,amqp}/`, `adapters/outbound/{ffmpeg,s3,amqp,http}/`, `application/use-cases/`, and `domain/`. Shared domain types and ports in `src/shared/`. Infrastructure adapters in `src/infrastructure/`.
 
 Three features: `upload`, `render`, `preview`.
 
-Routes:
+Routes (API):
 | Method | Path | Feature |
 |--------|------|---------|
 | POST | `/upload/signed-url` | upload |
-| POST | `/render` | render |
-| GET | `/render` | render |
+| POST | `/render` | render — returns 202 `{ id }`; 503 if broker unavailable. No GET endpoint — clients track lifecycle via AMQP `export.*` events |
 | POST | `/editor/preview-source` | preview |
 | GET | `/editor/segment` | preview |
 | GET | `/editor/demo-assets/:filename` | preview |
+
+Worker manifests live in `deploy/worker/`. See [docs/adr/0005-render-worker-deployment.md](docs/adr/0005-render-worker-deployment.md).
 
 → See [apps/server/CLAUDE.md](apps/server/CLAUDE.md) for full detail.
 
@@ -139,6 +146,7 @@ Root export (`@video-editor/contract`) re-exports `iframe` + shared `SavedMediaI
 - **Remotion** — video composition engine. `@remotion/player` renders the canvas preview in the browser.
 - **`@ffmpeg-installer/ffmpeg`** — bundled FFmpeg binary (no system install needed). Server uses raw `spawn` for all FFmpeg processing.
 - **`@fastify/multipart`** — file upload handling (500 MB limit).
+- **`@ztube/observability`** — internal package providing OpenTelemetry tracing/metrics, Pino structured logging, and Pyroscope profiling for server + worker.
 
 ## Agent skills
 

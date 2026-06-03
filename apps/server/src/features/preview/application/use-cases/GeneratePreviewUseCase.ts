@@ -1,4 +1,4 @@
-import type { EnvConfig } from "../../../../config/env.ts";
+import type { ApiEnvConfig } from "../../../../config/env.ts";
 import type { StoragePort } from "../../../../shared/application/ports/outbound/StoragePort.ts";
 import type { PreviewSourcePort } from "../ports/outbound/PreviewSourcePort.ts";
 import { generateHlsPlaylist } from "../services/mpd-to-hls.service.ts";
@@ -53,9 +53,9 @@ function rewritePlaylistToProxy(
 
 export class GeneratePreviewUseCase {
 	private readonly storage: StoragePort;
-	private readonly config: EnvConfig;
+	private readonly config: ApiEnvConfig;
 
-	constructor(storage: StoragePort, config: EnvConfig) {
+	constructor(storage: StoragePort, config: ApiEnvConfig) {
 		this.storage = storage;
 		this.config = config;
 	}

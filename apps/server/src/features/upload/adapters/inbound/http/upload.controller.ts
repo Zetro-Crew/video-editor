@@ -6,7 +6,10 @@ import {
 import type { FastifyPluginAsync, FastifyReply } from "fastify";
 import type { Request } from "../../../../../infrastructure/fastify/fastify.ts";
 import { HttpStatus } from "../../../../../shared/utils/http-status.ts";
-import type { UploadUseCase } from "../../../application/use-cases/UploadUseCase.ts";
+import {
+	UploadTooLargeError,
+	type UploadUseCase,
+} from "../../../application/use-cases/UploadUseCase.ts";
 
 const ALLOWED_MIMES = [
 	"video/mp4",
@@ -72,7 +75,7 @@ export const uploadController: FastifyPluginAsync<UploadControllerOptions> = asy
 		"/upload/signed-url",
 		{ schema: getSignedUrlRequestSchema },
 		async (request: Request<GetSignedUrlRequest>, reply: FastifyReply) => {
-			const { filename, mimetype } = request.body;
+			const { filename, mimetype, size } = request.body;
 			const ext = path.extname(filename).toLowerCase();
 
 			if (!isAllowedUpload(filename, mimetype)) {
@@ -82,9 +85,14 @@ export const uploadController: FastifyPluginAsync<UploadControllerOptions> = asy
 			}
 
 			try {
-				const result = await uploadUseCase.getSignedUrl({ filename, mimetype });
+				const result = await uploadUseCase.getSignedUrl({ filename, mimetype, size });
 				return reply.status(HttpStatus.OK).send(result);
 			} catch (err) {
+				if (err instanceof UploadTooLargeError) {
+					return reply.status(HttpStatus.PAYLOAD_TOO_LARGE).send({
+						error: `Upload size ${err.size} exceeds max ${err.maxSize}`,
+					});
+				}
 				return reply.status(HttpStatus.INTERNAL_SERVER_ERROR).send({
 					error: err instanceof Error ? err.message : "Unknown error",
 				});

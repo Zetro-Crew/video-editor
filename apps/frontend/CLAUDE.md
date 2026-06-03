@@ -11,9 +11,10 @@ Vite + React 19 + React Router v7 SPA. Port **3000**.
 ```bash
 pnpm dev          # Vite dev server
 pnpm build        # tsc + vite build
+pnpm preview      # vite preview
 pnpm lint         # biome check --write
-pnpm format       # biome format --write
 pnpm type-check   # tsc --noEmit
+pnpm test         # vitest run (unit)
 pnpm test:e2e     # playwright test
 pnpm test:e2e:ui  # playwright test --ui
 ```
@@ -44,6 +45,7 @@ Root component: `editor.tsx` (accepts optional `id` prop — scene ID).
 | `constants/` | Scale, fonts, etc. |
 | `external-preview/` | iframe postMessage handling |
 | `crop-modal/` | Crop editing modal |
+| `interfaces/` | Shared TS interfaces (editor, layout) |
 
 ### Zustand Stores (`src/features/editor/store/`)
 
@@ -58,7 +60,15 @@ Root component: `editor.tsx` (accepts optional `id` prop — scene ID).
 | `use-selection-store.ts` | Selected item state |
 | `use-timeline-view-store.ts` | Timeline view/scroll state |
 
-Global scene store: `src/store/use-scene-store.ts`
+## Other `src/` Directories
+
+| Directory | Purpose |
+|-----------|---------|
+| `components/` | Shared UI primitives (shadcn/ui) + `query-provider.tsx` |
+| `hooks/` | App-level hooks (outside editor feature) |
+| `lib/` | Utility libs (e.g., `utils.ts` for `cn`) |
+| `pages/` | Route components (`Home.tsx`, `EditPage.tsx`) |
+| `utils/` | App utilities incl. `upload-service.ts` |
 
 ## iframe Embedding
 

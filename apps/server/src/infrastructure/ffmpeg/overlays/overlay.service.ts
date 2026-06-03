@@ -1,7 +1,8 @@
 import type { Overlay } from "@video-editor/contract/internal/edit-video";
 import { OverlayType } from "@video-editor/contract/internal/shared";
-import type { EnvConfig } from "../../../config/env.ts";
+import type { CommonEnvConfig } from "../../../config/env.ts";
 import type { StoragePort } from "../../../shared/application/ports/outbound/StoragePort.ts";
+import type { FfmpegRunner } from "../ffmpeg.utils.ts";
 import { buildCircleOverlayFilter, prepareCircleOverlay } from "./circle-overlay.service.ts";
 import { buildImageOverlayFilter, prepareImageOverlay } from "./image-overlay.service.ts";
 import { buildRectangleOverlayFilter } from "./rectangle-overlay.service.ts";
@@ -114,7 +115,8 @@ export const prepareOverlays = async (
 	overlays: Overlay[],
 	tempDir: string,
 	storage: StoragePort,
-	config: EnvConfig,
+	config: CommonEnvConfig,
+	runner: FfmpegRunner,
 	signal?: AbortSignal,
 ): Promise<{ overlayInputs: PreparedOverlayInput[]; hasOverlays: boolean }> => {
 	const sortedOverlays = sortOverlaysByRenderOrder(overlays);
@@ -139,7 +141,7 @@ export const prepareOverlays = async (
 				return {
 					overlayId: overlay.id,
 					overlayType: overlay.type,
-					path: await prepareVideoOverlay(overlay, tempDir, storage, config, signal),
+					path: await prepareVideoOverlay(overlay, tempDir, storage, config, runner, signal),
 				};
 			}
 			if (overlay.type === OverlayType.shape) {

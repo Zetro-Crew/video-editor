@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { EnvConfig } from "../../../../../config/env.ts";
+import type { ApiEnvConfig } from "../../../../../config/env.ts";
 import { InMemoryStorageAdapter } from "../../../../../infrastructure/storage/__tests__/InMemoryStorageAdapter.ts";
 import type {
 	PreviewPlayResult,
@@ -24,14 +24,14 @@ const FIXTURE_MPD = `<?xml version="1.0" encoding="utf-8"?>
 
 const SEG_START = 1_778_412_270_000;
 
-function makeConfig(): EnvConfig {
+function makeConfig(): ApiEnvConfig {
 	return {
 		SERVER_BASE_URL: "http://server.local",
 		MAX_PREVIEW_DURATION_MS: 3_600_000,
 		PREVIEW_JOB_TTL_SECONDS: 86400,
 		S3_PREVIEW_PREFIX: "preview",
 		PREVIEW_SIGNING_SECRET: "test-secret-for-url-signing-32characters",
-	} as unknown as EnvConfig;
+	} as unknown as ApiEnvConfig;
 }
 
 function makePreviewSource(): PreviewSourcePort & {

@@ -1,10 +1,10 @@
 import { promises as fsp } from "node:fs";
 import type { VideoSource } from "@video-editor/contract/internal/edit-video";
 import { Logger } from "@ztube/observability";
-import type { EnvConfig } from "../../../config/env.ts";
+import type { CommonEnvConfig } from "../../../config/env.ts";
 import { validateMpdRestrictions } from "../../../features/render/domain/video-segment.policy.ts";
 import { FFMPEG_COMMAND, FFMPEG_FLAG } from "../ffmpeg.consts.ts";
-import { runFfmpeg } from "../ffmpeg.utils.ts";
+import type { FfmpegRunner } from "../ffmpeg.utils.ts";
 
 export const isMpdUrl = (url: string): boolean => url.toLowerCase().endsWith(".mpd");
 
@@ -12,7 +12,8 @@ export const processMpdSource = async (
 	source: VideoSource,
 	sourcePath: string,
 	hasMpdSource: boolean,
-	config: EnvConfig,
+	config: CommonEnvConfig,
+	runner: FfmpegRunner,
 	signal?: AbortSignal,
 ): Promise<void> => {
 	Logger.logInfo("[ffmpeg] processing MPD stream", { url: source.url });
@@ -52,7 +53,7 @@ export const processMpdSource = async (
 		sourcePath,
 	];
 
-	await runFfmpeg(args, config.ENABLE_MPD_RESTRICTIONS ? config.TRANSCODE_TIMEOUT_MS : 0, signal);
+	await runner.run(args, config.ENABLE_MPD_RESTRICTIONS ? config.TRANSCODE_TIMEOUT_MS : 0, signal);
 
 	if (config.ENABLE_MPD_RESTRICTIONS) {
 		const stats = await fsp.stat(sourcePath);

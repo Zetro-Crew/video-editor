@@ -1,11 +1,11 @@
 import { existsSync, promises as fsp } from "node:fs";
 import path from "node:path";
 import type { VideoSource } from "@video-editor/contract/internal/edit-video";
-import type { EnvConfig } from "../../../config/env.ts";
+import type { CommonEnvConfig } from "../../../config/env.ts";
 import type { StoragePort } from "../../../shared/application/ports/outbound/StoragePort.ts";
 import { normalizeFfmpegDuration, normalizeFfmpegTime } from "../../../shared/utils/time.utils.ts";
 import { FFMPEG_COMMAND, FFMPEG_FLAG } from "../ffmpeg.consts.ts";
-import { runFfmpeg } from "../ffmpeg.utils.ts";
+import type { FfmpegRunner } from "../ffmpeg.utils.ts";
 import { isMpdUrl, processMpdSource } from "./dash-process.ts";
 import { isHlsUrl, processHlsSource } from "./hls-process.ts";
 import { processImageSource } from "./image-process.ts";
@@ -14,7 +14,8 @@ export const processSources = async (
 	sources: VideoSource[],
 	tempDir: string,
 	storage: StoragePort,
-	config: EnvConfig,
+	config: CommonEnvConfig,
+	runner: FfmpegRunner,
 	signal?: AbortSignal,
 ): Promise<string> => {
 	if (sources.length === 1) {
@@ -26,16 +27,25 @@ export const processSources = async (
 			tempDir,
 			storage,
 			config,
+			runner,
 			signal,
 		);
 	}
 	const hasMpdSource = sources.some((source) => isMpdUrl(source.url) || isHlsUrl(source.url));
-	const sourcePaths = await processMultipleSources(sources, tempDir, storage, config, signal);
+	const sourcePaths = await processMultipleSources(
+		sources,
+		tempDir,
+		storage,
+		config,
+		runner,
+		signal,
+	);
 	const concatenatedPath = await concatenateSources(
 		sourcePaths,
 		tempDir,
 		hasMpdSource,
 		config,
+		runner,
 		signal,
 	);
 
@@ -45,6 +55,7 @@ export const processSources = async (
 const generateBlankVideoSegment = async (
 	source: VideoSource,
 	outputPath: string,
+	runner: FfmpegRunner,
 ): Promise<void> => {
 	const url = new URL(source.url);
 	const width = Number.parseInt(url.searchParams.get("w") ?? "1920", 10);
@@ -79,7 +90,7 @@ const generateBlankVideoSegment = async (
 		outputPath,
 	];
 
-	await runFfmpeg(args);
+	await runner.run(args);
 };
 
 const processSingleSource = async (
@@ -87,26 +98,27 @@ const processSingleSource = async (
 	sourcePath: string,
 	tempDir: string,
 	storage: StoragePort,
-	config: EnvConfig,
+	config: CommonEnvConfig,
+	runner: FfmpegRunner,
 	signal?: AbortSignal,
 ): Promise<string> => {
 	if (source.url.startsWith("internal://blank")) {
-		await generateBlankVideoSegment(source, sourcePath);
+		await generateBlankVideoSegment(source, sourcePath, runner);
 
 		return sourcePath;
 	}
 	if (source.type === "image") {
-		await processImageSource(source, sourcePath, tempDir, storage);
+		await processImageSource(source, sourcePath, tempDir, storage, runner);
 
 		return sourcePath;
 	}
 	if (isMpdUrl(source.url)) {
-		await processMpdSource(source, sourcePath, false, config, signal);
+		await processMpdSource(source, sourcePath, false, config, runner, signal);
 
 		return sourcePath;
 	}
 	if (isHlsUrl(source.url)) {
-		await processHlsSource(source, sourcePath, config, signal);
+		await processHlsSource(source, sourcePath, config, runner, signal);
 
 		return sourcePath;
 	}
@@ -152,7 +164,7 @@ const processSingleSource = async (
 			trimmedPath,
 		);
 
-		await runFfmpeg(args, 0, signal);
+		await runner.run(args, 0, signal);
 		await fsp.rename(trimmedPath, sourcePath);
 	}
 
@@ -163,13 +175,22 @@ const processMultipleSources = async (
 	sources: VideoSource[],
 	tempDir: string,
 	storage: StoragePort,
-	config: EnvConfig,
+	config: CommonEnvConfig,
+	runner: FfmpegRunner,
 	signal?: AbortSignal,
 ): Promise<string[]> => {
 	const sourcePaths = await Promise.all(
 		sources.map(async (source, index) => {
 			const sourcePath = path.join(tempDir, `source-${index}.mp4`);
-			return await processSingleSource(source, sourcePath, tempDir, storage, config, signal);
+			return await processSingleSource(
+				source,
+				sourcePath,
+				tempDir,
+				storage,
+				config,
+				runner,
+				signal,
+			);
 		}),
 	);
 
@@ -180,7 +201,8 @@ const concatenateSources = async (
 	sourcePaths: string[],
 	tempDir: string,
 	hasMpdSource: boolean,
-	config: EnvConfig,
+	config: CommonEnvConfig,
+	runner: FfmpegRunner,
 	signal?: AbortSignal,
 ): Promise<string> => {
 	const missing = sourcePaths.filter((p) => !existsSync(p));
@@ -234,7 +256,7 @@ const concatenateSources = async (
 		concatenatedPath,
 	];
 
-	await runFfmpeg(args, 0, signal);
+	await runner.run(args, 0, signal);
 
 	return concatenatedPath;
 };

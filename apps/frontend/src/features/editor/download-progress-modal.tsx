@@ -57,16 +57,32 @@ const DownloadProgressModal = ({ stateManager }: { stateManager: StateManager })
 
 	useEffect(() => {
 		if (!displayProgressModal) return;
-		fetchCore("/users/me")
+		const controller = new AbortController();
+		const { signal } = controller;
+		setDisplayName(null);
+		fetchCore("/users/me", { signal })
 			.then((r) => r.json())
-			.then((data: { displayName?: string }) => setDisplayName(data.displayName ?? null))
-			.catch(() => {});
+			.then((data: { displayName?: string }) => {
+				if (!signal.aborted) setDisplayName(data.displayName ?? null);
+			})
+			.catch((err) => {
+				if (err?.name !== "AbortError") {
+					console.error("Failed to load user displayName:", err);
+				}
+			});
 		setChannelsLoading(true);
-		fetchCore("/media/clip/managed-virtual-channels")
+		fetchCore("/media/clip/managed-virtual-channels", { signal })
 			.then((r) => r.json())
-			.then((data: Channel[]) => setChannels(data))
-			.catch(() => setChannels([]))
-			.finally(() => setChannelsLoading(false));
+			.then((data: Channel[]) => {
+				if (!signal.aborted) setChannels(data);
+			})
+			.catch((err) => {
+				if (err?.name !== "AbortError" && !signal.aborted) setChannels([]);
+			})
+			.finally(() => {
+				setChannelsLoading(false);
+			});
+		return () => controller.abort();
 	}, [displayProgressModal]);
 
 	const handleNameChange = (value: string) => {

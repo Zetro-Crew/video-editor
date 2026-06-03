@@ -9,8 +9,8 @@ import type {
 	IVideo,
 } from "@designcombo/types";
 import { useEffect } from "react";
-import useActiveItem from "../hooks/use-active-item";
 import { MenuItem } from "../menu-item/menu-item";
+import { useActiveItem } from "../store/selectors";
 import useLayoutStore from "../store/use-layout-store";
 import BasicAudio from "./basic-audio";
 import BasicCaption from "./basic-caption";

@@ -101,6 +101,12 @@ const useCropStore = create<ICropState>((set) => ({
 			});
 			set({ element: image, scale: scaleFactor });
 		};
+		image.onerror = () => {
+			disposeMediaElement(image);
+			if (useCropStore.getState().element === image) {
+				set({ element: undefined, fileLoading: false });
+			}
+		};
 		image.src = src;
 	},
 	loadVideo: (src: string) => {
@@ -162,6 +168,13 @@ const useCropStore = create<ICropState>((set) => ({
 				video.currentTime = start;
 			} else if (video.currentTime < start - 1) {
 				video.currentTime = start;
+			}
+		};
+
+		video.onerror = () => {
+			disposeMediaElement(video);
+			if (useCropStore.getState().element === video) {
+				set({ element: undefined, fileLoading: false });
 			}
 		};
 

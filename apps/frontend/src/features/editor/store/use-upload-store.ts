@@ -28,6 +28,7 @@ interface IUploadStore {
 	removeUpload: (id: string) => void;
 	uploads: any[];
 	setUploads: (uploads: any[] | ((prev: any[]) => any[])) => void;
+	resetUploadStore: () => void;
 }
 
 const useUploadStore = create<IUploadStore>()(
@@ -135,6 +136,18 @@ const useUploadStore = create<IUploadStore>()(
 							? (uploads as (prev: any[]) => any[])(state.uploads)
 							: uploads,
 				})),
+			resetUploadStore: () =>
+				set((state) => {
+					for (const upload of state.activeUploads) {
+						if (upload.removeTimeoutId) clearTimeout(upload.removeTimeoutId);
+					}
+					return {
+						files: [],
+						pendingUploads: [],
+						activeUploads: [],
+						uploads: [],
+					};
+				}),
 		}),
 		{
 			name: "upload-store",

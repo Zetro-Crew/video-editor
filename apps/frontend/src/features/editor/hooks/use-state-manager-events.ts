@@ -4,7 +4,6 @@ import { useEffect } from "react";
 import { audioDataManager } from "../player/lib/audio-data";
 import type { ICompositionStore } from "../store/use-composition-store";
 import useCompositionStore from "../store/use-composition-store";
-import useSelectionStore from "../store/use-selection-store";
 import type { ITimelineViewStore } from "../store/use-timeline-view-store";
 import useTimelineViewStore from "../store/use-timeline-view-store";
 
@@ -20,36 +19,28 @@ const COMPOSITION_KEYS = [
 	"compositions",
 ] as const satisfies ReadonlyArray<keyof ICompositionStore>;
 
-const SELECTION_KEYS = ["activeIds"] as const;
-
 const TIMELINE_VIEW_KEYS = ["scale", "scroll"] as const satisfies ReadonlyArray<
 	keyof ITimelineViewStore
 >;
 
 type CompositionPatch = Partial<Pick<ICompositionStore, (typeof COMPOSITION_KEYS)[number]>>;
 
-type SelectionPatch = Pick<{ activeIds: string[] }, "activeIds">;
-
 type TimelineViewPatch = Partial<Pick<ITimelineViewStore, (typeof TIMELINE_VIEW_KEYS)[number]>>;
 
 const COMPOSITION_FIELDS: ReadonlySet<string> = new Set(COMPOSITION_KEYS);
-const SELECTION_FIELDS: ReadonlySet<string> = new Set(SELECTION_KEYS);
 const TIMELINE_VIEW_FIELDS: ReadonlySet<string> = new Set(TIMELINE_VIEW_KEYS);
 
 const routeStateUpdate = (newState: Record<string, unknown>) => {
 	const composition: Record<string, unknown> = {};
-	const selection: Record<string, unknown> = {};
 	const timelineView: Record<string, unknown> = {};
 
 	for (const [key, value] of Object.entries(newState)) {
 		if (COMPOSITION_FIELDS.has(key)) composition[key] = value;
-		else if (SELECTION_FIELDS.has(key)) selection[key] = value;
 		else if (TIMELINE_VIEW_FIELDS.has(key)) timelineView[key] = value;
 	}
 
 	if (Object.keys(composition).length)
 		useCompositionStore.setState(composition as CompositionPatch);
-	if (Object.keys(selection).length) useSelectionStore.setState(selection as SelectionPatch);
 	if (Object.keys(timelineView).length)
 		useTimelineViewStore.setState(timelineView as TimelineViewPatch);
 };

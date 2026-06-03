@@ -12,7 +12,6 @@ import {
 } from "../constants/events";
 import useCompositionStore from "../store/use-composition-store";
 import useEditorRefs from "../store/use-editor-refs";
-import useSelectionStore from "../store/use-selection-store";
 import { getSafeCurrentFrame } from "../utils/time";
 
 const useTimelineEvents = () => {
@@ -67,9 +66,10 @@ const useTimelineEvents = () => {
 
 		const selectionSubscription = selectionEvents.subscribe((obj) => {
 			if (obj.key === LAYER_SELECTION) {
-				useSelectionStore.setState({
-					activeIds: obj.value?.payload.activeIds,
-				});
+				const next = obj.value?.payload?.activeIds;
+				if (Array.isArray(next)) {
+					useCompositionStore.setState({ activeIds: next });
+				}
 			}
 		});
 		return () => selectionSubscription.unsubscribe();
