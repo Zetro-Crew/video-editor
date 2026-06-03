@@ -32,6 +32,14 @@ Every TS type in the package is `z.infer<typeof schema>` so schemas and types ca
 
 **Event Envelope** — versioned wrapper around the domain payload: `{ eventName, eventVersion, occurredAt, traceparent, data }`. Same shape stamped into AMQP headers (`x-event-name`, `x-event-version`) so subscribers can filter without parsing the body.
 
+## Editor Composition
+
+**IDesign** — the serialized editor state: tracks, track items, canvas size, FPS. This is the payload the frontend sends to `/render`. It is the single source of truth for what the rendered output will look like.
+
+**Render Job** — an async server-side job (keyed by `jobId` in Redis) that runs FFmpeg against an IDesign and stores the encoded output in S3. States: `PROCESSING → COMPLETED | FAILED | CANCELLED`. Frontend polls `GET /render?id=<jobId>`.
+
+**Edit-Video Job** — a separate async FFmpeg job (also Redis-tracked) that processes a raw source file — not a full IDesign. Used for trimming, cutting, and format conversion of a single source. States: `PROCESSING → COMPLETED | FAILED`.
+
 ## Preview & VOD
 
 **Core Service** — external HTTP service hosting `/private/users/me`, channel list, and `/private/channels/:id/play`. Mocked locally by `apps/core-mock` (port 8002).
@@ -48,5 +56,11 @@ Every TS type in the package is `z.infer<typeof schema>` so schemas and types ca
 **VOD Token** — short-lived (~10 min) credential issued by Core's Channel Play API and validated by VOD on both MPD-generate and segment fetches. Cross-service trust: in prod, Core and VOD share state internally; in mocks, `apps/core-mock` POSTs `/__internal/register-token` to `apps/mock-vod`. **Footgun:** the token is baked into the preview playlist URLs, so a stored playlist outlasts its token — pause/idle past the TTL and segments 401.
 
 **MPD Base** — effective base URL for resolving DASH segment templates. Per ISO/IEC 23009-1, computed as `resolve(periodBaseURL, resolve(mpdBaseURL, mpdDocumentURL))` (RFC3986). `segmentStartTimeMs` (from `/play.timeRanges[0][0]`) is the wall-clock anchor; `presentationTimeOffset` from the MPD is informational only in this HLS pipeline.
+
+**Channel Range** — a preview source type (`{ type: "channel-range", channelId, startTimeMs, endTimeMs }`) that references a time window of a live channel recording. The server resolves it by calling Core's Channel Play API, fetching the DASH MPD, and assembling an HLS Playlist. The editor always works with the resolved HLS Playlist, never directly with the Channel Range.
+
+**HLS Playlist** — a server-assembled `.m3u8` file built from a DASH MPD. Not a native recording format — the editor server synthesizes it so the browser's HLS stack can play DASH-origin content without needing MSE/DASH.js. Stored in S3 after assembly; URL is presigned.
+
+**Segment Proxy** — the `GET /editor/segment` endpoint. Browsers cannot attach custom `vod-token` headers to media segment fetches (HLS). The server acts as a proxy: it validates the HMAC-signed segment URL, injects the `vod-token` header, and streams the bytes from VOD to the browser.
 
 → See [ADR 0002](docs/adr/0002-mock-vod-as-separate-app.md)
