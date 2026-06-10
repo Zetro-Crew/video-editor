@@ -10,13 +10,14 @@
 
 ## 🚀 Overview
 
-`@ztube/observability` is a unified infrastructure layer that combines **Distributed Tracing**, **Metrics**, **Profiling**, and **Structured Logging** into a single, high-performance package. It is designed to be the foundation of any service within the zTube ecosystem, ensuring that operations are visible, measurable, and debuggable.
+`@ztube/observability` is a unified infrastructure layer that combines **Distributed Tracing**, **Metrics**, **Profiling**, **Structured Logging**, and **Stage Monitoring** into a single, high-performance package. It is designed to be the foundation of any service within the zTube ecosystem, ensuring that operations are visible, measurable, and debuggable.
 
 ### Key Pillars
-- **🔭 Distributed Tracing**: Automated OpenTelemetry instrumentation for HTTP, AMQP, MongoDB, Redis, and AWS.
-- **📊 Real-time Metrics**: Automatic collection of Host (CPU/Mem) and Runtime (GC/Event Loop) metrics.
-- **🔥 Continuous Profiling**: Deep integration with Pyroscope for CPU and Heap profiling with trace-to-profile linking.
-- **📜 Structured Logging**: Context-aware logging using Pino, with automatic correlation IDs and trace injection.
+- **🔭 Distributed Tracing**: Auto OpenTelemetry instrumentation for HTTP, Fastify, AMQP, AWS SDK, MongoDB, Redis, and Pino logs.
+- **📊 Real-time Metrics**: Host (CPU/Mem) and Runtime (GC/Event Loop) metrics collected every 5 s and shipped via OTLP gRPC.
+- **🔥 Continuous Profiling**: Optional Pyroscope integration with automatic `trace_id`/`span_id`/`profile_id` linking.
+- **📜 Structured Logging**: Pino-based logger with ISO timestamps, `err` serializer, and auto-injected trace IDs.
+- **⛓️ Stage Monitoring**: `ZMonitor` for process-stage lifecycle logs with monotonic-clock duration.
 
 ---
 
@@ -28,12 +29,19 @@ The package follows a **Modular Infrastructure** pattern, providing specialized 
 graph TD
     A[Service Entry] -->|initTelemetry| B(OTEL Node SDK)
     B --> C{Exporters}
-    C -->|gRPC/HTTP| D[OTLP Collector]
-    C -->|HTTP| E[Pyroscope Server]
-    
+    C -->|gRPC| D[OTLP Collector]
+    B --> E[Pyroscope Server]
+
     A -->|fastifyLoggingPlugin| F(Fastify Logger)
-    F --> G[JSON Console/File]
+    F --> G[JSON Console / Custom Destination]
 ```
+
+Two entry points are published:
+
+| Subpath | Purpose |
+|---|---|
+| `@ztube/observability` | Telemetry init, tracing helpers, `Logger`, `LoggerManager`, `createZMonitor` |
+| `@ztube/observability/fastify` | `fastifyLoggingPlugin`, `HttpError`, route-level log config types |
 
 ---
 
@@ -48,42 +56,60 @@ pnpm add @ztube/observability
 ## 📖 Usage
 
 ### 1. The "Golden Standard" Initialization
-Call `initTelemetry` as early as possible in your application entry point.
+
+Call `initTelemetry` as early as possible in your application entry point (before any other imports that need to be instrumented).
 
 ```typescript
 import { initTelemetry } from "@ztube/observability";
 
-await initTelemetry({
+initTelemetry({
   serviceName: "video-processor",
   serviceVersion: "2.4.0",
   otelEndpoint: "http://otel-collector:4317",
-  pyroscopeServerAddress: "http://pyroscope:4040", // Optional: Enables Profiling
+  pyroscopeServerAddress: "http://pyroscope:4040", // optional — enables profiling
   logLevel: "info",
-  samplingRatio: 0.1 // Record 10% of traces
+  samplingRatio: 0.1, // record 10% of traces
 });
 ```
 
+> [!NOTE]
+> `initTelemetry` also installs `SIGTERM` / `SIGINT` shutdown hooks that flush the NodeSDK exporters before the process exits.
+
 ### 2. Context-Aware Tracing
-Wrap critical business logic in custom spans. Traces are automatically linked to Pyroscope profiles if profiling is enabled.
+
+Wrap critical business logic in custom spans. Spans are automatically linked to Pyroscope profiles when profiling is enabled.
 
 ```typescript
-import { addCustomSpan } from "@ztube/observability";
+import { addCustomSpan, isSampled } from "@ztube/observability";
 
 const data = await addCustomSpan("process-frame", async (span) => {
   span.setAttribute("frame.id", frameId);
-  
-  // Logic here...
-  const result = await processFrame(frameId);
-  
-  return result;
+
+  // guard expensive attribute/log work behind the sampler
+  if (isSampled()) {
+    span.setAttribute("frame.debug", JSON.stringify(debugInfo));
+  }
+
+  return processFrame(frameId);
 });
 ```
 
-### 3. Corporate Logging
-The package provides a standardized `Logger` based on Pino, designed for structured logging and high performance.
+Exceptions thrown inside the callback are recorded on the span (`recordException` + `SpanStatusCode.ERROR`) and re-thrown.
 
-#### Static Usage (Internal/Global)
-Use the exported `Logger` for global or internal logging. It is pre-configured but can be re-configured during initialization.
+For non-Fastify HTTP servers, attach `pyroscopeMiddleware` to each request to propagate profile labels:
+
+```typescript
+import { pyroscopeMiddleware } from "@ztube/observability";
+expressApp.use(pyroscopeMiddleware);
+```
+
+`fastifyLoggingPlugin` registers it for you when `enableProfiling: true`.
+
+### 3. Corporate Logging
+
+The package provides a standardized `Logger` based on Pino. ISO timestamps, numeric levels, and the Pino `err` serializer are configured by default.
+
+#### Static Usage (Internal / Global)
 
 ```typescript
 import { Logger } from "@ztube/observability";
@@ -98,43 +124,119 @@ try {
 }
 ```
 
-#### Instance Management
-For services that require dependency injection or child loggers with specific context:
+`initTelemetry` reconfigures this singleton with the `serviceName` + `logLevel` you pass it.
+
+#### Child loggers
+
+`Logger` is a `LoggerPort` (the public interface — the underlying `LoggerManager` class is internal). Use `createChild` to spawn a request- or job-scoped logger with bound metadata:
 
 ```typescript
-import { LoggerManager } from "@ztube/observability";
+import { Logger, type LoggerPort } from "@ztube/observability";
 
-const logger = LoggerManager.create({ serviceName: "media-worker", level: "debug" });
-
-// Create a child logger for a specific request/context
-const childLogger = logger.createChild({ traceId: "xyz-789" });
+const childLogger: LoggerPort = Logger.createChild({ traceId: "xyz-789" });
 childLogger.logInfo("Processing chunk");
 ```
 
-### 4. Fastify Premium Logging
-Enable high-performance, structured logging for your Fastify services.
+For DI containers, depend on the `LoggerPort` type and inject `Logger` (or a `createChild` of it) at composition root.
+
+### 4. Stage / Process Monitoring
+
+`createZMonitor` wraps `LoggerManager` with a stage lifecycle and monotonic-clock duration. Use it to instrument discrete steps of a pipeline or background job.
+
+```typescript
+import { createZMonitor } from "@ztube/observability";
+
+const monitor = createZMonitor({
+  processName: "render-job",
+  stageName: "encode",
+  businessId: jobId,
+});
+
+monitor.logStarted();
+try {
+  const out = await encode();
+  monitor.logSuccess(out);
+} catch (err) {
+  monitor.logAborting(err as Error);
+}
+```
+
+Every log line includes `processName`, `stageName`, `businessId`, `status`, and `durationMs` (computed from `process.hrtime.bigint()` since `logStarted()`). Available lifecycle calls: `logStarted`, `logSuccess`, `logRetry`, `logAborting`, `logInvalidInput`.
+
+### 5. Fastify Premium Logging
+
+Enable structured request/response logging for your Fastify services.
 
 ```typescript
 import { fastifyLoggingPlugin } from "@ztube/observability/fastify";
 
 server.register(fastifyLoggingPlugin, {
-  serviceName: "api-gateway",
-  level: "debug"
+  enableByDefault: true,
+  logStarted: false,
+  logSuccess: true,
+  enableProfiling: true,
 });
 ```
+
+#### Plugin options
+
+| Option | Type | Default | Description |
+| :--- | :--- | :--- | :--- |
+| `enableByDefault` | `boolean` | `false` | Log HTTP for every route unless `routeOptions.config.logHttp === false`. |
+| `logStarted` | `boolean` | `false` | Emit a log line when each request starts. |
+| `logSuccess` | `boolean` | `true` | Emit a log line on successful response. |
+| `enableProfiling` | `boolean` | `false` | Register `pyroscopeMiddleware` as an `onRequest` hook. |
+
+#### Per-route override
+
+Attach a `RouteLogConfig` to `routeOptions.config` to override the global defaults for a single route.
+
+```typescript
+server.get("/health", {
+  config: {
+    logHttp: false,
+    message: "health-check",
+  } satisfies RouteLogConfig,
+}, healthHandler);
+```
+
+| Field | Type | Purpose |
+| :--- | :--- | :--- |
+| `logHttp?` | `boolean` | Override `enableByDefault`. |
+| `logStarted?` | `boolean` | Override global `logStarted`. |
+| `logSuccess?` | `boolean` | Override global `logSuccess`. |
+| `selectFields?` | `(ctx: LogSelectingContext) => Record<string, unknown>` | Pick extra fields per `LOG_PHASE` (`STARTED` / `SUCCESS` / `ERROR`). |
+| `message` | `string` | Log message; falls back to the handler's function name + phase. |
+
+#### Sampling-aware logging
+
+`fastifyLoggingPlugin` and `ZMonitor` both skip non-error log lines when the active span is **not** recording — i.e. when the trace was dropped by `samplingRatio`. **Errors always log**, regardless of sampling. This keeps your hot path quiet under heavy sampling while guaranteeing failure visibility.
 
 ---
 
 ## ⚙️ Configuration
 
+`ZOtelConfig` (passed to `initTelemetry`):
+
 | Option | Type | Default | Description |
 | :--- | :--- | :--- | :--- |
-| `serviceName` | `string` | **Required** | The name identifier for the service. |
-| `serviceVersion` | `string` | `1.0.0` | Semantic version of the service. |
-| `otelEndpoint` | `string` | **Required** | OTLP gRPC endpoint (e.g., Aspire, Jaeger). |
-| `pyroscopeServerAddress` | `string` | `undefined` | Server address for continuous profiling. |
-| `logLevel` | `string` | `info` | Minimum log level (trace, debug, info, warn, error). |
-| `samplingRatio` | `number` | `1.0` | Probability of sampling a trace (0 to 1). |
+| `serviceName` | `string` | **Required** | Service identifier (`service.name` resource attribute). |
+| `serviceVersion` | `string` | **Required** | Semantic version (`service.version` resource attribute). |
+| `otelEndpoint` | `string` | **Required** | OTLP gRPC endpoint for traces + metrics (e.g. `http://otel-collector:4317`). |
+| `pyroscopeServerAddress` | `string` | `undefined` | Pyroscope address; if omitted, profiling is disabled. |
+| `logLevel` | `string` | `process.env.LOG_LEVEL` ⇒ `"info"` | Pino log level. |
+| `samplingRatio` | `number` | `1.0` | Trace sampling probability (0–1) via `TraceIdRatioBasedSampler`. |
+
+`ZBaseConfig` (consumed internally by the `Logger` singleton and by `createZMonitor`):
+
+| Option | Type | Default | Description |
+| :--- | :--- | :--- | :--- |
+| `serviceName` | `string` | `undefined` | Pino `base.serviceName` field. |
+| `level` | `string` | `process.env.LOG_LEVEL` ⇒ `"info"` | Pino log level. |
+| `customDestination` | `pino.DestinationStream` | `pino.destination(1)` (stdout) | Custom destination — useful in tests. |
+
+> [!TIP]
+> When `LOG_LEVEL` is set in the environment, both the `Logger` singleton and any `createZMonitor` instance pick it up automatically.
 
 ---
 
@@ -156,6 +258,8 @@ throw new HttpError({
 
 **HTTP-only scope.** `HttpError` is for HTTP responses. Do not throw it from AMQP consumers, worker code, or background jobs — `statusCode` is meaningless there. Use plain `Error` subclasses for non-HTTP failure paths and translate to `HttpError` at the controller boundary.
 
+**`expose` default.** When you do not pass `expose`, it is derived from `statusCode`: `true` for 4xx, `false` for 5xx. So 5xx bodies do not leak internal `message`s unless you opt in.
+
 **Log shape.** When a route throws `HttpError`, the log line carries `err.statusCode`, `err.expose`, `err.details`, and `err.cause` (inlined into the stack) under the `err.*` namespace via Pino's `stdSerializers.err`. Dashboards and alerts can key on these. The `onError` hook duck-types on `statusCode`, so Fastify-native validation errors (`FastifyError`) also log the correct `400` without a special case.
 
 **Response shape.** The consuming app's `setErrorHandler` decides the wire format. The reference handler in `@video-editor/server` replies with `{ error: err.expose ? err.message : "Internal error" }` — `details` is intentionally log-only and never serialized.
@@ -170,12 +274,23 @@ We maintain a strict quality gate for observability infrastructure.
 # Build the package
 pnpm build
 
-# Run critical test suites
+# Run the test suite (vitest)
 pnpm test
 
-# Launch test UI for visual debugging
-pnpm test-ui
+# Type-check
+pnpm type-check
+
+# Lint + format (Biome)
+pnpm lint
+
+# Run the Fastify OTEL example end-to-end
+pnpm example:fastify
 ```
+
+Example apps live under `src/example/`:
+- `monitor-example/` — `createZMonitor` lifecycle demo.
+- `otel/fastify/` — full Fastify service with tracing, metrics, profiling, and structured logs.
+- `otel/express/` — Express counterpart to demonstrate framework portability.
 
 ---
 
