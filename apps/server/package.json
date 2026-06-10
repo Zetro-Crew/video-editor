@@ -33,11 +33,9 @@
 		"zod": "catalog:"
 	},
 	"devDependencies": {
-		"@testcontainers/rabbitmq": "^12.0.1",
+		"@testcontainers/rabbitmq": "^11.0.1",
 		"@types/ffprobe-static": "^2.0.0",
 		"@types/node": "catalog:",
-		"@video-editor/core-mock": "workspace:*",
-		"@video-editor/mock-vod": "workspace:*",
 		"typescript": "catalog:",
 		"vitest": "catalog:"
 	}

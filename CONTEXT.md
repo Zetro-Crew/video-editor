@@ -64,9 +64,11 @@ Every TS type in the package is `z.infer<typeof schema>` so schemas and types ca
 **Mock VOD** — `apps/mock-vod`. Fastify app emulating the real VOD HTTP contract (manifest + segments + `vod-token` validation). The editor server runs the same code path against Mock VOD and real VOD — no demo branches in `apps/server`.
 
 **Channel Play API** — `GET /private/channels/:id/play?start&end` on Core. Returns `{ url, timeRanges, token }`:
-- `url` — MPD document URL. Relative in prod (resolved against `CORE_BASE_URL`), absolute in dev (mock VOD lives on a different port from mock Core).
+- `url` — MPD document URL. Relative in prod (resolved against `SERVER_BASE_URL` — Core, VOD, and the editor server share the same public origin behind the ingress), absolute in dev mocks (mock VOD lives on a different port from mock Core).
 - `timeRanges[0][0]` — wall-clock anchor (ms) for the first segment (`segmentStartTimeMs`). The HLS pipeline uses this, **not** MPD `presentationTimeOffset`.
 - `token` — VOD Token.
+
+**Cookie passthrough to VOD** — `HttpPreviewSourceAdapter.fetchManifest` forwards the caller's `ztube-token` Core session cookie on the MPD GET. In prod, VOD shares the auth boundary with Core behind the same ingress; in dev mocks, VOD ignores the cookie and authenticates solely on `vod-token`. The trust line is not "Core vs VOD" but "session-authenticated origin vs anonymous".
 
 **VOD Token** — short-lived (~10 min) credential issued by Core's Channel Play API and validated by VOD on both MPD-generate and segment fetches. Cross-service trust: in prod, Core and VOD share state internally; in mocks, `apps/core-mock` POSTs `/__internal/register-token` to `apps/mock-vod`. **Footgun:** the token is baked into the preview playlist URLs, so a stored playlist outlasts its token — pause/idle past the TTL and segments 401.
 

@@ -148,7 +148,7 @@ Two durable exchanges, asserted on `connect()`:
 | Commands exchange | `video-editor.commands` (direct, durable). Routing keys: `render.requested`. **Server-internal — not part of the public contract.** |
 | Envelope | `{ eventName, eventVersion, occurredAt, traceparent, data }`. AMQP headers `x-event-name` and `x-event-version` mirror the envelope so subscribers can filter without parsing JSON |
 | Confirms | `confirmSelect` + `mandatory: true`. Broker-ack = success; broker-nack or unrouted-return = failure |
-| Retry (events) | 3 attempts, backoff `100ms / 500ms / 2s`. On exhaustion: log + **swallow** — controller never sees the error |
+| Retry (events) | 3 attempts, backoff `200ms / 1s` (per-attempt confirm timeout via `EVENT_PUBLISH_CONFIRM_TIMEOUT_MS`). On exhaustion: log + **swallow** — controller never sees the error |
 | Retry (commands) | Same backoff plus a per-attempt confirm-timeout race (`COMMAND_PUBLISH_CONFIRM_TIMEOUT_MS`). On exhaustion: throws `PublishExhaustedError` → controller maps to `503` |
 | Reconnect | Background loop on close/error. Backoff `1s/2s/5s/10s`, capped at 30s. Stops on explicit `close()` |
 | Startup | Eager connect in `System.start()` / `Worker.start()`. Fail-fast if broker unreachable |
@@ -223,6 +223,7 @@ All variables are validated by Zod in [`src/config/env.ts`](./src/config/env.ts)
 | `CORE_BASE_URL` | required | Upstream Core base URL. **Includes the `/private` prefix.** Dev: `http://localhost:8002/private` |
 | `MOCK_VOD_BASE_URL` | optional | Boot-only — logs the active mock-vod fixture window when `CORE_BASE_URL` is localhost. Defaults to `http://localhost:5050` |
 | `SERVER_BASE_URL` | required | Public server URL — used in signed segment URLs |
+| `SERVER_PUBLIC_PATH_PREFIX` | `""` | Ingress path prefix prepended to public-facing URLs the server emits (segment-proxy URLs in HLS playlists). Empty in local dev; set to e.g. `/api/video_editor/server` behind a path-stripping reverse proxy |
 | `PREVIEW_SIGNING_SECRET` | required | HMAC-SHA256 secret for `/editor/segment` URL signing. Min 32 chars. Without this, the segment proxy would be an SSRF vector |
 | `MAX_PREVIEW_DURATION_MS` | `3600000` | Max preview window length (1h) |
 | `PREVIEW_JOB_TTL_SECONDS` | `86400` | Preview-job retention TTL |
@@ -260,10 +261,12 @@ Single `Dockerfile` builds both entrypoints. The image is published once; the AP
 | Package | Purpose |
 |---|---|
 | `fastify` v5 | HTTP framework |
+| `@fastify/cors` | CORS plugin (registered in `bootstrap/server.ts`) |
 | `amqplib` v2 | AMQP client (events + commands) |
 | `@aws-sdk/*` | S3 / MinIO client |
 | `@ffmpeg-installer/ffmpeg` + `ffprobe-static` | Bundled FFmpeg/ffprobe binaries; invoked via raw `spawn` |
 | `sharp` | Image processing (SVG → PNG for overlays) |
+| `fast-xml-parser` | MPD XML parsing in `mpd-to-hls.service.ts` |
 | `zod` + `fastify-type-provider-zod` | Env + request schema validation |
 | `@video-editor/contract` | Shared HTTP request schemas + AMQP envelope contracts |
 | `@ztube/observability` | Pino logger, OTel auto-instrumentation, Pyroscope |
