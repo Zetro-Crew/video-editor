@@ -1,6 +1,6 @@
 # Monitoring
 
-The server and worker emit traces, metrics, profiles, and structured logs via the in-house [`@ztube/observability`](../architecture/apps/observability.md) package, which wraps OpenTelemetry, Pyroscope, and Pino.
+The server and worker emit traces, metrics, profiles, and structured logs via the in-house [`@ztube/observability`](../architecture/apps/observability) package, which wraps OpenTelemetry, Pyroscope, and Pino.
 
 ## Signals
 
@@ -78,12 +78,12 @@ Derived from the server's error paths. Alert names are suggestions — wire to y
 
 | Metric | What it tells you |
 |---|---|
-| `/editor/segment` 4xx rate | Likely expired `vod-token` baked into playlists — see [runbooks](runbooks.md). |
+| `/editor/segment` 4xx rate | Likely expired `vod-token` baked into playlists — see [runbooks](runbooks). |
 | S3 PUT 5xx rate (uploads + render output) | Storage outage. |
 
 ### Application
 
-- HTTP 503 on `/render`: AMQP publish exhausted retries. Broker is sick or the URL/credentials are wrong. See [ADR 0005](../architecture/adr/0005-render-worker-deployment.md).
+- HTTP 503 on `/render`: AMQP publish exhausted retries. Broker is sick or the URL/credentials are wrong. See [ADR 0005](../architecture/adr/0005-render-worker-deployment).
 - HTTP 5xx on `/editor/preview-source`: usually upstream Core or VOD failure. The request is forwarded to Core; check Core's logs first.
 
 ## Logs

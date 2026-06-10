@@ -12,4 +12,4 @@ Routes:
 | GET | `/private/media/clip/managed-virtual-channels` | Hard-coded channel list |
 | GET | `/private/channels/:channelId/play?start&end` | Mints a `vod-token`, registers it with `apps/mock-vod`, returns `{ url, timeRanges, token }` |
 
-See [CLAUDE.md](./) for the full route shapes, cross-service trust details, env vars, and structure. See [docs/adr/0002-mock-vod-as-separate-app.md](../adr/0002-mock-vod-as-separate-app.md) for the design rationale.
+See [CLAUDE.md](./) for the full route shapes, cross-service trust details, env vars, and structure. See [docs/adr/0002-mock-vod-as-separate-app.md](../adr/0002-mock-vod-as-separate-app) for the design rationale.

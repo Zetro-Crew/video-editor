@@ -61,7 +61,7 @@ export const environment = {
 
 ## postMessage Protocol
 
-See [packages/contract/README.md](./contract.md) for the full message schema. The demo app uses a local type mirror (`message-types.ts`) rather than importing the workspace package directly.
+See [packages/contract/README.md](./contract) for the full message schema. The demo app uses a local type mirror (`message-types.ts`) rather than importing the workspace package directly.
 
 **Auth:** the `ztube-token` cookie is HttpOnly and never travels via postMessage. The editor iframe's same-origin fetches to its own server attach it automatically.
 

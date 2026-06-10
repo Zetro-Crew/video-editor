@@ -4,8 +4,8 @@ You're here if your team **embeds the editor iframe** in a parent app, **consume
 
 ## Pages
 
-- [Iframe Integration](iframe-integration.md) — embed the editor, drive it with `postMessage`, handle responses.
-- [Event Consumers](event-consumers.md) — bind a queue to the `video-editor` exchange and react to `export.*` events.
+- [Iframe Integration](iframe-integration) — embed the editor, drive it with `postMessage`, handle responses.
+- [Event Consumers](event-consumers) — bind a queue to the `video-editor` exchange and react to `export.*` events.
 
 ## How you get the schemas
 

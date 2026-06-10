@@ -31,15 +31,24 @@ function stripRootReadmeHeader(body: string): string {
 	return body.replace(/<p align="left">[\s\S]*?<\/p>\s*/m, "");
 }
 
+// GitLab Wiki routes `[X](path.md)` to the raw blob view, not the page renderer.
+// Strip `.md` from relative Markdown link targets (preserving any `#anchor`).
+function stripWikiMdExtensions(body: string): string {
+	return body.replace(
+		/\]\(((?!https?:|mailto:|#)[^)\s]+?)\.md(#[^)\s]*)?\)/g,
+		"]($1$2)",
+	);
+}
+
 function rewriteContextLinks(body: string): string {
 	// CONTEXT.md → glossary.md. Rewrite ADR links to wiki structure.
-	return body.replace(/\(docs\/adr\/(\d{4}-[^)]+\.md)\)/g, "(adr/$1)");
+	return body.replace(/\(docs\/adr\/(\d{4}-[^)]+)\.md\)/g, "(adr/$1)");
 }
 
 function rewriteArchitectureLinks(body: string): string {
 	// docs/architecture.md sits at wiki/architecture/overview.md; sibling refs stay
 	// (no cross-doc links present today, but apply the same ADR rewrite).
-	return body.replace(/\(\.\.\/adr\/(\d{4}-[^)]+\.md)\)/g, "(adr/$1)");
+	return body.replace(/\(\.\.\/adr\/(\d{4}-[^)]+)\.md\)/g, "(adr/$1)");
 }
 
 function rewriteAppReadmeLinks(body: string): string {
@@ -47,12 +56,12 @@ function rewriteAppReadmeLinks(body: string): string {
 	// ../../packages/contract/src/events/README.md — keep relative semantics
 	// reasonable in the wiki by rewriting common patterns; otherwise leave alone.
 	return body
-		.replace(/\(\.\.\/\.\.\/docs\/adr\/(\d{4}-[^)]+\.md)\)/g, "(../adr/$1)")
+		.replace(/\(\.\.\/\.\.\/docs\/adr\/(\d{4}-[^)]+)\.md\)/g, "(../adr/$1)")
 		.replace(/\(\.\/CLAUDE\.md\)/g, "(./)") // CLAUDE.md is not in the wiki; drop the link target
-		.replace(/\(\.\.\/\.\.\/packages\/contract\/README\.md\)/g, "(./contract.md)")
+		.replace(/\(\.\.\/\.\.\/packages\/contract\/README\.md\)/g, "(./contract)")
 		.replace(
 			/\(\.\.\/\.\.\/packages\/contract\/src\/events\/README\.md\)/g,
-			"(../../integrators/event-consumers.md)",
+			"(../../integrators/event-consumers)",
 		);
 }
 
@@ -78,7 +87,10 @@ function buildAdrIndex(): string {
 		.sort();
 	const summaries = files.map((f) => parseAdr(f, readFileSync(join(dir, f), "utf8")));
 	const rows = summaries
-		.map((s) => `| ${s.num} | [${s.title}](./${s.file}) | ${s.status} |`)
+		.map(
+			(s) =>
+				`| ${s.num} | [${s.title}](./${s.file.replace(/\.md$/, "")}) | ${s.status} |`,
+		)
 		.join("\n");
 	return [
 		"# Architecture Decision Records",
@@ -97,36 +109,36 @@ function buildAdrIndex(): string {
 function buildSidebar(): string {
 	return [
 		"## Onboarding",
-		"- [Getting Started](onboarding/getting-started.md)",
-		"- [Repo Tour](onboarding/repo-tour.md)",
-		"- [Dev Setup](onboarding/dev-setup.md)",
-		"- [Workflow](onboarding/workflow.md)",
+		"- [Getting Started](onboarding/getting-started)",
+		"- [Repo Tour](onboarding/repo-tour)",
+		"- [Dev Setup](onboarding/dev-setup)",
+		"- [Workflow](onboarding/workflow)",
 		"",
 		"## Architecture",
-		"- [Overview](architecture/overview.md)",
-		"- [Glossary](architecture/glossary.md)",
-		"- [ADRs](architecture/adr/index.md)",
+		"- [Overview](architecture/overview)",
+		"- [Glossary](architecture/glossary)",
+		"- [ADRs](architecture/adr/index)",
 		"- Apps & Packages",
-		"  - [frontend](architecture/apps/frontend.md)",
-		"  - [server](architecture/apps/server.md)",
-		"  - [iframe-demo](architecture/apps/iframe-demo.md)",
-		"  - [core-mock](architecture/apps/core-mock.md)",
-		"  - [mock-vod](architecture/apps/mock-vod.md)",
-		"  - [contract](architecture/apps/contract.md)",
-		"  - [observability](architecture/apps/observability.md)",
+		"  - [frontend](architecture/apps/frontend)",
+		"  - [server](architecture/apps/server)",
+		"  - [iframe-demo](architecture/apps/iframe-demo)",
+		"  - [core-mock](architecture/apps/core-mock)",
+		"  - [mock-vod](architecture/apps/mock-vod)",
+		"  - [contract](architecture/apps/contract)",
+		"  - [observability](architecture/apps/observability)",
 		"",
 		"## Integrators",
-		"- [Iframe Integration](integrators/iframe-integration.md)",
-		"- [Event Consumers](integrators/event-consumers.md)",
+		"- [Iframe Integration](integrators/iframe-integration)",
+		"- [Event Consumers](integrators/event-consumers)",
 		"",
 		"## Ops",
-		"- [Deployment](ops/deployment.md)",
-		"- [Monitoring](ops/monitoring.md)",
-		"- [Runbooks](ops/runbooks.md)",
+		"- [Deployment](ops/deployment)",
+		"- [Monitoring](ops/monitoring)",
+		"- [Runbooks](ops/runbooks)",
 		"",
 		"## Product",
-		"- [Feature Overview](product/feature-overview.md)",
-		"- [User Glossary](product/user-glossary.md)",
+		"- [Feature Overview](product/feature-overview)",
+		"- [User Glossary](product/user-glossary)",
 		"",
 	].join("\n");
 }
@@ -139,11 +151,11 @@ function buildHome(): string {
 		"",
 		"## Pick your path",
 		"",
-		"- **[Onboarding](onboarding/getting-started.md)** — new to the project. Install, run, learn the repo.",
-		"- **[Architecture](architecture/overview.md)** — system design, ADRs, per-app deep dives.",
-		"- **[Integrators](integrators/iframe-integration.md)** — embedding the editor iframe and consuming AMQP events from your own service.",
-		"- **[Ops](ops/deployment.md)** — deploying, monitoring, and operating the editor in production.",
-		"- **[Product](product/feature-overview.md)** — what the editor does, in plain language.",
+		"- **[Onboarding](onboarding/getting-started)** — new to the project. Install, run, learn the repo.",
+		"- **[Architecture](architecture/overview)** — system design, ADRs, per-app deep dives.",
+		"- **[Integrators](integrators/iframe-integration)** — embedding the editor iframe and consuming AMQP events from your own service.",
+		"- **[Ops](ops/deployment)** — deploying, monitoring, and operating the editor in production.",
+		"- **[Product](product/feature-overview)** — what the editor does, in plain language.",
 		"",
 		"## About this wiki",
 		"",
@@ -249,10 +261,10 @@ function buildOnboardingHome(): string {
 		"",
 		"Land here on your first day. Get the editor running locally, learn the monorepo layout, and pick up the team workflow.",
 		"",
-		"- [Getting Started](getting-started.md) — prerequisites, install, run.",
-		"- [Repo Tour](repo-tour.md) — monorepo layout and per-app entry points.",
-		"- [Dev Setup](dev-setup.md) — local services (MinIO, RabbitMQ), required env, dev URLs.",
-		"- [Workflow](workflow.md) — TDD loop, lint/type-check/test commands, contribution flow.",
+		"- [Getting Started](getting-started) — prerequisites, install, run.",
+		"- [Repo Tour](repo-tour) — monorepo layout and per-app entry points.",
+		"- [Dev Setup](dev-setup) — local services (MinIO, RabbitMQ), required env, dev URLs.",
+		"- [Workflow](workflow) — TDD loop, lint/type-check/test commands, contribution flow.",
 		"",
 	].join("\n");
 }
@@ -263,17 +275,17 @@ function buildArchitectureHome(): string {
 		"",
 		"How the system is put together. Domain glossary, ADRs, per-app and per-package deep dives.",
 		"",
-		"- [Overview](overview.md) — system context, container map, end-to-end flows (export, preview, upload).",
-		"- [Glossary](glossary.md) — domain terms used throughout the codebase.",
-		"- [ADRs](adr/index.md) — accepted architectural decisions and their rationale.",
+		"- [Overview](overview) — system context, container map, end-to-end flows (export, preview, upload).",
+		"- [Glossary](glossary) — domain terms used throughout the codebase.",
+		"- [ADRs](adr/index) — accepted architectural decisions and their rationale.",
 		"- Apps & Packages",
-		"  - [frontend](apps/frontend.md)",
-		"  - [server](apps/server.md)",
-		"  - [iframe-demo](apps/iframe-demo.md)",
-		"  - [core-mock](apps/core-mock.md)",
-		"  - [mock-vod](apps/mock-vod.md)",
-		"  - [contract](apps/contract.md)",
-		"  - [observability](apps/observability.md)",
+		"  - [frontend](apps/frontend)",
+		"  - [server](apps/server)",
+		"  - [iframe-demo](apps/iframe-demo)",
+		"  - [core-mock](apps/core-mock)",
+		"  - [mock-vod](apps/mock-vod)",
+		"  - [contract](apps/contract)",
+		"  - [observability](apps/observability)",
 		"",
 	].join("\n");
 }
@@ -304,7 +316,7 @@ function buildDevSetup(): string {
 		"cp apps/server/.env.example apps/server/.env",
 		"```",
 		"",
-		"Defaults work for local dev; the full env schema is documented under [architecture/apps/server](../architecture/apps/server.md).",
+		"Defaults work for local dev; the full env schema is documented under [architecture/apps/server](../architecture/apps/server).",
 		"",
 		"## Run everything",
 		"",
@@ -418,11 +430,11 @@ function main(): void {
 	let wrote = 0;
 	for (const s of allSources) {
 		const dstAbs = join(WIKI_ROOT, s.dst);
-		const body =
+		const raw =
 			s.kind === "copy"
 				? applyTransform(readFileSync(join(REPO_ROOT, s.src), "utf8"), s.transform)
 				: s.build();
-		writeFile(dstAbs, body);
+		writeFile(dstAbs, stripWikiMdExtensions(raw));
 		newManifest.add(s.dst);
 		wrote++;
 	}

@@ -4,11 +4,11 @@ Documentation hub for the React Video Editor — a browser-based video editing s
 
 ## Pick your path
 
-- **[Onboarding](onboarding/getting-started.md)** — new to the project. Install, run, learn the repo.
-- **[Architecture](architecture/overview.md)** — system design, ADRs, per-app deep dives.
-- **[Integrators](integrators/iframe-integration.md)** — embedding the editor iframe and consuming AMQP events from your own service.
-- **[Ops](ops/deployment.md)** — deploying, monitoring, and operating the editor in production.
-- **[Product](product/feature-overview.md)** — what the editor does, in plain language.
+- **[Onboarding](onboarding/getting-started)** — new to the project. Install, run, learn the repo.
+- **[Architecture](architecture/overview)** — system design, ADRs, per-app deep dives.
+- **[Integrators](integrators/iframe-integration)** — embedding the editor iframe and consuming AMQP events from your own service.
+- **[Ops](ops/deployment)** — deploying, monitoring, and operating the editor in production.
+- **[Product](product/feature-overview)** — what the editor does, in plain language.
 
 ## About this wiki
 

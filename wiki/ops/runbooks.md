@@ -2,7 +2,7 @@
 
 Common incident patterns derived from the system's error paths. These are **generic** playbooks built from the code, not a record of past incidents — refine each one with real data as you accumulate it.
 
-Glossary of monitoring/log terms used here: [monitoring](monitoring.md). Architecture-level cross-references: [glossary](../architecture/glossary.md), [ADR 0005](../architecture/adr/0005-render-worker-deployment.md), [ADR 0006](../architecture/adr/0006-amqplib-built-in-recovery.md).
+Glossary of monitoring/log terms used here: [monitoring](monitoring). Architecture-level cross-references: [glossary](../architecture/glossary), [ADR 0005](../architecture/adr/0005-render-worker-deployment), [ADR 0006](../architecture/adr/0006-amqplib-built-in-recovery).
 
 ---
 
@@ -10,7 +10,7 @@ Glossary of monitoring/log terms used here: [monitoring](monitoring.md). Archite
 
 **Symptom.** Integrator apps see a burst of `503` responses from `/render`. Frontend export button reports failure.
 
-**Meaning.** `publishCommand` exhausted its 3-attempt retry budget without a broker confirm. The controller maps this to `503` (commands cannot be silently swallowed — the client must know). See [ADR 0005](../architecture/adr/0005-render-worker-deployment.md) and [ADR 0006](../architecture/adr/0006-amqplib-built-in-recovery.md).
+**Meaning.** `publishCommand` exhausted its 3-attempt retry budget without a broker confirm. The controller maps this to `503` (commands cannot be silently swallowed — the client must know). See [ADR 0005](../architecture/adr/0005-render-worker-deployment) and [ADR 0006](../architecture/adr/0006-amqplib-built-in-recovery).
 
 **Check.**
 
@@ -68,7 +68,7 @@ Glossary of monitoring/log terms used here: [monitoring](monitoring.md). Archite
 
 **Symptom.** User opens a preview, plays for a while, then segments start returning `401`. Or: a stored playlist works for the first user, fails for the second.
 
-**Meaning.** The `vod-token` baked into the HLS playlist's segment URLs has expired. Default TTL is ~10 minutes; the playlist itself is stored in S3 and outlasts the token. Pause/idle past the TTL and segments fail. This footgun is mirrored in the [mock-vod CLAUDE.md](../architecture/apps/mock-vod.md) and surfaces locally too.
+**Meaning.** The `vod-token` baked into the HLS playlist's segment URLs has expired. Default TTL is ~10 minutes; the playlist itself is stored in S3 and outlasts the token. Pause/idle past the TTL and segments fail. This footgun is mirrored in the [mock-vod CLAUDE.md](../architecture/apps/mock-vod) and surfaces locally too.
 
 **Check.**
 
@@ -107,7 +107,7 @@ Glossary of monitoring/log terms used here: [monitoring](monitoring.md). Archite
 2. `AMQP_INITIAL_CONNECT_TIMEOUT_MS` (default 15s) is what makes the server fail-fast at startup. After startup it's the recovery loop's territory.
 3. `EVENT_PUBLISH_CONFIRM_TIMEOUT_MS` (default 30s) and `COMMAND_PUBLISH_CONFIRM_TIMEOUT_MS` (default 10s) bound how long an in-flight publish waits during the reconnect window before failing.
 
-**Mitigate.** Restore the broker. Publisher and consumer self-heal; no pod restart required. Background: [ADR 0006](../architecture/adr/0006-amqplib-built-in-recovery.md).
+**Mitigate.** Restore the broker. Publisher and consumer self-heal; no pod restart required. Background: [ADR 0006](../architecture/adr/0006-amqplib-built-in-recovery).
 
 ---
 

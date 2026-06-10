@@ -6,7 +6,7 @@
 
 Zod is the single validation library for both env config and HTTP request schemas. TypeBox is not used. Type inference uses `z.infer<typeof schema>`.
 
-→ See [ADR 0001](adr/0001-zod-over-typebox.md)
+→ See [ADR 0001](adr/0001-zod-over-typebox)
 
 ## Contract Package Buckets
 
@@ -18,7 +18,7 @@ Zod is the single validation library for both env config and HTTP request schema
 
 **events** — server publishes to the `video-editor` topic exchange (`export.started`, `export.completed`, `export.failed`). Subpath: `@video-editor/contract/events`.
 
-**internal** — editor server's own HTTP API schemas (upload, edit-video, render, editor-export). Subpath: `@video-editor/contract/internal/<feature>`. External teams must not import — see [ADR 0004](adr/0004-server-http-schemas-in-shared-contract-package.md).
+**internal** — editor server's own HTTP API schemas (upload, edit-video, render, editor-export). Subpath: `@video-editor/contract/internal/<feature>`. External teams must not import — see [ADR 0004](adr/0004-server-http-schemas-in-shared-contract-package).
 
 Every TS type in the package is `z.infer<typeof schema>` so schemas and types cannot drift.
 
@@ -43,7 +43,7 @@ Every TS type in the package is `z.infer<typeof schema>` so schemas and types ca
 **Edit-Video Job** — a separate async FFmpeg job (also Redis-tracked) that processes a raw source file — not a full IDesign. Used for trimming, cutting, and format conversion of a single source. States: `PROCESSING → COMPLETED | FAILED`.
 ## Render Pipeline
 
-**Render Worker** — separate `video-editor-worker` Deployment, same image as the API, entrypoint `apps/server/src/worker.ts`. Consumes `render.requested` and runs FFmpeg. Probe + metrics on port 8081. See [ADR 0005](adr/0005-render-worker-deployment.md).
+**Render Worker** — separate `video-editor-worker` Deployment, same image as the API, entrypoint `apps/server/src/worker.ts`. Consumes `render.requested` and runs FFmpeg. Probe + metrics on port 8081. See [ADR 0005](adr/0005-render-worker-deployment).
 
 **Render Command** — internal AMQP message published by `POST /render` to the `video-editor.commands` direct exchange with routing key `render.requested`. Envelope wraps the full render input (sources, overlays, audio, format, optional `saveMetadata`). Server-internal — not part of the public `@video-editor/contract` surface.
 
@@ -78,4 +78,4 @@ Every TS type in the package is `z.infer<typeof schema>` so schemas and types ca
 
 **Segment Proxy** — the `GET /editor/segment` endpoint. Browsers cannot attach custom `vod-token` headers to media segment fetches (HLS). The server acts as a proxy: it validates the HMAC-signed segment URL, injects the `vod-token` header, and streams the bytes from VOD to the browser.
 
-→ See [ADR 0002](adr/0002-mock-vod-as-separate-app.md)
+→ See [ADR 0002](adr/0002-mock-vod-as-separate-app)

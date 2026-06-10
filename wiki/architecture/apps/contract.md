@@ -85,7 +85,7 @@ import {
 } from "@video-editor/contract/events";
 ```
 
-See [`src/events/README.md`](src/events/README.md) for envelope shape, AMQP headers, queue binding, dead-lettering, versioning, delivery guarantees.
+See [`src/events/README.md`](src/events/README) for envelope shape, AMQP headers, queue binding, dead-lettering, versioning, delivery guarantees.
 
 ## Internal (server-owner only)
 

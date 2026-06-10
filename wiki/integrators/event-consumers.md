@@ -240,6 +240,6 @@ In production, the broker is reached over `amqps://` (TLS with mutual auth). The
 
 The URL carries no userinfo — the broker authenticates by certificate.
 
-If you are deploying your own consumer in the same cluster, follow the same mTLS pattern (or whatever the broker accepts on your side). See [ADR 0006](../architecture/adr/0006-amqplib-built-in-recovery.md) for the connection-recovery strategy `amqplib` v1.1+ provides — your consumer should opt into the same to survive broker blips without a pod restart.
+If you are deploying your own consumer in the same cluster, follow the same mTLS pattern (or whatever the broker accepts on your side). See [ADR 0006](../architecture/adr/0006-amqplib-built-in-recovery) for the connection-recovery strategy `amqplib` v1.1+ provides — your consumer should opt into the same to survive broker blips without a pod restart.
 
-Cross-reference: the messaging glossary in [architecture/glossary](../architecture/glossary.md) defines "Publish", "Unrouted", "Broker Ack", "Event Envelope", and "Broker TLS".
+Cross-reference: the messaging glossary in [architecture/glossary](../architecture/glossary) defines "Publish", "Unrouted", "Broker Ack", "Event Envelope", and "Broker TLS".

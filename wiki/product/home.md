@@ -4,8 +4,8 @@ What the editor does, told without engineering jargon. Good landing page for sta
 
 ## Pages
 
-- [Feature Overview](feature-overview.md) — the things the editor lets users do, grouped by activity.
-- [User Glossary](user-glossary.md) — the everyday vocabulary the product uses, in one sentence each.
+- [Feature Overview](feature-overview) — the things the editor lets users do, grouped by activity.
+- [User Glossary](user-glossary) — the everyday vocabulary the product uses, in one sentence each.
 
 ## One-liner
 

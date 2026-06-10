@@ -11,7 +11,7 @@ One container image, two deployments:
 | **API** | `node src/index.ts` | `4001` (HTTP) | Accepts uploads, serves preview requests, **enqueues** render commands on RabbitMQ. Returns `202 { id }` and gets out of the way. |
 | **Worker** | `node src/worker.ts` | `8081` (probe + Prometheus metrics) | Consumes the `render.requested` queue, runs FFmpeg, publishes `export.*` events. |
 
-Same image, same env schema. Only `command`/`args` differ in K8s. The DI container splits them via `buildApiContainer` and `buildWorkerContainer` in `src/bootstrap/container.ts`. See [ADR 0005](../architecture/adr/0005-render-worker-deployment.md) for the why.
+Same image, same env schema. Only `command`/`args` differ in K8s. The DI container splits them via `buildApiContainer` and `buildWorkerContainer` in `src/bootstrap/container.ts`. See [ADR 0005](../architecture/adr/0005-render-worker-deployment) for the why.
 
 ## Image build
 
@@ -119,9 +119,9 @@ Prefixes (one bucket, three logical roots):
 
 ### Core + VOD upstream services
 
-Set `CORE_BASE_URL` to the real Core service's `/private` base URL (the editor server appends route paths to it). The server forwards the `ztube-token` cookie it receives from the parent app on each `/private/channels/:id/play` call. See [ADR 0003](../architecture/adr/0003-iframe-auth-via-httponly-cookie.md).
+Set `CORE_BASE_URL` to the real Core service's `/private` base URL (the editor server appends route paths to it). The server forwards the `ztube-token` cookie it receives from the parent app on each `/private/channels/:id/play` call. See [ADR 0003](../architecture/adr/0003-iframe-auth-via-httponly-cookie).
 
-In production, Core and VOD share a domain behind a reverse proxy. The mocks in dev (`apps/core-mock`, `apps/mock-vod`) emulate the same HTTP contract — see [ADR 0002](../architecture/adr/0002-mock-vod-as-separate-app.md).
+In production, Core and VOD share a domain behind a reverse proxy. The mocks in dev (`apps/core-mock`, `apps/mock-vod`) emulate the same HTTP contract — see [ADR 0002](../architecture/adr/0002-mock-vod-as-separate-app).
 
 ## Required env (production-required)
 
@@ -133,7 +133,7 @@ In production, Core and VOD share a domain behind a reverse proxy. The mocks in 
 | `PREVIEW_SIGNING_SECRET` | HMAC-SHA256 secret (min 32 chars) for `/editor/segment` signing. **Without this the proxy is an SSRF vector — server refuses to start.** |
 | `CORE_BASE_URL` | Upstream Core `/private` base URL. |
 
-Optional knobs (defaults are sensible for most deployments) are listed in [architecture/apps/server](../architecture/apps/server.md).
+Optional knobs (defaults are sensible for most deployments) are listed in [architecture/apps/server](../architecture/apps/server).
 
 ## Health and readiness
 

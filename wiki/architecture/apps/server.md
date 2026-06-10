@@ -153,7 +153,7 @@ Two durable exchanges, asserted on `connect()`:
 | Reconnect | Background loop on close/error. Backoff `1s/2s/5s/10s`, capped at 30s. Stops on explicit `close()` |
 | Startup | Eager connect in `System.start()` / `Worker.start()`. Fail-fast if broker unreachable |
 
-External teams subscribe to events by binding their own queue to the `video-editor` exchange and importing schemas from `@video-editor/contract/events`. See [`packages/contract/src/events/README.md`](../../integrators/event-consumers.md) for envelope details, binding examples, and versioning policy.
+External teams subscribe to events by binding their own queue to the `video-editor` exchange and importing schemas from `@video-editor/contract/events`. See [`packages/contract/src/events/README.md`](../../integrators/event-consumers) for envelope details, binding examples, and versioning policy.
 
 ## Environment
 
@@ -250,7 +250,7 @@ The render AMQP tests use [`@testcontainers/rabbitmq`](https://github.com/testco
 
 ## Deployment
 
-Single `Dockerfile` builds both entrypoints. The image is published once; the API and worker are separate Deployments that differ only in `CMD`. Worker manifests live in [`../../deploy/worker/`](../../deploy/worker/) — see [`docs/adr/0005-render-worker-deployment.md`](../adr/0005-render-worker-deployment.md).
+Single `Dockerfile` builds both entrypoints. The image is published once; the API and worker are separate Deployments that differ only in `CMD`. Worker manifests live in [`../../deploy/worker/`](../../deploy/worker/) — see [`docs/adr/0005-render-worker-deployment.md`](../adr/0005-render-worker-deployment).
 
 > [!WARNING]
 > This server is designed for **closed-network deployment**. FFmpeg is bundled via `@ffmpeg-installer/ffmpeg`; S3 is satisfied by self-hosted MinIO; RabbitMQ is self-hosted. Do not add dependencies that fetch from public URLs at runtime.

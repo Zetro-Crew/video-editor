@@ -22,7 +22,7 @@ This starts MinIO (S3-compatible storage, ports `9000`/`9001`) and RabbitMQ (`56
 cp apps/server/.env.example apps/server/.env
 ```
 
-Defaults work for local dev; the full env schema is documented under [architecture/apps/server](../architecture/apps/server.md).
+Defaults work for local dev; the full env schema is documented under [architecture/apps/server](../architecture/apps/server).
 
 ## Run everything
 

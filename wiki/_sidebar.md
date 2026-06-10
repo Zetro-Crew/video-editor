@@ -1,31 +1,31 @@
 ## Onboarding
-- [Getting Started](onboarding/getting-started.md)
-- [Repo Tour](onboarding/repo-tour.md)
-- [Dev Setup](onboarding/dev-setup.md)
-- [Workflow](onboarding/workflow.md)
+- [Getting Started](onboarding/getting-started)
+- [Repo Tour](onboarding/repo-tour)
+- [Dev Setup](onboarding/dev-setup)
+- [Workflow](onboarding/workflow)
 
 ## Architecture
-- [Overview](architecture/overview.md)
-- [Glossary](architecture/glossary.md)
-- [ADRs](architecture/adr/index.md)
+- [Overview](architecture/overview)
+- [Glossary](architecture/glossary)
+- [ADRs](architecture/adr/index)
 - Apps & Packages
-  - [frontend](architecture/apps/frontend.md)
-  - [server](architecture/apps/server.md)
-  - [iframe-demo](architecture/apps/iframe-demo.md)
-  - [core-mock](architecture/apps/core-mock.md)
-  - [mock-vod](architecture/apps/mock-vod.md)
-  - [contract](architecture/apps/contract.md)
-  - [observability](architecture/apps/observability.md)
+  - [frontend](architecture/apps/frontend)
+  - [server](architecture/apps/server)
+  - [iframe-demo](architecture/apps/iframe-demo)
+  - [core-mock](architecture/apps/core-mock)
+  - [mock-vod](architecture/apps/mock-vod)
+  - [contract](architecture/apps/contract)
+  - [observability](architecture/apps/observability)
 
 ## Integrators
-- [Iframe Integration](integrators/iframe-integration.md)
-- [Event Consumers](integrators/event-consumers.md)
+- [Iframe Integration](integrators/iframe-integration)
+- [Event Consumers](integrators/event-consumers)
 
 ## Ops
-- [Deployment](ops/deployment.md)
-- [Monitoring](ops/monitoring.md)
-- [Runbooks](ops/runbooks.md)
+- [Deployment](ops/deployment)
+- [Monitoring](ops/monitoring)
+- [Runbooks](ops/runbooks)
 
 ## Product
-- [Feature Overview](product/feature-overview.md)
-- [User Glossary](product/user-glossary.md)
+- [Feature Overview](product/feature-overview)
+- [User Glossary](product/user-glossary)

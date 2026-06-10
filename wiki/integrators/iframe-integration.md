@@ -31,7 +31,7 @@ Mount an iframe pointing at the editor's embed route:
 ></iframe>
 ```
 
-The editor **must** be served from the same registrable domain as the parent app. Auth uses an `HttpOnly` cookie (`ztube-token`) that the browser attaches automatically on same-origin server fetches. Cross-domain embedding is not supported under this design — see [ADR 0003](../architecture/adr/0003-iframe-auth-via-httponly-cookie.md).
+The editor **must** be served from the same registrable domain as the parent app. Auth uses an `HttpOnly` cookie (`ztube-token`) that the browser attaches automatically on same-origin server fetches. Cross-domain embedding is not supported under this design — see [ADR 0003](../architecture/adr/0003-iframe-auth-via-httponly-cookie).
 
 ## Configure allowed parent origins (editor side)
 
@@ -208,7 +208,7 @@ Fires when the user exports a rendered video. The render itself happens asynchro
 }
 ```
 
-If you also subscribe to AMQP events, the same `mediaId`/`mediaName`/`exportType`/`items` payload appears in the `export.started` event under `data` — see [Event Consumers](event-consumers.md).
+If you also subscribe to AMQP events, the same `mediaId`/`mediaName`/`exportType`/`items` payload appears in the `export.started` event under `data` — see [Event Consumers](event-consumers).
 
 ## Worked example
 
@@ -282,10 +282,10 @@ else pending.push(message);
 
 ## Working harness in this repo
 
-`apps/iframe-demo` (Angular 21) is a development harness for this protocol. It loads the editor in a draggable iframe, sends `EDITOR_ADD_PREVIEW_ITEM` and `EDITOR_CLEAR_PROJECT`, and displays both the outgoing payload and the responses. Use it to validate your message shapes interactively. See [architecture/apps/iframe-demo](../architecture/apps/iframe-demo.md).
+`apps/iframe-demo` (Angular 21) is a development harness for this protocol. It loads the editor in a draggable iframe, sends `EDITOR_ADD_PREVIEW_ITEM` and `EDITOR_CLEAR_PROJECT`, and displays both the outgoing payload and the responses. Use it to validate your message shapes interactively. See [architecture/apps/iframe-demo](../architecture/apps/iframe-demo).
 
 ## Auth — the short version
 
 You do **not** send the auth token via `postMessage`. The editor and its server share a registrable domain (in production, a gateway routes both; in dev, the Vite proxy does). Same-origin `fetch` from the iframe carries the `HttpOnly` `ztube-token` cookie automatically. The server reads it from the inbound `Cookie` header and forwards it upstream to Core. The parent app never touches the token.
 
-See [ADR 0003](../architecture/adr/0003-iframe-auth-via-httponly-cookie.md) for the rationale.
+See [ADR 0003](../architecture/adr/0003-iframe-auth-via-httponly-cookie) for the rationale.

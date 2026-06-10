@@ -22,14 +22,14 @@ packages/
   observability/    — OpenTelemetry + Pino + Pyroscope toolkit (@ztube/observability)
 ```
 
-`core-mock` and `mock-vod` coordinate via `POST /__internal/register-token` so cross-service `vod-token` trust mirrors the real Core/VOD relationship. See [docs/adr/0002-mock-vod-as-separate-app.md](docs/adr/0002-mock-vod-as-separate-app.md).
+`core-mock` and `mock-vod` coordinate via `POST /__internal/register-token` so cross-service `vod-token` trust mirrors the real Core/VOD relationship. See [docs/adr/0002-mock-vod-as-separate-app.md](docs/adr/0002-mock-vod-as-separate-app).
 
 Per-app guidance:
-- [apps/frontend/CLAUDE.md](apps/frontend/CLAUDE.md)
-- [apps/server/CLAUDE.md](apps/server/CLAUDE.md)
-- [apps/iframe-demo/CLAUDE.md](apps/iframe-demo/CLAUDE.md)
-- [apps/mock-vod/CLAUDE.md](apps/mock-vod/CLAUDE.md)
-- [packages/contract/CLAUDE.md](packages/contract/CLAUDE.md)
+- [apps/frontend/CLAUDE.md](apps/frontend/CLAUDE)
+- [apps/server/CLAUDE.md](apps/server/CLAUDE)
+- [apps/iframe-demo/CLAUDE.md](apps/iframe-demo/CLAUDE)
+- [apps/mock-vod/CLAUDE.md](apps/mock-vod/CLAUDE)
+- [packages/contract/CLAUDE.md](packages/contract/CLAUDE)
 
 ## Repo Rules
 
@@ -98,7 +98,7 @@ Configure `apps/server/.env`. Frontend needs no `.env` in dev. The server defaul
 
 Vite + React 19 SPA on port 3000. Core feature is `src/features/editor/` — the full video editing UI with scene canvas (Moveable/Selecto), timeline (`@designcombo/timeline`), Remotion `<Player>`, and per-type property panels. State via 8 Zustand stores. Supports iframe embedding via `useEditorPostMessage` hook.
 
-→ See [apps/frontend/CLAUDE.md](apps/frontend/CLAUDE.md) for full detail.
+→ See [apps/frontend/CLAUDE.md](apps/frontend/CLAUDE) for full detail.
 
 ### Server (`apps/server`)
 
@@ -120,15 +120,15 @@ Routes (API):
 | GET | `/editor/segment` | preview |
 | GET | `/editor/demo-assets/:filename` | preview |
 
-Worker manifests live in `deploy/worker/`. See [docs/adr/0005-render-worker-deployment.md](docs/adr/0005-render-worker-deployment.md).
+Worker manifests live in `deploy/worker/`. See [docs/adr/0005-render-worker-deployment.md](docs/adr/0005-render-worker-deployment).
 
-→ See [apps/server/CLAUDE.md](apps/server/CLAUDE.md) for full detail.
+→ See [apps/server/CLAUDE.md](apps/server/CLAUDE) for full detail.
 
 ### Iframe Demo (`apps/iframe-demo`)
 
 Angular 21 standalone app on port 8080. Embeds `/editor/embed` in a floating, draggable/resizable iframe. Provides a control panel to send `EDITOR_ADD_PREVIEW_ITEM` and `EDITOR_CLEAR_PROJECT` messages and displays responses. Primary harness for testing the iframe integration.
 
-→ See [apps/iframe-demo/CLAUDE.md](apps/iframe-demo/CLAUDE.md) for full detail.
+→ See [apps/iframe-demo/CLAUDE.md](apps/iframe-demo/CLAUDE) for full detail.
 
 ### Package: contract (`packages/contract`)
 
@@ -138,7 +138,7 @@ Published as `@video-editor/contract`. Two sub-paths:
 
 Root export (`@video-editor/contract`) re-exports `iframe` + shared `SavedMediaItem`/`SavedMediaPayload`.
 
-→ See [packages/contract/CLAUDE.md](packages/contract/CLAUDE.md) for full detail and [packages/contract/src/events/README.md](packages/contract/src/events/README.md) for the consumer onboarding doc.
+→ See [packages/contract/CLAUDE.md](packages/contract/CLAUDE) for full detail and [packages/contract/src/events/README.md](packages/contract/src/events/README) for the consumer onboarding doc.
 
 ## Key External Dependencies
 

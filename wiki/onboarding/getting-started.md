@@ -63,7 +63,7 @@ Key variables (all have defaults for local dev):
 | `PREVIEW_SIGNING_SECRET` | required | HMAC-SHA256 secret (min 32 chars) for signed segment-proxy URLs |
 | `QUEUE_URL` | required | AMQP connection URL for export event publishing. `amqps://` triggers mTLS (reads `/bundle.pem` + `/tmp/certificates/rabbitmq/rabbit_{cert,key}.pem` at boot) |
 
-See [apps/server/README.md](apps/server/README.md) for the full env schema.
+See [apps/server/README.md](apps/server/README) for the full env schema.
 
 **4. Run everything**
 
@@ -104,7 +104,7 @@ The editor can be embedded at `/editor/embed` and controlled via `postMessage`. 
 - `@video-editor/contract/events` — RabbitMQ event envelopes (external consumers)
 - `@video-editor/contract/internal/<feature>` — server-owner HTTP schemas (not for external use)
 
-See [packages/contract/README.md](packages/contract/README.md) and [apps/iframe-demo/README.md](apps/iframe-demo/README.md) for details.
+See [packages/contract/README.md](packages/contract/README) and [apps/iframe-demo/README.md](apps/iframe-demo/README) for details.
 
 ## Tech Stack
 

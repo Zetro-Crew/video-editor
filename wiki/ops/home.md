@@ -4,9 +4,9 @@ Deploying and operating the video editor in production (closed/air-gapped networ
 
 ## Pages
 
-- [Deployment](deployment.md) — image build, two-process topology (API + Worker), required infra, secrets and certs, K8s manifests.
-- [Monitoring](monitoring.md) — OpenTelemetry tracing/metrics, Pyroscope profiling, Pino logs, probes, key alert metrics.
-- [Runbooks](runbooks.md) — common incident patterns derived from the system's error paths. Generic patterns to adapt; not a record of past incidents.
+- [Deployment](deployment) — image build, two-process topology (API + Worker), required infra, secrets and certs, K8s manifests.
+- [Monitoring](monitoring) — OpenTelemetry tracing/metrics, Pyroscope profiling, Pino logs, probes, key alert metrics.
+- [Runbooks](runbooks) — common incident patterns derived from the system's error paths. Generic patterns to adapt; not a record of past incidents.
 
 ## At a glance
 

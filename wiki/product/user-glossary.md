@@ -1,6 +1,6 @@
 # User Glossary
 
-Everyday vocabulary used in and around the editor. One sentence each. Engineering glossary with implementation detail: [architecture/glossary](../architecture/glossary.md).
+Everyday vocabulary used in and around the editor. One sentence each. Engineering glossary with implementation detail: [architecture/glossary](../architecture/glossary).
 
 ## Project
 
@@ -67,4 +67,4 @@ A team or group channel inside the host platform. Used as a save destination at 
 
 ## Token (VOD token, ztube-token)
 
-Behind the scenes the editor uses short-lived credentials to fetch media from internal services. Users never see them; if a token expires mid-session, the editor automatically refreshes the underlying request. (If you're hitting expired-token errors as a developer, see [ops/runbooks](../ops/runbooks.md).)
+Behind the scenes the editor uses short-lived credentials to fetch media from internal services. Users never see them; if a token expires mid-session, the editor automatically refreshes the underlying request. (If you're hitting expired-token errors as a developer, see [ops/runbooks](../ops/runbooks).)

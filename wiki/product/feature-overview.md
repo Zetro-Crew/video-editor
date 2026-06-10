@@ -8,7 +8,7 @@ What the editor can do, in everyday language. Each feature links to where the en
 
 The editor shows a horizontal timeline with multiple tracks stacked vertically — like a music sequencer for video. Users can drag clips around, line them up, layer them, and resize them. The timeline keeps everything in sync so the preview always shows the current arrangement.
 
-→ Engineering deep-dive: [architecture/apps/frontend](../architecture/apps/frontend.md)
+→ Engineering deep-dive: [architecture/apps/frontend](../architecture/apps/frontend)
 
 ### Preview while you edit
 
@@ -36,7 +36,7 @@ A dedicated crop modal lets users tighten the framing on a single clip or image 
 
 The most common entry point in production. A parent application tells the editor "add a 5-minute window from channel X starting at this time", and the editor pulls that exact range from the company's recording library and drops it on the timeline.
 
-→ Engineering: [integrators/iframe-integration](../integrators/iframe-integration.md), `EDITOR_ADD_PREVIEW_ITEM` with `kind: "recording-range"`.
+→ Engineering: [integrators/iframe-integration](../integrators/iframe-integration), `EDITOR_ADD_PREVIEW_ITEM` with `kind: "recording-range"`.
 
 ### Upload a file
 
@@ -60,7 +60,7 @@ When the user clicks export, the editor packages the timeline as an instruction 
 
 At export time, the user picks: download to my computer, save to my personal channel, save to one or more unit channels — or any combination. The editor records the choice on the export job; downstream services act on it.
 
-→ Engineering: [integrators/event-consumers](../integrators/event-consumers.md), `export.completed` event.
+→ Engineering: [integrators/event-consumers](../integrators/event-consumers), `export.completed` event.
 
 ### Async by design
 
@@ -72,19 +72,19 @@ The export does **not** make the user wait. The export job runs in the backgroun
 
 The editor lives at `/editor/embed` and any host application can embed it in an iframe. The host drives the editor with structured messages — "add this clip", "clear the project" — and receives structured responses back.
 
-→ Engineering: [integrators/iframe-integration](../integrators/iframe-integration.md)
+→ Engineering: [integrators/iframe-integration](../integrators/iframe-integration)
 
 ### Single sign-on via the host's cookie
 
 Users do not log in again to use the editor. The host application's auth cookie is attached automatically to the editor's server calls. The editor never sees the token value; it just lets the browser do its thing.
 
-→ Engineering: [ADR 0003](../architecture/adr/0003-iframe-auth-via-httponly-cookie.md)
+→ Engineering: [ADR 0003](../architecture/adr/0003-iframe-auth-via-httponly-cookie)
 
 ### Notifications to downstream services
 
 Other teams' services can subscribe to a message stream from the editor server: "export started", "export completed", "export failed". Each carries enough context (job id, media id, output URL) for the consuming team to take their next action — file the output, notify the user, update a workflow.
 
-→ Engineering: [integrators/event-consumers](../integrators/event-consumers.md)
+→ Engineering: [integrators/event-consumers](../integrators/event-consumers)
 
 ## What the editor does *not* do
 
