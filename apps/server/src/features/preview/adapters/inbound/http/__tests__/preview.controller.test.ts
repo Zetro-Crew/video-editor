@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ApiEnvConfig } from "../../../../../../config/env.ts";
+import { silentLogger } from "../../../../../../infrastructure/fastify/__tests__/silent-logger.ts";
 import {
 	createFastifyInstance,
 	type TypedFastify,
@@ -23,7 +24,7 @@ describe("previewController POST /editor/preview-source", () => {
 	let storage: InMemoryStorageAdapter;
 
 	beforeEach(async () => {
-		app = createFastifyInstance();
+		app = createFastifyInstance({ loggerInstance: silentLogger });
 		storage = new InMemoryStorageAdapter();
 		await app.register(previewController, { storage, config: makeConfig() });
 		vi.stubGlobal("fetch", vi.fn());

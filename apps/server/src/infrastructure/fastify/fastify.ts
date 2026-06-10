@@ -39,9 +39,13 @@ export type TypedFastify = FastifyInstance<
 	ZodTypeProvider
 >;
 
-export const createFastifyInstance = (): TypedFastify => {
+interface CreateFastifyOptions {
+	loggerInstance?: PinoLogger;
+}
+
+export const createFastifyInstance = (opts: CreateFastifyOptions = {}): TypedFastify => {
 	const app = Fastify({
-		loggerInstance: Logger.getInstance().child({ module: "Fastify" }),
+		loggerInstance: opts.loggerInstance ?? Logger.getInstance().child({ module: "Fastify" }),
 		disableRequestLogging: true, // we handle logging ourselves in the plugin
 	}).withTypeProvider<ZodTypeProvider>();
 	app.setValidatorCompiler(validatorCompiler);

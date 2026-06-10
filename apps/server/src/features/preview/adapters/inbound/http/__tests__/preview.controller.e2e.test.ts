@@ -3,6 +3,7 @@ import { buildMockVod, type MockVodHandle } from "@video-editor/mock-vod";
 import type { FastifyInstance } from "fastify";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { ApiEnvConfig } from "../../../../../../config/env.ts";
+import { silentLogger } from "../../../../../../infrastructure/fastify/__tests__/silent-logger.ts";
 import {
 	createFastifyInstance,
 	type TypedFastify,
@@ -32,7 +33,7 @@ describe("preview.controller E2E (core-mock + mock-vod + server)", () => {
 		coreUrl = await listenEphemeral(coreMock.app);
 
 		storage = new InMemoryStorageAdapter();
-		server = createFastifyInstance();
+		server = createFastifyInstance({ loggerInstance: silentLogger });
 		const config = {
 			CORE_BASE_URL: `${coreUrl}/private`,
 			SERVER_BASE_URL: "http://server.local",

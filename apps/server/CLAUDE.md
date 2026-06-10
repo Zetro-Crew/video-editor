@@ -61,7 +61,7 @@ src/
 
 HTTP controllers must `throw new HttpError(...)` (from `@ztube/observability/fastify`) for all 4xx/5xx paths. Do not call `reply.status(4xx|5xx).send(...)` directly — it bypasses the observability `onError` hook and the structured error log line.
 
-Response shape is `{ error: string }` — same as before. No `code` field. Frontend branches on HTTP status, not an error-code field.
+Response shape is `{ error: string }`. No `code` or `details` field in the body. Frontend branches on HTTP status, not an error-code field. (This is a tightening: the previous `setErrorHandler` validation branch also emitted `details: error.validation` in the body — that field is now log-only.)
 
 `details` is log-only — it appears as `err.details` in logs via Pino's `stdSerializers.err`, never serialized into the response.
 

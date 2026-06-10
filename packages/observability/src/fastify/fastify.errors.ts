@@ -15,7 +15,7 @@ export class HttpError extends Error {
 		super(opts.message, opts.cause !== undefined ? { cause: opts.cause } : undefined);
 		this.name = "HttpError";
 		this.statusCode = opts.statusCode;
-		this.expose = opts.expose ?? opts.statusCode < 500;
+		this.expose = opts.expose ?? (opts.statusCode >= 400 && opts.statusCode < 500);
 		this.details = opts.details;
 	}
 }

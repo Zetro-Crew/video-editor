@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { silentLogger } from "../../../../../../infrastructure/fastify/__tests__/silent-logger.ts";
 import {
 	createFastifyInstance,
 	type TypedFastify,
@@ -38,7 +39,7 @@ describe("renderController", () => {
 	let renderCommandPort: ReturnType<typeof makeCommandPortSpy>;
 
 	beforeEach(async () => {
-		app = createFastifyInstance();
+		app = createFastifyInstance({ loggerInstance: silentLogger });
 		renderCommandPort = makeCommandPortSpy();
 		await app.register(renderController, { renderCommandPort });
 		await app.ready();

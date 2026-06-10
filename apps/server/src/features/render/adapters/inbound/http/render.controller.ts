@@ -54,7 +54,7 @@ export const renderController: FastifyPluginAsync<RenderControllerOptions> = asy
 			throw new HttpError({
 				statusCode: HttpStatus.BAD_REQUEST,
 				message: path ? `${path}: ${message}` : message,
-				details: parseResult.error.issues,
+				details: parseResult.error.issues[0],
 			});
 		}
 
@@ -75,7 +75,7 @@ export const renderController: FastifyPluginAsync<RenderControllerOptions> = asy
 				throw new HttpError({
 					statusCode: HttpStatus.BAD_REQUEST,
 					message: path ? `saveMetadata.${path}: ${message}` : message,
-					details: saveMetadataParse.error.issues,
+					details: saveMetadataParse.error.issues[0],
 				});
 			}
 			saveMetadata = saveMetadataParse.data;
@@ -105,6 +105,7 @@ export const renderController: FastifyPluginAsync<RenderControllerOptions> = asy
 					message: "render queue unavailable",
 					expose: true,
 					cause: err,
+					details: { jobId },
 				});
 			}
 			throw err;

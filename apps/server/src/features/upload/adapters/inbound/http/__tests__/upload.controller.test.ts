@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { silentLogger } from "../../../../../../infrastructure/fastify/__tests__/silent-logger.ts";
 import {
 	createFastifyInstance,
 	type TypedFastify,
@@ -24,7 +25,7 @@ describe("uploadController", () => {
 	let app: TypedFastify;
 
 	beforeEach(() => {
-		app = createFastifyInstance();
+		app = createFastifyInstance({ loggerInstance: silentLogger });
 	});
 
 	afterEach(async () => {

@@ -97,7 +97,11 @@ export const previewController: FastifyPluginAsync<PreviewControllerOptions> = a
 		}
 
 		if (!upstream.ok) {
-			return reply.status(upstream.status).send();
+			throw new HttpError({
+				statusCode: upstream.status,
+				message: `Upstream segment fetch failed (${upstream.status})`,
+				details: { upstreamStatus: upstream.status },
+			});
 		}
 
 		reply.header("Content-Type", upstream.headers.get("content-type") ?? "video/mp4");
