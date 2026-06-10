@@ -1,5 +1,8 @@
-import Fastify from "fastify";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+	createFastifyInstance,
+	type TypedFastify,
+} from "../../../../../../infrastructure/fastify/fastify.ts";
 import { PublishExhaustedError } from "../../../../../../infrastructure/messaging/RabbitMQPublisher.ts";
 import type { RenderCommandPort } from "../../../../application/ports/outbound/RenderCommandPort.ts";
 import { renderController } from "../render.controller.ts";
@@ -31,11 +34,11 @@ function makeCommandPortSpy(): RenderCommandPort & {
 }
 
 describe("renderController", () => {
-	let app: ReturnType<typeof Fastify>;
+	let app: TypedFastify;
 	let renderCommandPort: ReturnType<typeof makeCommandPortSpy>;
 
 	beforeEach(async () => {
-		app = Fastify({ logger: false });
+		app = createFastifyInstance();
 		renderCommandPort = makeCommandPortSpy();
 		await app.register(renderController, { renderCommandPort });
 		await app.ready();
@@ -134,7 +137,7 @@ describe("renderController", () => {
 		expect(renderCommandPort.enqueueRender).not.toHaveBeenCalled();
 	});
 
-	it("POST /render returns 503 when enqueueRender throws PublishExhaustedError", async () => {
+	it("POST /render returns 503 with only { error } body when enqueueRender throws PublishExhaustedError", async () => {
 		renderCommandPort.enqueueRender.mockRejectedValueOnce(
 			new PublishExhaustedError("render.requested", 3, new Error("broker down")),
 		);
@@ -144,6 +147,9 @@ describe("renderController", () => {
 			payload: { design: validDesign, options: { format: "mp4" } },
 		});
 		expect(res.statusCode).toBe(503);
+		const body = res.json() as Record<string, unknown>;
+		expect(Object.keys(body)).toEqual(["error"]);
+		expect(body.error).toBe("render queue unavailable");
 	});
 
 	it("POST /render forwards full SavedMediaPayload to command saveMetadata", async () => {

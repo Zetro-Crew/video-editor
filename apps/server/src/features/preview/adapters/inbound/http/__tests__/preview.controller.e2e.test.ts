@@ -1,8 +1,12 @@
 import { buildCoreMock, type CoreMockHandle } from "@video-editor/core-mock";
 import { buildMockVod, type MockVodHandle } from "@video-editor/mock-vod";
-import Fastify, { type FastifyInstance } from "fastify";
+import type { FastifyInstance } from "fastify";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { ApiEnvConfig } from "../../../../../../config/env.ts";
+import {
+	createFastifyInstance,
+	type TypedFastify,
+} from "../../../../../../infrastructure/fastify/fastify.ts";
 import { InMemoryStorageAdapter } from "../../../../../../infrastructure/storage/__tests__/InMemoryStorageAdapter.ts";
 import { previewController } from "../preview.controller.ts";
 
@@ -18,7 +22,7 @@ describe("preview.controller E2E (core-mock + mock-vod + server)", () => {
 	let coreMock: CoreMockHandle;
 	let mockVodUrl: string;
 	let coreUrl: string;
-	let server: FastifyInstance;
+	let server: TypedFastify;
 	let storage: InMemoryStorageAdapter;
 
 	beforeEach(async () => {
@@ -28,7 +32,7 @@ describe("preview.controller E2E (core-mock + mock-vod + server)", () => {
 		coreUrl = await listenEphemeral(coreMock.app);
 
 		storage = new InMemoryStorageAdapter();
-		server = Fastify({ logger: false });
+		server = createFastifyInstance();
 		const config = {
 			CORE_BASE_URL: `${coreUrl}/private`,
 			SERVER_BASE_URL: "http://server.local",

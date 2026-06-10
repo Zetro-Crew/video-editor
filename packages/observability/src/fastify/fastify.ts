@@ -117,10 +117,17 @@ export const fastifyLoggingPlugin = fb<httpLoggingOptions>((app: FastifyInstance
 
 		const msg = resolveLogMessage(reqWithMeta, routeConfig, LOG_PHASE.ERROR);
 
+		// onError fires before setErrorHandler in Fastify's lifecycle, so reply.statusCode is
+		// still the pre-handler default (200). The thrown error is the authoritative source.
+		// Duck-typing covers HttpError, native FastifyError (validation), and any future shape.
+		const errorWithStatus = error as Error & { statusCode?: unknown };
+		const derivedStatus =
+			typeof errorWithStatus.statusCode === "number" ? errorWithStatus.statusCode : 500;
+
 		reqWithMeta.log.error(
 			{
 				...base,
-				statusCode: reply.statusCode > 400 ? reply.statusCode : 500,
+				statusCode: derivedStatus,
 				durationMs,
 				err: error,
 				...extra,

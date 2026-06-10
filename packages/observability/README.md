@@ -138,6 +138,30 @@ server.register(fastifyLoggingPlugin, {
 
 ---
 
+## 🚨 HttpError
+
+The `HttpError` class lives in this package (`@ztube/observability/fastify`) — not the consuming app — because `fastifyLoggingPlugin`'s `onError` hook needs to recognize the shape without a circular dep. Import via the subpath:
+
+```ts
+import { HttpError } from "@ztube/observability/fastify";
+
+throw new HttpError({
+    statusCode: 503,
+    message: "render queue unavailable",
+    expose: true,
+    cause: brokerErr,
+    details: { attempts: 3 },
+});
+```
+
+**HTTP-only scope.** `HttpError` is for HTTP responses. Do not throw it from AMQP consumers, worker code, or background jobs — `statusCode` is meaningless there. Use plain `Error` subclasses for non-HTTP failure paths and translate to `HttpError` at the controller boundary.
+
+**Log shape.** When a route throws `HttpError`, the log line carries `err.statusCode`, `err.expose`, `err.details`, and `err.cause` (inlined into the stack) under the `err.*` namespace via Pino's `stdSerializers.err`. Dashboards and alerts can key on these. The `onError` hook duck-types on `statusCode`, so Fastify-native validation errors (`FastifyError`) also log the correct `400` without a special case.
+
+**Response shape.** The consuming app's `setErrorHandler` decides the wire format. The reference handler in `@video-editor/server` replies with `{ error: err.expose ? err.message : "Internal error" }` — `details` is intentionally log-only and never serialized.
+
+---
+
 ## 🧪 Development & Testing
 
 We maintain a strict quality gate for observability infrastructure.

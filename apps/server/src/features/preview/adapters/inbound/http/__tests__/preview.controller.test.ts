@@ -1,6 +1,9 @@
-import Fastify from "fastify";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ApiEnvConfig } from "../../../../../../config/env.ts";
+import {
+	createFastifyInstance,
+	type TypedFastify,
+} from "../../../../../../infrastructure/fastify/fastify.ts";
 import { InMemoryStorageAdapter } from "../../../../../../infrastructure/storage/__tests__/InMemoryStorageAdapter.ts";
 import { previewController } from "../preview.controller.ts";
 
@@ -16,11 +19,11 @@ function makeConfig(): ApiEnvConfig {
 }
 
 describe("previewController POST /editor/preview-source", () => {
-	let app: ReturnType<typeof Fastify>;
+	let app: TypedFastify;
 	let storage: InMemoryStorageAdapter;
 
 	beforeEach(async () => {
-		app = Fastify({ logger: false });
+		app = createFastifyInstance();
 		storage = new InMemoryStorageAdapter();
 		await app.register(previewController, { storage, config: makeConfig() });
 		vi.stubGlobal("fetch", vi.fn());

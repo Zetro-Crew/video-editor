@@ -57,6 +57,18 @@ src/
         └── domain/             # Domain logic/policies
 ```
 
+### HTTP error handling
+
+HTTP controllers must `throw new HttpError(...)` (from `@ztube/observability/fastify`) for all 4xx/5xx paths. Do not call `reply.status(4xx|5xx).send(...)` directly — it bypasses the observability `onError` hook and the structured error log line.
+
+Response shape is `{ error: string }` — same as before. No `code` field. Frontend branches on HTTP status, not an error-code field.
+
+`details` is log-only — it appears as `err.details` in logs via Pino's `stdSerializers.err`, never serialized into the response.
+
+Domain/infra error types (`UploadTooLargeError`, `PublishExhaustedError`, `InvalidJobIdError`, etc.) stay HTTP-agnostic; translate to `HttpError` at the controller boundary.
+
+`createFastifyInstance()` registers the `setErrorHandler` that maps `HttpError → reply.status(err.statusCode).send({ error: err.expose ? err.message : "Internal error" })`. By default `expose=true` for 4xx and `false` for 5xx — so 5xx bodies do not leak internal `error.message`. Override `expose` when a 5xx message is intentionally public (e.g. `"render queue unavailable"`).
+
 ## Features & Routes
 
 Plus `GET /health` — returns `{ status: "ok" }`, registered directly in `Server.start()` (used by k8s liveness probe).

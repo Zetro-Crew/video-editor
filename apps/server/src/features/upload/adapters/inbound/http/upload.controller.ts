@@ -3,6 +3,7 @@ import {
 	type GetSignedUrlRequest,
 	getSignedUrlRequestSchema,
 } from "@video-editor/contract/internal/upload";
+import { HttpError } from "@ztube/observability/fastify";
 import type { FastifyPluginAsync, FastifyReply } from "fastify";
 import type { Request } from "../../../../../infrastructure/fastify/fastify.ts";
 import { HttpStatus } from "../../../../../shared/utils/http-status.ts";
@@ -79,8 +80,9 @@ export const uploadController: FastifyPluginAsync<UploadControllerOptions> = asy
 			const ext = path.extname(filename).toLowerCase();
 
 			if (!isAllowedUpload(filename, mimetype)) {
-				return reply.status(HttpStatus.BAD_REQUEST).send({
-					error: `File type not allowed: ${mimetype || ext}. Allowed types: ${ALLOWED_MIMES.join(", ")}`,
+				throw new HttpError({
+					statusCode: HttpStatus.BAD_REQUEST,
+					message: `File type not allowed: ${mimetype || ext}. Allowed types: ${ALLOWED_MIMES.join(", ")}`,
 				});
 			}
 
@@ -89,13 +91,14 @@ export const uploadController: FastifyPluginAsync<UploadControllerOptions> = asy
 				return reply.status(HttpStatus.OK).send(result);
 			} catch (err) {
 				if (err instanceof UploadTooLargeError) {
-					return reply.status(HttpStatus.PAYLOAD_TOO_LARGE).send({
-						error: `Upload size ${err.size} exceeds max ${err.maxSize}`,
+					throw new HttpError({
+						statusCode: HttpStatus.PAYLOAD_TOO_LARGE,
+						message: `Upload size ${err.size} exceeds max ${err.maxSize}`,
+						cause: err,
+						details: { size: err.size, maxSize: err.maxSize },
 					});
 				}
-				return reply.status(HttpStatus.INTERNAL_SERVER_ERROR).send({
-					error: err instanceof Error ? err.message : "Unknown error",
-				});
+				throw err;
 			}
 		},
 	);
