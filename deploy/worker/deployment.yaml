@@ -5,7 +5,7 @@ metadata:
   namespace: # TODO: your-ocp-namespace
   annotations:
     collectord.io/index: #TODO
-    collectord.io/index: 'splunk::ztube'
+    collectord.io/output: 'splunk::ztube'
   labels:
     app: ztube
     service: video-editor-worker
