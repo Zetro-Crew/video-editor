@@ -41,6 +41,7 @@ export type TypedFastify = FastifyInstance<
 export const createFastifyInstance = (): TypedFastify => {
 	const app = Fastify({
 		loggerInstance: Logger.getInstance().child({ module: "Fastify" }),
+		disableRequestLogging: true, // we handle logging ourselves in the plugin
 	}).withTypeProvider<ZodTypeProvider>();
 	app.setValidatorCompiler(validatorCompiler);
 	app.setSerializerCompiler(serializerCompiler);

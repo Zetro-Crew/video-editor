@@ -17,7 +17,8 @@
 		"build": "tsc -p tsconfig.json",
 		"test": "vitest run",
 		"type-check": "tsc -p tsconfig.json --noEmit",
-		"lint": "biome check . --write"
+		"lint": "biome check . --write",
+		"example:fastify": "node dist/example/otel/fastify/init.js"
 	},
 	"dependencies": {
 		"@fastify/otel": "^0.16.0",

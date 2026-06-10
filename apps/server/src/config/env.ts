@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0"; // Required for amqps with self-signed certs. Should be safe since we control the certs and only use amqps for RabbitMQ connections.
+
 function boolEnv(defaultValue: boolean) {
 	return z.preprocess((val) => {
 		if (typeof val === "boolean") return val;

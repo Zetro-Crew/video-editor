@@ -128,7 +128,7 @@ export const previewController: FastifyPluginAsync<PreviewControllerOptions> = a
 				throw err;
 			}
 		}
-		const previewSource = new HttpPreviewSourceAdapter(config.CORE_BASE_URL, ztubeToken);
+		const previewSource = new HttpPreviewSourceAdapter({ coreBaseUrl: config.CORE_BASE_URL, serverBaseUrl: config.SERVER_BASE_URL, authCookie: ztubeToken });
 
 		try {
 			const result = await generatePreviewUseCase.execute({

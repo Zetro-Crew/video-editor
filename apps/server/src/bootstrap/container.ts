@@ -13,23 +13,30 @@ import { FfmpegRunner } from "../infrastructure/ffmpeg/ffmpeg.utils.ts";
 import { RabbitMQPublisher } from "../infrastructure/messaging/RabbitMQPublisher.ts";
 import { S3StorageAdapter } from "../infrastructure/storage/S3StorageAdapter.ts";
 import type { StoragePort } from "../shared/application/ports/outbound/StoragePort.ts";
+import amqplib from "amqplib";
+import { credentials } from "amqplib";
 
 const CA_PATH = "/bundle.pem";
 const CLIENT_CERT_PATH = "/tmp/certificates/rabbitmq/rabbit_cert.pem";
 const CLIENT_KEY_PATH = "/tmp/certificates/rabbitmq/rabbit_key.pem";
 
-export interface AmqpSocketOptions {
-	cert: Buffer;
-	key: Buffer;
-	ca: Buffer;
+const readPemFile = (path: string): string => readFileSync(path, "utf8").replace(/\\n/g, "\n");
+
+export interface ConnectionSSLOptions {
+	cert: string;
+	key: string;
+	ca: string;
+	credentials: ReturnType<typeof credentials.external>;
 }
 
-export function loadAmqpSocketOptions(url: string): AmqpSocketOptions | undefined {
+export function loadAmqpSocketOptions(url: string): ConnectionSSLOptions | undefined {
 	if (!url.startsWith("amqps://")) return undefined;
+	
 	return {
-		cert: readFileSync(CLIENT_CERT_PATH),
-		key: readFileSync(CLIENT_KEY_PATH),
-		ca: readFileSync(CA_PATH),
+		cert: readPemFile(CLIENT_CERT_PATH),
+		key: readPemFile(CLIENT_KEY_PATH),
+		ca: readPemFile(CA_PATH),
+		credentials: amqplib.credentials.external()
 	};
 }
 

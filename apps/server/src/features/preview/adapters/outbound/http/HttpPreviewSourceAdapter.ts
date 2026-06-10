@@ -13,11 +13,13 @@ const FETCH_TIMEOUT_MS = 10_000;
 
 export class HttpPreviewSourceAdapter implements PreviewSourcePort {
 	private readonly coreBaseUrl: string;
+	private readonly serverBaseUrl: string;
 	private readonly authCookie: string;
 
-	constructor(coreBaseUrl: string, authCookie = "") {
-		this.coreBaseUrl = coreBaseUrl;
-		this.authCookie = authCookie;
+	constructor(config: { coreBaseUrl: string; serverBaseUrl: string; authCookie?: string }) {
+		this.coreBaseUrl = config.coreBaseUrl;
+		this.serverBaseUrl = config.serverBaseUrl;
+		this.authCookie = config.authCookie || "";
 	}
 
 	private cookieHeader(): Record<string, string> {
@@ -60,9 +62,8 @@ export class HttpPreviewSourceAdapter implements PreviewSourcePort {
 			throw new Error("Channel play API returned no url");
 		}
 
-		// play.url may be relative (prod: "/api/vod/generate" → resolved against coreBaseUrl)
-		// OR absolute (dev mock: "http://localhost:5050/vod/<id>/manifest.mpd"). new URL handles both.
-		const mpdUrl = new URL(play.url, this.coreBaseUrl).toString();
+		// play.url may be relative (prod: "/api/vod/generate" → resolved against serverBaseUrl)
+		const mpdUrl = new URL(play.url, this.serverBaseUrl).toString();
 
 		return {
 			mpdUrl,
@@ -72,9 +73,8 @@ export class HttpPreviewSourceAdapter implements PreviewSourcePort {
 	}
 
 	async fetchManifest(mpdUrl: string, token: string): Promise<string> {
-		// VOD is a different trust boundary from Core — do NOT forward the Core ztube-token cookie.
 		const res = await fetch(mpdUrl, {
-			headers: { "vod-token": token },
+			headers: { "vod-token": token, ...this.cookieHeader() },
 			signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
 		});
 		if (!res.ok) {

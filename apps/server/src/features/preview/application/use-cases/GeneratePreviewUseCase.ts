@@ -87,7 +87,7 @@ export class GeneratePreviewUseCase {
 		const playlist = rewritePlaylistToProxy(
 			rawPlaylist,
 			token,
-			`${this.config.SERVER_BASE_URL}/editor/segment`,
+			`${this.config.SERVER_BASE_URL}/api/video_editor/server/editor/segment`,
 			this.config.PREVIEW_SIGNING_SECRET,
 		);
 

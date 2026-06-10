@@ -3,8 +3,12 @@ kind: Deployment
 metadata:
   name: video-editor-worker
   namespace: # TODO: your-ocp-namespace
+  annotations:
+    collectord.io/index: #TODO
+    collectord.io/index: 'splunk::ztube'
   labels:
-    app: video-editor-worker
+    app: ztube
+    service: video-editor-worker
 spec:
   # Default to 1 replica. Scale based on render throughput; the broker is the
   # only backpressure (WORKER_CONCURRENCY=1 prefetch per pod by default).
@@ -18,11 +22,13 @@ spec:
       maxSurge: 50%
   selector:
     matchLabels:
-      app: video-editor-worker
+      app: ztube
+      service: video-editor-worker
   template:
     metadata:
       labels:
-        app: video-editor-worker
+        app: ztube
+        service: video-editor-worker
     spec:
       # SIGTERM cancels the AMQP consumer, then waits up to ~9m for the in-flight
       # render to finish before SIGKILL. Sized to the typical render duration —
@@ -37,7 +43,7 @@ spec:
               podAffinityTerm:
                 labelSelector:
                   matchLabels:
-                    app: video-editor-worker
+                    service: video-editor-worker
                 topologyKey: kubernetes.io/hostname
       topologySpreadConstraints:
         - maxSkew: 1
@@ -45,7 +51,7 @@ spec:
           whenUnsatisfiable: ScheduleAnyway
           labelSelector:
             matchLabels:
-              app: video-editor-worker
+              service: video-editor-worker
       volumes:
         - name: rabbit-values
           secret:
