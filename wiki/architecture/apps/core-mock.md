@@ -1,15 +1,15 @@
 # @video-editor/core-mock
 
-Mock Core service for the video-editor monorepo. Emulates the upstream Core HTTP contract (user identity, channel list, Channel Play API) so `apps/server` can run locally against the same code path used in production.
+שירות Core mock עבור monorepo של video-editor. מחקה את חוזה ה־HTTP של Core במעלה הזרם (זהות משתמש, רשימת ערוצים, Channel Play API) כך ש־`apps/server` יכול לרוץ מקומית מול אותו נתיב קוד שמשמש בייצור.
 
-Port: **8002** (default). Pairs with `apps/mock-vod` (5050) — coordinates via `POST /__internal/register-token` so cross-service `vod-token` trust mirrors the real Core/VOD relationship.
+פורט: **8002** (ברירת מחדל). מותאם עם `apps/mock-vod` (5050) — מתאם דרך `POST /__internal/register-token` כך ש־cross-service trust של `vod-token` משקף את הקשר האמיתי של Core/VOD.
 
 Routes:
 
-| Method | Path | Description |
+| Method | נתיב | תיאור |
 |---|---|---|
-| GET | `/private/users/me` | Hard-coded user identity |
-| GET | `/private/media/clip/managed-virtual-channels` | Hard-coded channel list |
-| GET | `/private/channels/:channelId/play?start&end` | Mints a `vod-token`, registers it with `apps/mock-vod`, returns `{ url, timeRanges, token }` |
+| GET | `/private/users/me` | זהות משתמש מקודדת קשיח |
+| GET | `/private/media/clip/managed-virtual-channels` | רשימת ערוצים מקודדת קשיח |
+| GET | `/private/channels/:channelId/play?start&end` | מטביע `vod-token`, רושם אותו ב־`apps/mock-vod`, מחזיר `{ url, timeRanges, token }` |
 
-See [CLAUDE.md](./) for the full route shapes, cross-service trust details, env vars, and structure. See [docs/adr/0002-mock-vod-as-separate-app.md](../adr/0002-mock-vod-as-separate-app) for the design rationale.
+ראה [CLAUDE.md](./) ל־route shapes מלאים, פרטי trust cross-service, env vars ומבנה. ראה [ADR 0002](../adr/0002-mock-vod-as-separate-app) לרציונל התכנון.

@@ -10,7 +10,7 @@ A full-stack, browser-based video editor built on [Remotion](https://www.remotio
 
 ## Documentation
 
-The `wiki/` folder mirrors the GitLab project wiki for closed-network deployments. Copy its contents into your `<project>.wiki.git` repo after each refresh. Regenerate with `pnpm wiki:build`.
+The `wiki/` folder mirrors the GitLab project wiki for closed-network deployments. It is hand-maintained in Hebrew; copy its contents into your `<project>.wiki.git` repo after each refresh.
 
 ## Architecture
 

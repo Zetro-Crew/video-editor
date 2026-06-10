@@ -1,15 +1,15 @@
-# Video Editor Wiki
+# ויקי עורך הווידאו
 
-Documentation hub for the React Video Editor — a browser-based video editing system deployed in closed, air-gapped networks.
+מרכז התיעוד עבור React Video Editor — מערכת עריכת וידאו מבוססת דפדפן הפרוסה ברשתות סגורות ומבודדות (air-gapped).
 
-## Pick your path
+## בחר את המסלול שלך
 
-- **[Onboarding](onboarding/getting-started)** — new to the project. Install, run, learn the repo.
-- **[Architecture](architecture/overview)** — system design, ADRs, per-app deep dives.
-- **[Integrators](integrators/iframe-integration)** — embedding the editor iframe and consuming AMQP events from your own service.
-- **[Ops](ops/deployment)** — deploying, monitoring, and operating the editor in production.
-- **[Product](product/feature-overview)** — what the editor does, in plain language.
+- **[קליטה](onboarding/getting-started)** — חדש בפרויקט. התקנה, הרצה, הכרת המאגר.
+- **[ארכיטקטורה](architecture/overview)** — תכנון מערכת, ADRs, צלילה לעומק לכל אפליקציה.
+- **[מתממשקים](integrators/iframe-integration)** — הטמעת ה־iframe של העורך וצריכת אירועי AMQP מהשירות שלך.
+- **[תפעול](ops/deployment)** — פריסה, ניטור והפעלה של העורך בייצור.
+- **[מוצר](product/feature-overview)** — מה העורך עושה, בשפה פשוטה.
 
-## About this wiki
+## על הוויקי הזה
 
-This wiki is generated from the repo's `wiki/` folder. Generated pages mirror the source-of-truth Markdown in the repo (`README.md`, `CONTEXT.md`, `docs/adr/`, per-app READMEs). Hand-written pages live alongside them. The generator (`scripts/build-wiki.ts`) is idempotent — it never overwrites hand-written pages.
+הוויקי מתוחזק ידנית בעברית בתיקיית `wiki/` של המאגר. התוכן מבוסס על קבצי המקור (`README.md`, `CLAUDE.md`, `CONTEXT.md`, `docs/adr/`, ה־README של כל אפליקציה וחבילה) אבל אינו נוצר אוטומטית — המפעיל מסנכרן אותו ידנית בעת הצורך ומעתיק את התוכן ל־`<project>.wiki.git`.

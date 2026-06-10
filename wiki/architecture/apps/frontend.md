@@ -1,8 +1,8 @@
 # Frontend — `@video-editor/frontend`
 
-Vite + React 19 SPA. The full browser-based video editing UI. Runs on port **3000**.
+Vite + React 19 SPA. ממשק המשתמש המלא של עריכת וידאו מבוסס דפדפן. רץ על פורט **3000**.
 
-## Commands
+## פקודות
 
 ```bash
 pnpm dev          # Vite dev server (port 3000)
@@ -16,82 +16,82 @@ pnpm test:e2e:ui  # Playwright interactive UI
 
 ## Routes
 
-| Path | Component | Description |
+| נתיב | קומפוננטה | תיאור |
 |---|---|---|
-| `/` | `Home.tsx` | Landing / project list |
-| `/edit` | `EditPage.tsx` | New project |
-| `/edit/:id` | `EditPage.tsx` | Open existing project |
-| `/editor/embed` | `EditPage.tsx` | iframe embedding target |
+| `/` | `Home.tsx` | נחיתה / רשימת פרויקטים |
+| `/edit` | `EditPage.tsx` | פרויקט חדש |
+| `/edit/:id` | `EditPage.tsx` | פתח פרויקט קיים |
+| `/editor/embed` | `EditPage.tsx` | יעד הטמעת iframe |
 
-## Editor Feature (`src/features/editor/`)
+## תכונת Editor (`src/features/editor/`)
 
-The core editing surface. Root component is `editor.tsx`.
+משטח העריכה המרכזי. קומפוננטת השורש היא `editor.tsx`.
 
-| Directory | Purpose |
+| תיקייה | מטרה |
 |---|---|
 | `scene/` | Canvas — Moveable + Selecto drag-select |
-| `timeline/` | Timeline scrubber (`@designcombo/timeline`) |
+| `timeline/` | ציר זמן סקרבר (`@designcombo/timeline`) |
 | `player/` | Remotion `<Player>` + `<Composition>` |
-| `menu-item/` | Left panel — media library, uploads, shapes, text |
-| `control-item/` | Right panel — per-type property controls |
-| `store/` | Zustand stores |
-| `hooks/` | Editor-specific hooks |
-| `external-preview/` | iframe postMessage handling |
-| `crop-modal/` | Crop editing modal |
+| `menu-item/` | פאנל שמאל — ספריית מדיה, העלאות, צורות, טקסט |
+| `control-item/` | פאנל ימין — בקרי מאפיינים לכל סוג |
+| `store/` | Stores של Zustand |
+| `hooks/` | hooks ייעודיים לעורך |
+| `external-preview/` | טיפול ב־postMessage של iframe |
+| `crop-modal/` | Modal עריכת חיתוך |
 
 ### State (Zustand Stores)
 
-| Store | Purpose |
+| Store | מטרה |
 |---|---|
-| `use-composition-store.ts` | Canvas size + FPS state |
-| `use-upload-store.ts` | Upload state |
-| `use-layout-store.ts` | Panel layout |
+| `use-composition-store.ts` | state של גודל canvas + FPS |
+| `use-upload-store.ts` | state של העלאה |
+| `use-layout-store.ts` | layout של פאנלים |
 | `use-crop-store.ts` | Crop modal |
-| `use-download-state.ts` | Export state (fire-and-forget POST to /render, no polling) |
-| `use-editor-refs.ts` | DOM/player refs (playerRef, etc.) |
-| `use-selection-store.ts` | Selected item state |
-| `use-timeline-view-store.ts` | Timeline view/scroll state |
+| `use-download-state.ts` | state של ייצוא (fire-and-forget POST ל־/render, ללא polling) |
+| `use-editor-refs.ts` | DOM/player refs (playerRef וכו') |
+| `use-selection-store.ts` | state של פריט נבחר |
+| `use-timeline-view-store.ts` | state של תצוגה/גלילה של ציר זמן |
 
-Global scene store: `src/store/use-scene-store.ts`
+Store סצנה גלובלי: `src/store/use-scene-store.ts`
 
-## iframe Embedding
+## הטמעת iframe
 
-Mount the editor at `/editor/embed` inside an iframe. The `useEditorPostMessage` hook handles the postMessage bridge.
+הטען את העורך ב־`/editor/embed` בתוך iframe. ה־hook `useEditorPostMessage` מטפל בגשר ה־postMessage.
 
-**Inbound messages** (parsed via `@video-editor/contract/iframe/from-parent`):
-- `EDITOR_ADD_PREVIEW_ITEM` — append a track. Payload `kind` is one of `recording-range`, `media`, `audio-range`.
-- `EDITOR_CLEAR_PROJECT` — reset all tracks and duration.
+**הודעות נכנסות** (מפורסרות דרך `@video-editor/contract/iframe/from-parent`):
+- `EDITOR_ADD_PREVIEW_ITEM` — צרף track. ה־`kind` של ה־payload הוא אחד מ־`recording-range`, `media`, `audio-range`.
+- `EDITOR_CLEAR_PROJECT` — אפס את כל ה־tracks ואת המשך.
 
-**Outbound messages** (built via `@video-editor/contract/iframe/to-parent`):
-- `EDITOR_READY` — fired once on init
-- `EDITOR_PREVIEW_ITEM_ADDED` — ack for `EDITOR_ADD_PREVIEW_ITEM`
-- `EDITOR_PREVIEW_ITEM_REJECTED` — nack with reason
-- `EDITOR_PROJECT_CLEARED` — ack for `EDITOR_CLEAR_PROJECT`
-- `EDITOR_MEDIA_SAVED` — emitted when an exported render is saved
+**הודעות יוצאות** (נבנות דרך `@video-editor/contract/iframe/to-parent`):
+- `EDITOR_READY` — נורית פעם אחת באתחול
+- `EDITOR_PREVIEW_ITEM_ADDED` — ack ל־`EDITOR_ADD_PREVIEW_ITEM`
+- `EDITOR_PREVIEW_ITEM_REJECTED` — nack עם סיבה
+- `EDITOR_PROJECT_CLEARED` — ack ל־`EDITOR_CLEAR_PROJECT`
+- `EDITOR_MEDIA_SAVED` — נפלט כשרינדור מיוצא נשמר
 
-**Auth:** no token is sent via postMessage. The editor and its server share an origin (prod gateway; dev Vite proxy), so the browser auto-attaches the HttpOnly `ztube-token` cookie on `fetch('/editor/preview-source', …)`. The server reads it from the `Cookie` header and forwards it upstream to Core.
+**הזדהות:** אין token שנשלח דרך postMessage. העורך והשרת שלו חולקים origin (gateway של ייצור; Vite proxy של פיתוח), כך שהדפדפן מצרף אוטומטית את עוגיית `HttpOnly` בשם `ztube-token` ב־`fetch('/editor/preview-source', …)`. השרת קורא אותה מ־header של `Cookie` ומעביר אותה במעלה הזרם ל־Core.
 
-**Configure allowed origins:**
+**הגדר origins מותרים:**
 
 ```bash
 # apps/frontend/.env (optional)
 VITE_EDITOR_PARENT_ORIGINS=https://your-app.example.com
 ```
 
-Defaults to `window.location.origin` when unset.
+ברירת מחדל היא `window.location.origin` כשלא מוגדר.
 
-## Styling
+## עיצוב
 
-Tailwind v4 + shadcn/ui (new-york style). CSS variables in `src/globals.css`. Dark mode via `next-themes`.
+Tailwind v4 + shadcn/ui (סגנון new-york). משתני CSS ב־`src/globals.css`. מצב כהה דרך `next-themes`.
 
-## Key Dependencies
+## תלויות מרכזיות
 
-| Package | Purpose |
+| חבילה | מטרה |
 |---|---|
-| `@remotion/*` v4 | Video composition and player |
-| `@designcombo/*` | Timeline, animations, frames, state |
-| `zustand` v5 | Client state |
-| `@tanstack/react-query` v5 | Server state / data fetching |
+| `@remotion/*` v4 | הרכבת וידאו ו־player |
+| `@designcombo/*` | ציר זמן, אנימציות, frames, state |
+| `zustand` v5 | client state |
+| `@tanstack/react-query` v5 | server state / data fetching |
 | `react-router-dom` v7 | Routing |
-| `@radix-ui/*` | Headless UI primitives |
-| `@video-editor/contract` | postMessage + event Zod schemas (workspace; use `/iframe/*` subpaths) |
+| `@radix-ui/*` | UI primitives ללא ראש |
+| `@video-editor/contract` | סכמות Zod של postMessage + אירועים (workspace; השתמש ב־subpaths `/iframe/*`) |

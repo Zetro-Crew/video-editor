@@ -1,11 +1,11 @@
-# iframe Demo — Angular Integration Harness
+# iframe Demo — Harness אינטגרציית Angular
 
-Angular 21 standalone app for testing the video editor's iframe embedding integration. Runs on port **8080**.
+אפליקציית Angular 21 standalone לבדיקת אינטגרציית ההטמעה של iframe של עורך הווידאו. רצה על פורט **8080**.
 
 > [!NOTE]
-> This is a development harness, not a production application. Use it to test postMessage communication between a host page and the embedded editor.
+> זהו harness פיתוח, לא אפליקציית ייצור. השתמש בו כדי לבדוק תקשורת postMessage בין דף host לעורך המוטמע.
 
-## Commands
+## פקודות
 
 ```bash
 pnpm dev          # Angular dev server (port 8080)
@@ -15,43 +15,43 @@ pnpm format       # Biome format
 pnpm type-check   # tsc --noEmit
 ```
 
-## Setup
+## הגדרה
 
-The editor must be running at `http://localhost:3000` before starting this app:
+העורך חייב לרוץ ב־`http://localhost:3000` לפני הפעלת אפליקציה זו:
 
 ```bash
 # From repo root
 pnpm dev
 ```
 
-Or run just the required apps:
+או הרץ רק את האפליקציות הנדרשות:
 
 ```bash
 cd apps/frontend && pnpm dev   # port 3000
 cd apps/iframe-demo && pnpm dev  # port 8080
 ```
 
-## What It Does
+## מה זה עושה
 
-The demo page (`/`) loads the editor in a floating, draggable and resizable iframe pointed at `http://localhost:3000/editor/embed`. A control panel lets you:
+דף ה־demo (`/`) טוען את העורך ב־iframe צף, נגרר ובר־שינוי גודל שמכוון ל־`http://localhost:3000/editor/embed`. לוח שליטה מאפשר:
 
-- **Add a preview item** — sends `EDITOR_ADD_PREVIEW_ITEM` (recording-range) to the editor
-- **Clear the project** — sends `EDITOR_CLEAR_PROJECT` to reset all tracks
-- **Inspect messages** — displays the outgoing payload and last response from the editor
+- **הוספת preview item** — שולח `EDITOR_ADD_PREVIEW_ITEM` (recording-range) לעורך
+- **ניקוי הפרויקט** — שולח `EDITOR_CLEAR_PROJECT` לאיפוס כל ה־tracks
+- **בדיקת הודעות** — מציג את ה־payload היוצא ואת התגובה האחרונה מהעורך
 
-## Key Files
+## קבצים מרכזיים
 
-| File | Purpose |
+| קובץ | מטרה |
 |---|---|
-| `src/app/pages/editor-page/editor-page.component.ts` | Main page — iframe host, drag/resize, postMessage |
-| `src/app/pages/media-page/media-page.component.ts` | Secondary media page |
-| `src/app/services/editor-bridge.service.ts` | Signal-based queue for cross-page item injection |
-| `src/app/message-types.ts` | Local type mirror of `@video-editor/contract/iframe/from-parent` + `/iframe/to-parent` |
-| `src/environments/environment.ts` | `editorUrl` configuration |
+| `src/app/pages/editor-page/editor-page.component.ts` | דף ראשי — host של iframe, drag/resize, postMessage |
+| `src/app/pages/media-page/media-page.component.ts` | דף מדיה משני |
+| `src/app/services/editor-bridge.service.ts` | תור מבוסס Signal להזרקת פריטים בין דפים |
+| `src/app/message-types.ts` | מראה טיפוס מקומי של `@video-editor/contract/iframe/from-parent` + `/iframe/to-parent` |
+| `src/environments/environment.ts` | הגדרת `editorUrl` |
 
-## Configuration
+## הגדרות
 
-To point the iframe at a different editor URL, edit `src/environments/environment.ts`:
+כדי להפנות את ה־iframe ל־URL שונה של עורך, ערוך את `src/environments/environment.ts`:
 
 ```ts
 export const environment = {
@@ -59,16 +59,16 @@ export const environment = {
 };
 ```
 
-## postMessage Protocol
+## פרוטוקול postMessage
 
-See [packages/contract/README.md](./contract) for the full message schema. The demo app uses a local type mirror (`message-types.ts`) rather than importing the workspace package directly.
+ראה [contract](./contract) ל־schema המלא של ההודעות. אפליקציית ה־demo משתמשת במראה טיפוס מקומי (`message-types.ts`) במקום לייבא את חבילת ה־workspace ישירות.
 
-**Auth:** the `ztube-token` cookie is HttpOnly and never travels via postMessage. The editor iframe's same-origin fetches to its own server attach it automatically.
+**הזדהות:** עוגיית `ztube-token` היא HttpOnly ולעולם לא נוסעת דרך postMessage. fetches של same-origin של ה־iframe של העורך לשרת שלו מצרפים אותה אוטומטית.
 
-## Dependencies
+## תלויות
 
-| Package | Purpose |
+| חבילה | מטרה |
 |---|---|
 | `@angular/core` v21 | Framework |
 | `@angular/router` | Routing |
-| `rxjs` v7 | Reactive patterns |
+| `rxjs` v7 | דפוסים reactive |

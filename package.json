@@ -9,8 +9,7 @@
 		"lint": "turbo run lint",
 		"type-check": "turbo run type-check",
 		"test": "turbo run test",
-		"knip": "knip",
-		"wiki:build": "node scripts/build-wiki.ts"
+		"knip": "knip"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "catalog:",

@@ -1,44 +1,44 @@
-# ADR 0002 — Mock VOD as a separate app (`apps/mock-vod`)
+# ADR 0002 — Mock VOD כאפליקציה נפרדת (`apps/mock-vod`)
 
-## Status
+## סטטוס
 
-Accepted — 2026-06-01.
+התקבל — 2026-06-01.
 
-## Context
+## קונטקסט
 
-Production runs in a closed (air-gapped) network. The video-editor's preview pipeline depends on two upstream HTTP services:
+הייצור רץ ברשת סגורה (air-gapped). pipeline ה־preview של video-editor תלוי בשני שירותי HTTP במעלה הזרם:
 
-- **Core** — issues `/private/channels/:id/play?start&end`, returning `{ url, timeRanges, token }` where `token` is a short-lived `vod-token`.
-- **VOD** — serves the MPD document and DASH segments. Validates the `vod-token` on every request.
+- **Core** — מנפיק `/private/channels/:id/play?start&end`, מחזיר `{ url, timeRanges, token }` כאשר `token` הוא `vod-token` קצר-מועד.
+- **VOD** — משרת את מסמך ה־MPD ואת ה־DASH segments. מאמת את ה־`vod-token` בכל בקשה.
 
-In prod the two services share a domain behind a reverse proxy. From the editor server's perspective they look like one HTTP target — but internally they are two services with cross-service token trust.
+בייצור שני השירותים חולקים domain מאחורי reverse proxy. מנקודת המבט של שרת העורך הם נראים כיעד HTTP יחיד — אבל פנימית הם שני שירותים עם trust של token cross-service.
 
-Neither is reachable from a developer laptop. Before this ADR, `apps/server` had **two** outbound adapters for the same port:
+אף אחד מהם לא נגיש ממחשב מפתח. לפני ה־ADR הזה, ל־`apps/server` היו **שני** outbound adapters לאותו פורט:
 
-- `HttpChannelPlayApiAdapter` — real-prod path; untestable locally.
-- `DemoChannelPlayApiAdapter` + an in-server `/editor/demo-assets/*` route — a shortcut that skipped the `vod-token` flow entirely.
+- `HttpChannelPlayApiAdapter` — נתיב ייצור אמיתי; לא ניתן לבדיקה מקומית.
+- `DemoChannelPlayApiAdapter` + route `/editor/demo-assets/*` בתוך השרת — קיצור דרך שדילג על זרימת ה־`vod-token` לחלוטין.
 
-The demo branch diverged from prod silently. Bugs that broke prod (e.g., `BaseURL` resolution, missing `vod-token` header, the multi-range assumption) passed on demo.
+ה־branch של ה־demo התרחק מהייצור בשקט. באגים ששברו את הייצור (למשל החלטת `BaseURL`, header `vod-token` חסר, ההנחה של multi-range) עברו על demo.
 
-## Decision
+## החלטה
 
-Emulate the real upstream VOD HTTP contract via a **separate Fastify app** at `apps/mock-vod` (port 5050). Pair it with `apps/core-mock` (port 8002), which now mints real `vod-token`s and registers them with `apps/mock-vod` over an internal `POST /__internal/register-token`.
+חיקוי חוזה ה־HTTP האמיתי של VOD במעלה הזרם דרך **אפליקציית Fastify נפרדת** ב־`apps/mock-vod` (פורט 5050). ספרו עם `apps/core-mock` (פורט 8002), שעכשיו מטביע `vod-token`s אמיתיים ורושם אותם ב־`apps/mock-vod` דרך `POST /__internal/register-token` פנימי.
 
-The editor server runs **one** outbound adapter (`HttpPreviewSourceAdapter`) against both the mocks and real prod. No demo branches survive in `apps/server`.
+שרת העורך מריץ outbound adapter **אחד** (`HttpPreviewSourceAdapter`) מול גם ה־mocks וגם ייצור אמיתי. אין סניפי demo שורדים ב־`apps/server`.
 
-## Alternatives Considered
+## חלופות שנשקלו
 
-1. **In-server demo route** (the status quo we replaced). Rejected — silently diverges from prod.
-2. **Bundle the VOD mock into `apps/core-mock`.** Rejected — collapses the cross-service boundary that exists in prod. Two mocks per two upstream services keeps each mock honest to its real contract.
-3. **Emulate the prod reverse proxy locally** (single-port frontage). Rejected — extra moving part, hides the very cross-service trust we want to surface.
+1. **route demo בתוך השרת** (status quo שהחלפנו). נדחה — סוטה בשקט מהייצור.
+2. **חבר את ה־VOD mock ל־`apps/core-mock`.** נדחה — מקפל את גבול cross-service שקיים בייצור. שני mocks לשני שירותים במעלה הזרם משמרים כל mock כן לחוזה האמיתי שלו.
+3. **חקה את ה־reverse proxy של הייצור מקומית** (single-port frontage). נדחה — חלק נע נוסף, מסתיר את אותו trust cross-service שאנחנו רוצים להבליט.
 
-## Consequences
+## השלכות
 
-Positive:
-- One code path against mocks and prod. Prod-only bugs (BaseURL resolution, multi-range, token TTL) surface locally.
-- Cross-service token coordination (`/__internal/register-token`) mirrors real Core/VOD trust.
-- The `vod-token` TTL footgun (stored playlists outlasting their token) is reproducible on a dev box.
+חיוביות:
+- נתיב קוד אחד מול mocks וייצור. באגים שמופיעים רק בייצור (החלטת BaseURL, multi-range, TTL של token) מופיעים מקומית.
+- תיאום token cross-service (`/__internal/register-token`) משקף trust אמיתי של Core/VOD.
+- ה־footgun של TTL של `vod-token` (playlists מאוחסנים ששורדים את ה־token שלהם) ניתן לשחזור במחשב פיתוח.
 
-Negative:
-- One extra dev-time process. Mitigated by Turborepo running it automatically under `pnpm dev`.
-- Test setup is a touch heavier: E2E tests boot both mocks on ephemeral ports.
+שליליות:
+- תהליך זמן-פיתוח נוסף אחד. מצומצם על ידי Turborepo שמריץ אותו אוטומטית תחת `pnpm dev`.
+- הגדרת טסטים מעט כבדה יותר: טסטי E2E מאתחלים את שני ה־mocks על פורטים ארעיים.

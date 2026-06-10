@@ -1,12 +1,12 @@
-# Product
+# מוצר
 
-What the editor does, told without engineering jargon. Good landing page for stakeholders, support teams, content reviewers, and anyone evaluating whether the editor fits a workflow.
+מה העורך עושה, מסופר בלי ז'רגון הנדסי. דף נחיתה טוב לבעלי עניין, צוותי תמיכה, סוקרי תוכן וכל מי שבוחן אם העורך מתאים ל־workflow.
 
-## Pages
+## דפים
 
-- [Feature Overview](feature-overview) — the things the editor lets users do, grouped by activity.
-- [User Glossary](user-glossary) — the everyday vocabulary the product uses, in one sentence each.
+- [סקירת תכונות](feature-overview) — הדברים שהעורך מאפשר למשתמשים לעשות, מקובצים לפי פעילות.
+- [מילון משתמש](user-glossary) — הלקסיקון היומיומי שהמוצר משתמש בו, משפט אחד לכל אחד.
 
-## One-liner
+## משפט אחד
 
-A browser-based video editor that lives inside any host application, lets a user trim and arrange recordings from internal channels onto a multi-track timeline, and produces a saved output that a downstream service stores or distributes.
+עורך וידאו מבוסס דפדפן שחי בתוך כל אפליקציית host, מאפשר למשתמש לחתוך ולסדר הקלטות מערוצים פנימיים על ציר זמן רב-tracks ומפיק פלט שמור שתחתיו שירות מורדים מאחסן או מפיץ.

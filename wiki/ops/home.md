@@ -1,16 +1,16 @@
-# Ops
+# תפעול
 
-Deploying and operating the video editor in production (closed/air-gapped network).
+פריסה והפעלה של עורך הווידאו בייצור (רשת סגורה/מבודדת).
 
-## Pages
+## דפים
 
-- [Deployment](deployment) — image build, two-process topology (API + Worker), required infra, secrets and certs, K8s manifests.
-- [Monitoring](monitoring) — OpenTelemetry tracing/metrics, Pyroscope profiling, Pino logs, probes, key alert metrics.
-- [Runbooks](runbooks) — common incident patterns derived from the system's error paths. Generic patterns to adapt; not a record of past incidents.
+- [פריסה](deployment) — בניית image, טופולוגיה של שני תהליכים (API + Worker), תשתיות נדרשות, סודות ותעודות, מניפסטים של K8s.
+- [ניטור](monitoring) — מעקב/מטריקות של OpenTelemetry, profiling של Pyroscope, לוגים של Pino, probes, מטריקות אזעקה מרכזיות.
+- [Runbooks](runbooks) — תבניות אירוע נפוצות שמופקות מנתיבי השגיאה של המערכת. תבניות גנריות להתאמה; לא תיעוד של אירועים קודמים.
 
-## At a glance
+## במבט מהיר
 
-- One image, two entrypoints: API (`src/index.ts`, port 4001) and Worker (`src/worker.ts`, probe 8081). Same env schema, different `command`/`args` in K8s.
-- Required infra: RabbitMQ (mTLS in production), S3-compatible object storage (MinIO/AWS S3/etc.), the upstream Core + VOD services.
-- Required secrets: S3 credentials, AMQP URL, three PEM files for mTLS, HMAC signing secret for segment proxy.
-- Worker graceful shutdown: `terminationGracePeriodSeconds: 600` — sized to render duration, not a typo.
+- image אחד, שני entrypoints: API (`src/index.ts`, פורט 4001) ו־Worker (`src/worker.ts`, probe 8081). אותה schema של env, `command`/`args` שונים ב־K8s.
+- תשתיות נדרשות: RabbitMQ (mTLS בייצור), אחסון אובייקטים תואם S3 (MinIO/AWS S3/וכו'), שירותי Core + VOD במעלה הזרם.
+- סודות נדרשים: אישורי S3, AMQP URL, שלושה קבצי PEM עבור mTLS, סוד HMAC לחתימה עבור segment proxy.
+- כיבוי מבוקר של Worker: `terminationGracePeriodSeconds: 600` — מותאם למשך הרינדור, לא טעות הקלדה.

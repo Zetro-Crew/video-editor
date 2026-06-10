@@ -1,26 +1,26 @@
-# Integrators
+# מתממשקים
 
-You're here if your team **embeds the editor iframe** in a parent app, **consumes AMQP events** the editor publishes, or both. Both surfaces are typed via Zod schemas shipped in `@video-editor/contract`, which is published to the internal package registry — install it like any other internal dependency.
+הגעת לכאן אם הצוות שלך **מטמיע את ה־iframe של העורך** באפליקציית הורה, **צורך אירועי AMQP** שהעורך מפרסם, או שניהם. שני המשטחים מתוארים בסכמות Zod שמסופקות ב־`@video-editor/contract`, חבילה שמתפרסמת ל־registry הפנימי — מתקינים אותה כמו כל תלות פנימית אחרת.
 
-## Pages
+## דפים
 
-- [Iframe Integration](iframe-integration) — embed the editor, drive it with `postMessage`, handle responses.
-- [Event Consumers](event-consumers) — bind a queue to the `video-editor` exchange and react to `export.*` events.
+- [הטמעת iframe](iframe-integration) — הטמעת העורך, הפעלה שלו עם `postMessage`, טיפול בתגובות.
+- [צרכני אירועים](event-consumers) — קישור תור ל־exchange של `video-editor` ותגובה לאירועי `export.*`.
 
-## How you get the schemas
+## איך להשיג את הסכמות
 
-Both pages assume `@video-editor/contract` is available in your internal registry. Add it to your service:
+שני הדפים מניחים ש־`@video-editor/contract` זמין ב־registry הפנימי שלך. הוסף אותו לשירות שלך:
 
 ```bash
 pnpm add @video-editor/contract@<version>
 ```
 
-Pin the version. The package ships these public subpaths:
+נעל את הגרסה. החבילה חושפת את ה־subpaths הציבוריים הבאים:
 
-| Subpath | Use case |
+| Subpath | מקרה שימוש |
 |---|---|
-| `@video-editor/contract/iframe/from-parent` | Parent → editor messages (you send) |
-| `@video-editor/contract/iframe/to-parent` | Editor → parent messages (you receive) |
-| `@video-editor/contract/events` | RabbitMQ event envelopes (you consume) |
+| `@video-editor/contract/iframe/from-parent` | הודעות הורה → עורך (אתה שולח) |
+| `@video-editor/contract/iframe/to-parent` | הודעות עורך → הורה (אתה מקבל) |
+| `@video-editor/contract/events` | מעטפות אירועי RabbitMQ (אתה צורך) |
 
-> The `internal/*` subpath is server-private. Do not import it from integrator code — it is the editor server's own HTTP request schemas and may break between releases without notice.
+> ה־subpath `internal/*` הוא פרטי לשרת. אסור לייבא אותו מקוד מתממשק — אלו סכמות בקשות HTTP פנימיות של שרת העורך ועלולות להישבר בין גרסאות ללא הודעה מראש.

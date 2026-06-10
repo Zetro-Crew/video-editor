@@ -1,16 +1,16 @@
-# Workflow
+# תהליך עבודה
 
-How the team works on this repo.
+איך הצוות עובד על המאגר הזה.
 
-## Development philosophy
+## פילוסופיית פיתוח
 
-Prefer **TDD**: red → green → refactor. One test at a time, vertical slices only — never write all tests then all code.
+מעדיפים **TDD**: red → green → refactor. טסט אחד בכל פעם, vertical slices בלבד — לעולם לא לכתוב את כל הטסטים ואז את כל הקוד.
 
-- Write one failing test for one behaviour, implement the minimum to pass, repeat.
-- Tests verify behaviour through public interfaces, not implementation details. Tests must survive internal refactors.
-- No mocking internal collaborators. Use real code paths.
+- כתוב טסט נכשל אחד להתנהגות אחת, הטמע את המינימום כדי לעבור, חזור.
+- טסטים מאמתים התנהגות דרך ממשקים ציבוריים, לא פרטי מימוש. טסטים חייבים לשרוד refactors פנימיים.
+- אין mocking של משתפי פעולה פנימיים. השתמש בנתיבי קוד אמיתיים.
 
-## Required checks before pushing
+## בדיקות נדרשות לפני push
 
 ```bash
 pnpm lint
@@ -19,9 +19,9 @@ pnpm test
 pnpm knip
 ```
 
-All four must pass.
+כל ארבע חייבות לעבור.
 
-## Per-app commands
+## פקודות לכל אפליקציה
 
 ```bash
 cd apps/frontend    && pnpm dev   # Vite dev server (3000)
@@ -29,8 +29,8 @@ cd apps/server      && pnpm dev   # Node --watch on src/index.ts (4001)
 cd apps/iframe-demo && pnpm dev   # Angular dev server (8080)
 ```
 
-## Closed-network reminders
+## תזכורות לרשת סגורה
 
-- No public CDN links.
-- No runtime fetches to public URLs.
-- All third-party dependencies must be self-hostable or bundled.
+- אין קישורי CDN ציבוריים.
+- אין משיכות בזמן ריצה ל־URLs ציבוריים.
+- כל התלויות של צדדים שלישיים חייבות להיות self-hostable או מסופקות.

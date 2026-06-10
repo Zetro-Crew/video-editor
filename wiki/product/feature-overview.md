@@ -1,93 +1,93 @@
-# Feature Overview
+# סקירת תכונות
 
-What the editor can do, in everyday language. Each feature links to where the engineering detail lives.
+מה העורך יכול לעשות, בשפה יומיומית. כל תכונה מקושרת לאן הפרט ההנדסי חי.
 
-## Editing
+## עריכה
 
-### Multi-track timeline
+### ציר זמן רב-tracks
 
-The editor shows a horizontal timeline with multiple tracks stacked vertically — like a music sequencer for video. Users can drag clips around, line them up, layer them, and resize them. The timeline keeps everything in sync so the preview always shows the current arrangement.
+העורך מציג ציר זמן אופקי עם מספר tracks מצטברים אנכית — כמו music sequencer לווידאו. משתמשים יכולים לגרור clips, ליישר אותם, לרבד אותם ולשנות את הגודל שלהם. ציר הזמן שומר על הכול מסונכרן כך שה־preview תמיד מציג את הסידור הנוכחי.
 
-→ Engineering deep-dive: [architecture/apps/frontend](../architecture/apps/frontend)
+→ צלילה הנדסית: [architecture/apps/frontend](../architecture/apps/frontend)
 
-### Preview while you edit
+### Preview תוך כדי עריכה
 
-A live preview window plays the composition at the current cursor position, frame-accurate. Users see exactly what the export will look like, without having to render first.
+חלון preview חי מנגן את ההרכבה במיקום הסמן הנוכחי, מדויק לפריים. משתמשים רואים בדיוק איך הייצוא ייראה, בלי להצטרך לרנדר תחילה.
 
-### Trim, cut, and rearrange
+### חיתוך, גזירה וסידור מחדש
 
-Standard editing moves: shorten a clip from either end, cut a clip into two, drag a clip earlier or later in time, move it to a different track. All of these update the preview instantly.
+מהלכי עריכה סטנדרטיים: לקצר clip מכל קצה, לגזור clip לשניים, לגרור clip מוקדם או מאוחר בזמן, להעביר אותו ל־track אחר. כל אלה מעדכנים את ה־preview מיידית.
 
-### Transitions and animations
+### Transitions ואנימציות
 
-Between two clips on the same track, users can insert a transition (fade, slide, etc.). Individual elements (text, shapes, images) can animate in and out.
+בין שני clips על אותו track, משתמשים יכולים להוסיף transition (fade, slide וכו'). אלמנטים בודדים (טקסט, צורות, תמונות) יכולים להיכנס ולצאת באנימציה.
 
-### Text and shapes
+### טקסט וצורות
 
-The editor can overlay text and simple shapes on top of video. Used for captions, labels, lower-thirds, or simple branding marks.
+העורך יכול לכסות טקסט וצורות פשוטות מעל וידאו. בשימוש לכתוביות, תוויות, lower-thirds או סימני branding פשוטים.
 
-### Crop and resize
+### חיתוך ושינוי גודל
 
-A dedicated crop modal lets users tighten the framing on a single clip or image without affecting the original source.
+modal חיתוך ייעודי מאפשר למשתמשים להדק את המסגרת על clip בודד או תמונה בלי להשפיע על המקור המקורי.
 
-## Sourcing content
+## מקורות תוכן
 
-### Add a recording range from a managed channel
+### הוספת recording range מערוץ מנוהל
 
-The most common entry point in production. A parent application tells the editor "add a 5-minute window from channel X starting at this time", and the editor pulls that exact range from the company's recording library and drops it on the timeline.
+נקודת הכניסה הנפוצה ביותר בייצור. אפליקציית הורה אומרת לעורך "הוסף חלון של 5 דקות מערוץ X החל מהזמן הזה", והעורך מושך את הטווח המדויק הזה מספריית ההקלטות של החברה ומפיל אותו על ציר הזמן.
 
-→ Engineering: [integrators/iframe-integration](../integrators/iframe-integration), `EDITOR_ADD_PREVIEW_ITEM` with `kind: "recording-range"`.
+→ הנדסה: [integrators/iframe-integration](../integrators/iframe-integration), `EDITOR_ADD_PREVIEW_ITEM` עם `kind: "recording-range"`.
 
-### Upload a file
+### העלאת קובץ
 
-Users can upload their own video, image, or audio file directly from the browser (up to 500 MB per file). Uploads go straight to internal storage — they do not travel through the editor server.
+משתמשים יכולים להעלות קובץ וידאו, תמונה או אודיו משלהם ישירות מהדפדפן (עד 500 MB לקובץ). העלאות הולכות ישירות לאחסון פנימי — הן לא עוברות דרך שרת העורך.
 
-### Add an arbitrary media URL
+### הוספת URL מדיה שרירותי
 
-A parent application can hand the editor a direct media URL (mp4 or HLS) — useful for embedding clips that don't live in the managed channel system.
+אפליקציית הורה יכולה למסור לעורך URL מדיה ישיר (mp4 או HLS) — שימושי להטמעת clips שלא חיים במערכת הערוצים המנוהלת.
 
-### Add an audio track
+### הוספת track אודיו
 
-Music or voice-over from a separate audio source, attached to the timeline as its own track.
+מוזיקה או voice-over ממקור אודיו נפרד, מצורף לציר הזמן כ־track משלו.
 
-## Exporting
+## ייצוא
 
-### Export to MP4 or animated WebP
+### ייצוא ל־MP4 או WebP מונפש
 
-When the user clicks export, the editor packages the timeline as an instruction set and sends it to the server. The server renders the final video using FFmpeg and stores the result.
+כשהמשתמש לוחץ ייצוא, העורך אורז את ציר הזמן כסט הוראות ושולח אותו לשרת. השרת מרנדר את הווידאו הסופי באמצעות FFmpeg ומאחסן את התוצאה.
 
-### Choose where the output lands
+### בחירת היכן הפלט נוחת
 
-At export time, the user picks: download to my computer, save to my personal channel, save to one or more unit channels — or any combination. The editor records the choice on the export job; downstream services act on it.
+בזמן הייצוא, המשתמש בוחר: להוריד למחשב שלי, לשמור לערוץ האישי שלי, לשמור לערוץ יחידה אחד או יותר — או כל שילוב. העורך רושם את הבחירה על job הייצוא; שירותי מורדים פועלים לפיה.
 
-→ Engineering: [integrators/event-consumers](../integrators/event-consumers), `export.completed` event.
+→ הנדסה: [integrators/event-consumers](../integrators/event-consumers), אירוע `export.completed`.
 
-### Async by design
+### אסינכרוני בתכנון
 
-The export does **not** make the user wait. The export job runs in the background; the user can keep editing, navigate away, or close the tab. They learn when it's done via the parent application's notification surface (driven by AMQP events the server publishes).
+הייצוא **לא** מחייב את המשתמש להמתין. job הייצוא רץ ברקע; המשתמש יכול להמשיך לערוך, לנווט הלאה או לסגור את הטאב. הוא יודע מתי זה הסתיים דרך משטח ההתראות של אפליקציית ההורה (מונע על ידי אירועי AMQP שהשרת מפרסם).
 
-## Integration
+## אינטגרציה
 
-### Embed-anywhere
+### הטמעה בכל מקום
 
-The editor lives at `/editor/embed` and any host application can embed it in an iframe. The host drives the editor with structured messages — "add this clip", "clear the project" — and receives structured responses back.
+העורך חי ב־`/editor/embed` וכל אפליקציית host יכולה להטמיע אותו ב־iframe. ה־host מפעיל את העורך עם הודעות מובנות — "הוסף את ה־clip הזה", "נקה את הפרויקט" — ומקבל תגובות מובנות בחזרה.
 
-→ Engineering: [integrators/iframe-integration](../integrators/iframe-integration)
+→ הנדסה: [integrators/iframe-integration](../integrators/iframe-integration)
 
-### Single sign-on via the host's cookie
+### Single sign-on דרך עוגיית ה־host
 
-Users do not log in again to use the editor. The host application's auth cookie is attached automatically to the editor's server calls. The editor never sees the token value; it just lets the browser do its thing.
+משתמשים לא מתחברים שוב כדי להשתמש בעורך. עוגיית ההזדהות של אפליקציית ה־host מצורפת אוטומטית לקריאות השרת של העורך. העורך לעולם לא רואה את ערך ה־token; הוא רק נותן לדפדפן לעשות את שלו.
 
-→ Engineering: [ADR 0003](../architecture/adr/0003-iframe-auth-via-httponly-cookie)
+→ הנדסה: [ADR 0003](../architecture/adr/0003-iframe-auth-via-httponly-cookie)
 
-### Notifications to downstream services
+### התראות לשירותי מורדים
 
-Other teams' services can subscribe to a message stream from the editor server: "export started", "export completed", "export failed". Each carries enough context (job id, media id, output URL) for the consuming team to take their next action — file the output, notify the user, update a workflow.
+שירותים של צוותים אחרים יכולים להירשם לזרם הודעות משרת העורך: "ייצוא התחיל", "ייצוא הסתיים", "ייצוא נכשל". כל אחד נושא מספיק קונטקסט (job id, media id, URL פלט) כדי שהצוות הצורך ייקח את הצעד הבא שלו — לתייק את הפלט, להודיע למשתמש, לעדכן workflow.
 
-→ Engineering: [integrators/event-consumers](../integrators/event-consumers)
+→ הנדסה: [integrators/event-consumers](../integrators/event-consumers)
 
-## What the editor does *not* do
+## מה העורך *לא* עושה
 
-- It does not store the final video long-term. Downstream services do that, triggered by the `export.completed` notification.
-- It does not transcode or process content during preview — the preview is the original source streamed back through the editor server with a token attached.
-- It does not provide accounts, permissions, or channel management. Those come from the host application.
+- הוא לא מאחסן את הווידאו הסופי לטווח ארוך. שירותי מורדים עושים את זה, מופעלים על ידי התראת `export.completed`.
+- הוא לא מבצע transcode או מעבד תוכן במהלך preview — ה־preview הוא המקור המקורי שמוזרם בחזרה דרך שרת העורך עם token מצורף.
+- הוא לא מספק חשבונות, הרשאות או ניהול ערוצים. אלה מגיעים מאפליקציית ה־host.

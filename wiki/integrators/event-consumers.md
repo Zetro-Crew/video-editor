@@ -1,16 +1,16 @@
-# Event Consumers
+# צרכני אירועים
 
-The editor server publishes render-job lifecycle events to a single RabbitMQ topic exchange. External teams bind their own queue to it and consume.
+שרת העורך מפרסם אירועי מחזור-חיים של job רינדור ל־topic exchange יחיד של RabbitMQ. צוותים חיצוניים מקשרים תור משלהם אליו וצורכים.
 
-## Install
+## התקנה
 
 ```bash
 pnpm add @video-editor/contract@<version> amqplib
 ```
 
-Pin both versions. `@video-editor/contract` ships from your internal package registry — install it like any other internal dependency. **Do not clone this repo to consume it.**
+נעל את שתי הגרסאות. `@video-editor/contract` מסופקת מה־registry הפנימי שלך — התקן אותה כמו כל תלות פנימית אחרת. **אל תשכפל את המאגר הזה כדי לצרוך אותה.**
 
-Import only the public events subpath:
+ייבא רק את ה־subpath הציבורי של האירועים:
 
 ```ts
 import {
@@ -31,23 +31,23 @@ import {
 
 ## Exchange + routing keys
 
-| Field | Value |
+| שדה | ערך |
 |---|---|
 | Exchange | `video-editor` |
 | Type | topic |
-| Durable | yes |
+| Durable | כן |
 
-| Routing key | Event |
+| Routing key | אירוע |
 |---|---|
-| `export.started` | Render job started (FFmpeg about to run) |
-| `export.completed` | Render output uploaded to storage; signed URL in payload |
-| `export.failed` | Render job failed (transient errors retried by the broker; the terminal failure carries `error: "max retries exceeded"`) |
+| `export.started` | job רינדור התחיל (FFmpeg עומד לרוץ) |
+| `export.completed` | פלט הרינדור הועלה לאחסון; URL חתום ב־payload |
+| `export.failed` | job רינדור נכשל (שגיאות חולפות מנוסות מחדש על ידי ה־broker; הכישלון הסופי נושא `error: "max retries exceeded"`) |
 
-Bind your queue with `export.#` to receive all three, or `export.completed` (etc.) to filter.
+קשור את התור שלך עם `export.#` כדי לקבל את שלושת האירועים, או עם `export.completed` (וכו') כדי לסנן.
 
-## Envelope shape
+## מבנה המעטפת
 
-Every message body is the same envelope. Body content type is `application/json`. `persistent: true` (delivery-mode 2).
+כל גוף הודעה הוא אותה מעטפת. סוג התוכן של הגוף הוא `application/json`. `persistent: true` (delivery-mode 2).
 
 ```ts
 type Envelope<T> = {
@@ -59,14 +59,14 @@ type Envelope<T> = {
 };
 ```
 
-AMQP headers mirror two envelope fields so you can filter without parsing the body:
+ה־AMQP headers משקפים שני שדות של המעטפת כדי שתוכל לסנן בלי לפרסר את הגוף:
 
-| Header | Value |
+| Header | ערך |
 |---|---|
-| `x-event-name` | e.g. `export.completed` |
-| `x-event-version` | e.g. `1` |
+| `x-event-name` | למשל `export.completed` |
+| `x-event-version` | למשל `1` |
 
-## Event payloads (`data`)
+## Payloads של אירועים (`data`)
 
 ### `export.started`
 
@@ -83,9 +83,9 @@ type ExportStartedData = {
 };
 ```
 
-`SavedMediaItem` is a discriminated union on `type`: `"image" | "clip" | "recording" | "audio"`. Recording and audio items carry a `from`/`to` time range; image and clip items do not.
+`SavedMediaItem` הוא discriminated union לפי `type`: `"image" | "clip" | "recording" | "audio"`. פריטי recording ו־audio נושאים טווח זמן `from`/`to`; פריטי image ו־clip לא.
 
-> **At-least-once warning.** `export.started` may fire more than once for the same `jobId`. Render jobs run on a separate worker fronted by a quorum queue with broker-side retry; every redelivery emits a fresh `export.started` before FFmpeg begins. Dedupe on `data.jobId`.
+> **אזהרת at-least-once.** `export.started` עשוי לירות יותר מפעם אחת עבור אותו `jobId`. jobs של רינדור רצים על worker נפרד מאחורי quorum queue עם retry בצד ה־broker; כל הגעה חוזרת מפיקה `export.started` חדש לפני ש־FFmpeg מתחיל. בצע dedupe על `data.jobId`.
 
 ### `export.completed`
 
@@ -106,19 +106,19 @@ type ExportFailedData = {
 };
 ```
 
-Two flavours of failure both surface here:
+שני סוגי כישלון מופיעים כאן:
 
-| `data.error` | Meaning |
+| `data.error` | משמעות |
 |---|---|
-| `"invalid envelope"` | The render command was malformed (poison message). The worker acked it; it will not retry. |
-| `"max retries exceeded"` | The render exhausted the broker's delivery limit (default 5). This is the terminal signal after retries are done. |
-| Any other string | Render attempt failed with a transient error. The broker will redeliver until the delivery limit is hit; a final `export.failed { error: "max retries exceeded" }` will follow if all attempts fail. |
+| `"invalid envelope"` | פקודת הרינדור הייתה מעוותת (poison message). ה־worker עשה לה ack; היא לא תנוסה מחדש. |
+| `"max retries exceeded"` | הרינדור מיצה את מגבלת ההגעה של ה־broker (ברירת מחדל 5). זה הסיגנל הסופי אחרי שכל הניסיונות נגמרו. |
+| כל מחרוזת אחרת | ניסיון הרינדור נכשל עם שגיאה חולפת. ה־broker ימסור מחדש עד שתוכת ההגעה תיפגע; אם כל הניסיונות ייכשלו ייכנס `export.failed { error: "max retries exceeded" }` סופי. |
 
-## Bind a queue
+## קישור תור
 
-Declare your own durable queue and bind it to the exchange. Each team owns its own queue.
+הכרז על תור עמיד משלך וקשור אותו ל־exchange. כל צוות מחזיק תור משלו.
 
-Via `rabbitmqadmin`:
+באמצעות `rabbitmqadmin`:
 
 ```bash
 rabbitmqadmin declare queue name=my-team-export durable=true
@@ -128,7 +128,7 @@ rabbitmqadmin declare binding \
   routing_key='export.#'
 ```
 
-Or programmatically from your consumer (asserts on first connect; idempotent):
+או באופן תוכניתי מהצרכן שלך (הצהרות בעת חיבור ראשון; אידמפוטנטי):
 
 ```ts
 import { EXCHANGE_NAME } from "@video-editor/contract/events";
@@ -137,9 +137,9 @@ await ch.assertQueue("my-team-export", { durable: true });
 await ch.bindQueue("my-team-export", EXCHANGE_NAME, "export.#");
 ```
 
-## Sample consumer
+## צרכן לדוגמה
 
-Node + `amqplib`, with Zod validation, manual ack, and version-header routing.
+Node + `amqplib`, עם בדיקת Zod, ack ידני ו־routing לפי header של גרסה.
 
 ```ts
 import { connect } from "amqplib";
@@ -215,31 +215,31 @@ async function onExportCompleted(data) { /* … */ }
 async function onExportFailed(data) { /* … */ }
 ```
 
-## Delivery guarantees
+## הבטחות מסירה
 
-- **At-least-once.** Consumers must be idempotent. Dedupe on `data.jobId`.
-- **Manual ack required.** `noAck: false`. Ack only after processing succeeds.
-- **Schema-failure handling.** `nack(msg, false, false)` to route to your own DLX. Do not requeue malformed messages.
-- **Transient-failure handling.** `nack(msg, false, true)` to requeue. The publisher cannot help you here — your queue's policies apply.
-- **Publisher side.** The editor server uses publisher confirms with `mandatory: true`. A broker-ack is treated as success. Unroutable returns (no queue bound for the routing key) are logged and surfaced — the server itself does not retry beyond a few attempts.
-- **Dead-lettering.** Consumer-side concern. The publisher does not configure DLX for your queue. Set up `x-dead-letter-exchange` on your queue declaration if you want unprocessable messages to land somewhere observable.
+- **At-least-once.** צרכנים חייבים להיות אידמפוטנטיים. בצע dedupe על `data.jobId`.
+- **Manual ack נדרש.** `noAck: false`. בצע ack רק אחרי שהעיבוד הצליח.
+- **טיפול בכישלון schema.** `nack(msg, false, false)` כדי לנתב ל־DLX שלך. אל תכניס מחדש לתור הודעות מעוותות.
+- **טיפול בכישלון חולף.** `nack(msg, false, true)` כדי להחזיר לתור. ה־publisher לא יכול לעזור לך כאן — מדיניות התור שלך חלה.
+- **צד ה־publisher.** שרת העורך משתמש ב־publisher confirms עם `mandatory: true`. broker-ack מטופל כהצלחה. החזרות לא־נתיבות (אין תור קשור ל־routing key) נרשמות ומופיעות — השרת עצמו לא מנסה מחדש מעבר לכמה ניסיונות.
+- **Dead-lettering.** דאגה של צד הצרכן. ה־publisher לא מגדיר DLX לתור שלך. הגדר `x-dead-letter-exchange` בהצהרת התור שלך אם אתה רוצה שהודעות לא ניתנות לעיבוד ינחתו במקום שניתן לצפות בו.
 
-## Versioning policy
+## מדיניות גרסאות
 
-- **Additive change** (new optional field on `data`): same `eventVersion`. Old consumers keep parsing — Zod schemas treat new fields strictly in this repo's policy, so re-pin your `@video-editor/contract` version when you can.
-- **Breaking change** (rename, remove, retype): new `eventVersion`. The server publishes both old and new in parallel for at least 4 weeks. Schedule cutover with the producer team.
-- Bump your `@video-editor/contract` dependency alongside producer releases to stay schema-aligned. `eventVersion` in the envelope is the runtime safety net — branch on it if you have to support both versions during a migration window.
+- **שינוי מוסיף** (שדה אופציונלי חדש ב־`data`): אותו `eventVersion`. צרכנים ישנים ממשיכים לפרסר — סכמות Zod מתייחסות לשדות חדשים באופן מחמיר במדיניות של מאגר זה, אז קבע מחדש את גרסת `@video-editor/contract` שלך כשתוכל.
+- **שינוי שובר** (שינוי שם, הסרה, שינוי טיפוס): `eventVersion` חדש. השרת מפרסם גם את הישן וגם את החדש במקביל למשך 4 שבועות לפחות. תזמן את ה־cutover עם צוות ה־producer.
+- שדרג את התלות שלך ב־`@video-editor/contract` יחד עם גרסאות ה־producer כדי להישאר מסונכרן עם הסכמה. `eventVersion` במעטפת הוא רשת ביטחון בזמן ריצה — הסתעף עליו אם אתה צריך לתמוך בשתי גרסאות במהלך חלון מיגרציה.
 
-## Production transport
+## תעבורה בייצור
 
-In production, the broker is reached over `amqps://` (TLS with mutual auth). The editor server reads three PEM files at boot from hardcoded paths:
+בייצור, ה־broker מגיע דרך `amqps://` (TLS עם אימות הדדי). שרת העורך קורא שלושה קבצי PEM באתחול מנתיבים קשיחים:
 
-- `/bundle.pem` — the private CA bundle
-- `/tmp/certificates/rabbitmq/rabbit_cert.pem` — client certificate
-- `/tmp/certificates/rabbitmq/rabbit_key.pem` — client key
+- `/bundle.pem` — bundle ה־CA הפרטי
+- `/tmp/certificates/rabbitmq/rabbit_cert.pem` — תעודת לקוח
+- `/tmp/certificates/rabbitmq/rabbit_key.pem` — מפתח לקוח
 
-The URL carries no userinfo — the broker authenticates by certificate.
+ה־URL לא נושא userinfo — ה־broker מאמת לפי תעודה.
 
-If you are deploying your own consumer in the same cluster, follow the same mTLS pattern (or whatever the broker accepts on your side). See [ADR 0006](../architecture/adr/0006-amqplib-built-in-recovery) for the connection-recovery strategy `amqplib` v1.1+ provides — your consumer should opt into the same to survive broker blips without a pod restart.
+אם אתה פורס צרכן משלך באותו cluster, פעל לפי אותה תבנית mTLS (או כל מה שה־broker מקבל בצד שלך). ראה [ADR 0006](../architecture/adr/0006-amqplib-built-in-recovery) לאסטרטגיית התאוששות החיבור ש־`amqplib` v1.1+ מספק — הצרכן שלך צריך להצטרף לאותה כדי לשרוד שיבושי broker בלי restart של pod.
 
-Cross-reference: the messaging glossary in [architecture/glossary](../architecture/glossary) defines "Publish", "Unrouted", "Broker Ack", "Event Envelope", and "Broker TLS".
+הפניה צולבת: מילון ההודעות ב־[architecture/glossary](../architecture/glossary) מגדיר את "Publish", "Unrouted", "Broker Ack", "Event Envelope" ו־"Broker TLS".

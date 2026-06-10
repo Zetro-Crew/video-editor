@@ -1,12 +1,12 @@
-# Video Editor – Architecture & Flow Reference
+# Video Editor – ארכיטקטורה והפניית זרימה
 
-> Living reference for the monorepo. Update when services, routes, or data flows change.
+> הפניה חיה עבור ה־monorepo. עדכן כשהשירותים, ה־routes או זרימות הנתונים משתנים.
 
 ---
 
-## 1. System Overview
+## 1. סקירת מערכת
 
-The big picture: who interacts with the system and through which channels.
+התמונה הגדולה: מי מתקשר עם המערכת ודרך אילו ערוצים.
 
 ```mermaid
 flowchart TB
@@ -50,9 +50,9 @@ flowchart TB
 
 ---
 
-## 2. Container Map
+## 2. מפת Containers
 
-All deployable units and their direct dependencies.
+כל יחידות הפריסה והתלויות הישירות שלהן.
 
 ```mermaid
 flowchart LR
@@ -104,9 +104,9 @@ flowchart LR
 
 ---
 
-## 3. Export Flow
+## 3. זרימת ייצוא
 
-User exports a composition → FFmpeg encodes → file stored in S3 → external teams notified via AMQP.
+משתמש מייצא הרכבה → FFmpeg מקודד → קובץ מאוחסן ב־S3 → צוותים חיצוניים מוזמנים דרך AMQP.
 
 ```mermaid
 sequenceDiagram
@@ -155,9 +155,9 @@ sequenceDiagram
 
 ---
 
-## 4. Preview & iframe Integration Flow
+## 4. זרימת Preview ואינטגרציית iframe
 
-Parent embeds the editor → sends a recording range → server resolves it into a streamable HLS playlist → browser plays it via a server-side proxy.
+הורה מטמיע את העורך → שולח טווח הקלטה → השרת פותר אותו לתוך HLS playlist ניתן לזרימה → הדפדפן מנגן אותו דרך proxy בצד שרת.
 
 ```mermaid
 sequenceDiagram
@@ -201,9 +201,9 @@ sequenceDiagram
 
 ---
 
-## 5. Upload Flow
+## 5. זרימת העלאה
 
-User uploads a media file → stored in S3 → added to the editor timeline.
+משתמש מעלה קובץ מדיה → נשמר ב־S3 → נוסף לציר הזמן של העורך.
 
 ```mermaid
 sequenceDiagram
@@ -234,9 +234,9 @@ sequenceDiagram
 
 ---
 
-## 6. Edit-Video (Async FFmpeg Job) Flow
+## 6. זרימת Edit-Video (job FFmpeg אסינכרוני)
 
-Trimming / cut processing separate from Remotion render. Returns a processed file the editor can reference.
+עיבוד חיתוך/גזירה נפרד מרינדור Remotion. מחזיר קובץ מעובד שהעורך יכול להפנות אליו.
 
 ```mermaid
 sequenceDiagram
@@ -267,9 +267,9 @@ sequenceDiagram
 
 ---
 
-## 7. AMQP Event Contract
+## 7. חוזה אירועי AMQP
 
-Events published to the `video-editor` topic exchange. External consumers bind queues to routing keys.
+אירועים שמפורסמים ל־topic exchange של `video-editor`. צרכנים חיצוניים קושרים תורים ל־routing keys.
 
 ```mermaid
 flowchart LR
@@ -284,7 +284,7 @@ flowchart LR
     Q2 --> C2["Consumer B"]
 ```
 
-**Envelope shape** (all events):
+**מבנה המעטפת** (כל האירועים):
 
 ```
 {
@@ -296,13 +296,13 @@ flowchart LR
 }
 ```
 
-AMQP headers mirror the envelope (`x-event-name`, `x-event-version`) for broker-side filtering without body parsing.
+AMQP headers משקפים את המעטפת (`x-event-name`, `x-event-version`) לסינון בצד ה־broker בלי לפרסר את הגוף.
 
 ---
 
-## 8. postMessage Contract (iframe Embedding)
+## 8. חוזה postMessage (הטמעת iframe)
 
-Editor hosted at `/editor/embed`. Any parent application can embed it.
+העורך מתארח ב־`/editor/embed`. כל אפליקציית הורה יכולה להטמיע אותו.
 
 ```mermaid
 sequenceDiagram
@@ -326,37 +326,37 @@ sequenceDiagram
     ED-->>PA: EDITOR_MEDIA_SAVED { url, mediaId, mediaName,<br/>downloadToComputer, saveToPersonalChannel,<br/>selectedUnitChannelIds }
 ```
 
-**Auth:** `ztube-token` is HttpOnly — the browser attaches it automatically on same-domain fetches. The parent never reads or forwards it. The editor server reads it from the `Cookie` header and forwards it to Core.
+**הזדהות:** `ztube-token` הוא HttpOnly — הדפדפן מצרף אותו אוטומטית ב־fetches של same-domain. ההורה לעולם לא קורא או מעביר אותו. שרת העורך קורא אותו מ־header של `Cookie` ומעביר אותו ל־Core.
 
 ---
 
-## 9. Mock Services → Production Replacement Guide
+## 9. מדריך החלפת Mock Services → ייצור
 
-| Dev Mock | Port | Real Service It Replaces | What It Does in Production |
+| Dev Mock | פורט | שירות אמיתי שמוחלף | מה הוא עושה בייצור |
 |---|---|---|---|
-| `apps/core-mock` | 8002 | **Core Service** | Central platform service: user identity (`/private/users/me`), managed channel catalogue, and the **Channel Play API** (`GET /private/channels/:id/play`) that mints a short-lived VOD Token and returns the MPD URL for a time range. |
-| `apps/mock-vod` | 5050 | **VOD Service** | Video-on-demand backend: validates the VOD Token on every request, serves the DASH MPD manifest for a recording, and streams the raw DASH segments (init + media fragments). |
+| `apps/core-mock` | 8002 | **Core Service** | שירות פלטפורמה מרכזי: זהות משתמש (`/private/users/me`), קטלוג ערוצים מנוהל ו**Channel Play API** (`GET /private/channels/:id/play`) שמטביע VOD Token קצר-מועד ומחזיר את ה־MPD URL לטווח זמן. |
+| `apps/mock-vod` | 5050 | **VOD Service** | backend וידאו on-demand: מאמת את ה־VOD Token בכל בקשה, משרת את ה־DASH MPD manifest להקלטה ומזרים את ה־DASH segments הגולמיים (init + media fragments). |
 
-**Replacement checklist** (both services):
-- Set `CORE_BASE_URL` in `apps/server/.env` to the real Core `/private` base URL.
-- Remove or stop `apps/core-mock` and `apps/mock-vod` from `docker compose` / `pnpm dev`.
-- Confirm `ztube-token` is set as HttpOnly by the parent application on the shared domain.
-- Confirm VOD Token TTL matches or exceeds expected session duration (default mock: 10 min).
-- Verify segment proxy (`/editor/segment`) can reach the real VOD host from the server network.
+**רשימת החלפה** (שני השירותים):
+- הגדר את `CORE_BASE_URL` ב־`apps/server/.env` ל־URL בסיס `/private` האמיתי של Core.
+- הסר או עצור את `apps/core-mock` ו־`apps/mock-vod` מ־`docker compose` / `pnpm dev`.
+- ודא ש־`ztube-token` מוגדר כ־HttpOnly על ידי אפליקציית ההורה על ה־shared domain.
+- ודא ש־TTL של VOD Token תואם או עולה על משך session הצפוי (ברירת מחדל של mock: 10 דקות).
+- ודא ש־segment proxy (`/editor/segment`) יכול להגיע ל־host של VOD האמיתי מרשת השרת.
 
 ---
 
-## 10. Key Environment Variables
+## 10. משתני סביבה מרכזיים
 
-| Variable | Service | Required | Description |
+| משתנה | שירות | חובה | תיאור |
 |---|---|---|---|
-| `CORE_BASE_URL` | server | yes | Real Core `/private` base URL. Dev default: `http://localhost:8002/private` |
-| `PREVIEW_SIGNING_SECRET` | server | yes | HMAC-SHA256 secret for segment proxy (min 32 chars). Prevents SSRF. |
-| `QUEUE_URL` | server | yes | AMQP connection URL. Server refuses to start without it. `amqps://` triggers mTLS — process reads `/bundle.pem` and `/tmp/certificates/rabbitmq/rabbit_{cert,key}.pem` at boot. |
-| `S3_ENDPOINT` | server | yes | MinIO / S3 endpoint. Dev: `http://localhost:9000` |
-| `S3_BUCKET` | server | yes | Bucket name. Dev: `video-editor` |
-| `REDIS_HOST` / `REDIS_PORT` | server | yes | Redis connection. Dev defaults: `localhost:6379` |
-| `SERVER_BASE_URL` | server | yes | Public URL of the server (used in signed segment URLs). |
-| `RENDER_URL_EXPIRY_SECONDS` | server | no | Signed output URL TTL. Default: `86400` (1 day) |
-| `JOB_PROGRESS_TTL_SECONDS` | server | no | Redis job TTL. Default: `600` (10 min) |
-| `VITE_EDITOR_PARENT_ORIGINS` | frontend | no | Comma-separated allowed iframe origins. Defaults to `window.location.origin`. |
+| `CORE_BASE_URL` | server | כן | URL בסיס `/private` של Core האמיתי. ברירת מחדל לפיתוח: `http://localhost:8002/private` |
+| `PREVIEW_SIGNING_SECRET` | server | כן | סוד HMAC-SHA256 עבור segment proxy (מינימום 32 תווים). מונע SSRF. |
+| `QUEUE_URL` | server | כן | URL חיבור AMQP. השרת מסרב להתחיל בלעדיו. `amqps://` מפעיל mTLS — התהליך קורא את `/bundle.pem` ו־`/tmp/certificates/rabbitmq/rabbit_{cert,key}.pem` באתחול. |
+| `S3_ENDPOINT` | server | כן | endpoint של MinIO / S3. פיתוח: `http://localhost:9000` |
+| `S3_BUCKET` | server | כן | שם bucket. פיתוח: `video-editor` |
+| `REDIS_HOST` / `REDIS_PORT` | server | כן | חיבור Redis. ברירות מחדל לפיתוח: `localhost:6379` |
+| `SERVER_BASE_URL` | server | כן | URL ציבורי של השרת (בשימוש ב־URLs חתומים של segments). |
+| `RENDER_URL_EXPIRY_SECONDS` | server | לא | TTL של URL פלט חתום. ברירת מחדל: `86400` (יום אחד) |
+| `JOB_PROGRESS_TTL_SECONDS` | server | לא | TTL של Redis job. ברירת מחדל: `600` (10 דקות) |
+| `VITE_EDITOR_PARENT_ORIGINS` | frontend | לא | origins מותרים של iframe מופרדים בפסיקים. ברירת מחדל היא `window.location.origin`. |

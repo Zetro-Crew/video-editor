@@ -1,8 +1,8 @@
-# Onboarding
+# קליטה
 
-Land here on your first day. Get the editor running locally, learn the monorepo layout, and pick up the team workflow.
+נחת כאן ביום הראשון שלך. הרץ את העורך מקומית, למד את מבנה ה־monorepo וקלוט את workflow הצוות.
 
-- [Getting Started](getting-started) — prerequisites, install, run.
-- [Repo Tour](repo-tour) — monorepo layout and per-app entry points.
-- [Dev Setup](dev-setup) — local services (MinIO, RabbitMQ), required env, dev URLs.
-- [Workflow](workflow) — TDD loop, lint/type-check/test commands, contribution flow.
+- [תחילת עבודה](getting-started) — דרישות מקדימות, התקנה, הרצה.
+- [סיור במאגר](repo-tour) — מבנה ה־monorepo ונקודות כניסה לכל אפליקציה.
+- [הגדרת סביבת פיתוח](dev-setup) — שירותים מקומיים (MinIO, RabbitMQ), env נדרש, URLs של פיתוח.
+- [תהליך עבודה](workflow) — לולאת TDD, פקודות lint/type-check/test, זרימת תרומה.

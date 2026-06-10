@@ -1,35 +1,35 @@
-# ADR 0001: Zod as the single validation library
+# ADR 0001: Zod כספריית האימות היחידה
 
-**Status:** Accepted  
-**Date:** 2026-05-23
+**סטטוס:** התקבל
+**תאריך:** 2026-05-23
 
-## Context
+## קונטקסט
 
-The server used two validation libraries simultaneously:
-- **Zod** — for env config (`src/config/env.ts`)
-- **TypeBox** — for HTTP request/response schemas (2 features, 15 schemas)
+השרת השתמש בשתי ספריות אימות במקביל:
+- **Zod** — עבור env config (`src/config/env.ts`)
+- **TypeBox** — עבור סכמות בקשה/תגובה של HTTP (2 תכונות, 15 סכמות)
 
-Both served the same purpose: runtime validation + TypeScript type inference.
+שתיהן שירתו את אותה מטרה: אימות בזמן ריצה + הסקת טיפוסים של TypeScript.
 
-## Decision
+## החלטה
 
-Consolidate on **Zod** for all validation. Replace `@sinclair/typebox` and `@fastify/type-provider-typebox` with `fastify-type-provider-zod`.
+איחוד על **Zod** לכל האימות. החלפת `@sinclair/typebox` ו־`@fastify/type-provider-typebox` ב־`fastify-type-provider-zod`.
 
-## Tradeoffs
+## פשרות
 
 | | TypeBox | Zod |
 |--|---------|-----|
-| Schema format | JSON Schema (AJV-compatible) | Proprietary |
-| OpenAPI interop | Native | Requires conversion |
-| TS inference | `Static<typeof schema>` | `z.infer<typeof schema>` |
-| Validation perf | AJV (faster) | Zod (slower, negligible at this scale) |
-| Already present | No (was added for HTTP only) | Yes (env config) |
+| פורמט סכמה | JSON Schema (תואם AJV) | קנייני |
+| Interop של OpenAPI | מקורי | דורש המרה |
+| הסקת TS | `Static<typeof schema>` | `z.infer<typeof schema>` |
+| ביצועי אימות | AJV (מהיר יותר) | Zod (איטי יותר, זניח בקנה המידה הזה) |
+| כבר קיים | לא (נוסף ל־HTTP בלבד) | כן (env config) |
 
-TypeBox's JSON Schema output would matter if this server needed to auto-generate OpenAPI docs. It does not. The runtime is a closed-network video editing server, not a public API.
+הפלט JSON Schema של TypeBox היה חשוב אם השרת הזה היה צריך לייצר OpenAPI docs אוטומטית. הוא לא. ה־runtime הוא שרת עריכת וידאו ברשת סגורה, לא API ציבורי.
 
-## Consequences
+## השלכות
 
-- One dependency instead of two for validation
-- All type inference via `z.infer<>`
-- `fastify-type-provider-zod` handles Fastify v5 + Zod v4 integration
-- HTTP schemas: `edit-video.schema.ts`, `upload.schema.ts`
+- תלות אחת במקום שתיים לאימות
+- כל הסקת הטיפוסים דרך `z.infer<>`
+- `fastify-type-provider-zod` מטפל באינטגרציה של Fastify v5 + Zod v4
+- סכמות HTTP: `edit-video.schema.ts`, `upload.schema.ts`

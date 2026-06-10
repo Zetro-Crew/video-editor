@@ -1,70 +1,70 @@
-# User Glossary
+# מילון משתמש
 
-Everyday vocabulary used in and around the editor. One sentence each. Engineering glossary with implementation detail: [architecture/glossary](../architecture/glossary).
+לקסיקון יומיומי שמשמש בעורך ומסביבו. משפט אחד לכל אחד. מילון הנדסי עם פרטי מימוש: [architecture/glossary](../architecture/glossary).
 
-## Project
+## Project (פרויקט)
 
-The thing a user is editing — the canvas, the tracks, the clips arranged on them, and the export settings. Clearing the project resets the editor to a blank canvas.
+הדבר שמשתמש עורך — ה־canvas, ה־tracks, ה־clips שמסודרים עליהם והגדרות הייצוא. ניקוי הפרויקט מאפס את העורך ל־canvas ריק.
 
 ## Track
 
-A horizontal lane on the timeline. Tracks stack on top of each other; higher tracks render on top of lower tracks at the same time. Like layers in a paint program, but time goes left-to-right.
+מסלול אופקי בציר הזמן. tracks מצטברים זה על זה; tracks גבוהים יותר מרונדרים מעל tracks נמוכים יותר באותו זמן. כמו שכבות בתוכנת ציור, אבל הזמן נע משמאל לימין.
 
-## Track Item (or Clip)
+## Track Item (או Clip)
 
-A single piece of content on a track — a chunk of video, an image, a text overlay, a shape, an audio segment. Each track item has a start time, a duration, and the source it points at.
+חתיכת תוכן יחידה על track — חתיכת וידאו, תמונה, כיסוי טקסט, צורה, קטע אודיו. לכל track item יש זמן התחלה, משך והמקור שעליו הוא מצביע.
 
-## Recording
+## Recording (הקלטה)
 
-A long-running capture of a channel — for example, "everything that aired on Channel 42 yesterday". The editor doesn't show the whole recording; it shows the slice (the recording range) the user asks for.
+לכידה ארוכת-טווח של ערוץ — לדוגמה "כל מה ששודר בערוץ 42 אתמול". העורך לא מציג את כל ההקלטה; הוא מציג את הפרוסה (ה־recording range) שהמשתמש מבקש.
 
 ## Recording Range
 
-A specific time window of a recording — for example, "from 9:00:00 to 9:05:00 on yesterday's Channel 42 recording". This is the most common way content lands on the timeline.
+חלון זמן ספציפי של recording — לדוגמה "מ־9:00:00 עד 9:05:00 בהקלטת ערוץ 42 של אתמול". זו הדרך הנפוצה ביותר שתוכן נוחת על ציר הזמן.
 
-## Channel
+## Channel (ערוץ)
 
-A logical content stream the host application knows about — managed by the platform, owned by units or teams. The editor consumes recordings from channels but does not manage them.
+זרם תוכן לוגי שאפליקציית ה־host מכירה — מנוהל על ידי הפלטפורמה, בבעלות יחידות או צוותים. העורך צורך recordings מערוצים אבל לא מנהל אותם.
 
 ## Preview
 
-The live playback in the editor window. The preview always reflects the current state of the timeline. It is not the same as the final exported file — the export is rendered separately.
+הנגינה החיה בחלון העורך. ה־preview תמיד משקף את המצב הנוכחי של ציר הזמן. הוא לא אותו דבר כמו קובץ הייצוא הסופי — הייצוא מרונדר בנפרד.
 
-## Export
+## Export (ייצוא)
 
-The act of producing the final video file from the project. The user clicks export, the server renders the timeline, and the result is delivered to the destinations the user picked.
+מעשה ייצור קובץ הווידאו הסופי מהפרויקט. המשתמש לוחץ ייצוא, השרת מרנדר את ציר הזמן והתוצאה נמסרת ליעדים שהמשתמש בחר.
 
-## Export Type
+## Export Type (סוג ייצוא)
 
-The format of the export. The two options today are:
-- **MP4** — a standard video file most viewers can play.
-- **WebP** — an animated image format. Smaller and useful for short clips like previews, thumbnails, or promo loops.
+הפורמט של הייצוא. שתי האפשרויות היום הן:
+- **MP4** — קובץ וידאו סטנדרטי שרוב הצופים יכולים לנגן.
+- **WebP** — פורמט תמונה מונפש. קטן יותר ושימושי ל־clips קצרים כמו previews, thumbnails או promo loops.
 
-## Render
+## Render (רינדור)
 
-The behind-the-scenes work of turning the project into the final file. Users don't trigger renders directly; clicking export starts one. Renders can take seconds or minutes depending on length.
+העבודה מאחורי הקלעים של הפיכת הפרויקט לקובץ הסופי. משתמשים לא מפעילים renders ישירות; לחיצה על ייצוא מתחילה אחד. renders יכולים לקחת שניות או דקות תלוי באורך.
 
-## Save Destinations
+## Save Destinations (יעדי שמירה)
 
-What the user chooses at export time:
-- **Download to computer** — the file is offered as a browser download.
-- **Save to personal channel** — the output goes to the user's own channel inside the host platform.
-- **Save to unit channels** — the user picks one or more unit channels (team channels) to publish the output to.
+מה שהמשתמש בוחר בזמן הייצוא:
+- **הורדה למחשב** — הקובץ מוצע כהורדת דפדפן.
+- **שמירה לערוץ אישי** — הפלט הולך לערוץ של המשתמש בתוך פלטפורמת ה־host.
+- **שמירה לערוצי יחידה** — המשתמש בוחר ערוץ יחידה אחד או יותר (ערוצי צוות) לפרסם אליהם את הפלט.
 
-Choices are not mutually exclusive — a user can download *and* publish to channels at the same time.
+הבחירות לא בלעדיות הדדית — משתמש יכול להוריד *וגם* לפרסם לערוצים באותו זמן.
 
 ## Iframe Embed
 
-The way the editor appears inside other apps. The editor lives at a single URL; any compatible host page can show it as a panel, a modal, or a full screen by loading that URL in an iframe.
+הדרך שבה העורך מופיע בתוך אפליקציות אחרות. העורך חי ב־URL יחיד; כל דף host תואם יכול להציג אותו כפאנל, modal או מסך מלא על ידי טעינת ה־URL הזה ב־iframe.
 
-## Personal Channel
+## Personal Channel (ערוץ אישי)
 
-Each user's own private channel. Used as a save destination at export time.
+הערוץ הפרטי של כל משתמש. בשימוש כיעד שמירה בזמן הייצוא.
 
-## Unit Channel
+## Unit Channel (ערוץ יחידה)
 
-A team or group channel inside the host platform. Used as a save destination at export time.
+ערוץ צוות או קבוצה בתוך פלטפורמת ה־host. בשימוש כיעד שמירה בזמן הייצוא.
 
 ## Token (VOD token, ztube-token)
 
-Behind the scenes the editor uses short-lived credentials to fetch media from internal services. Users never see them; if a token expires mid-session, the editor automatically refreshes the underlying request. (If you're hitting expired-token errors as a developer, see [ops/runbooks](../ops/runbooks).)
+מאחורי הקלעים העורך משתמש באישורים קצרי-מועד למשוך מדיה משירותים פנימיים. משתמשים לעולם לא רואים אותם; אם token פג באמצע session, העורך מרענן אוטומטית את הבקשה הבסיסית. (אם אתה נתקל בשגיאות token שפג כמפתח, ראה [ops/runbooks](../ops/runbooks).)

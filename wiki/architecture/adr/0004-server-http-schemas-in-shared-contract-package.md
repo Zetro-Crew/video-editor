@@ -1,55 +1,55 @@
-# 0004 — Server HTTP schemas live in the shared contract package
+# 0004 — סכמות HTTP של השרת חיות בחבילת ה־contract המשותפת
 
-- Status: Accepted
-- Date: 2026-06-01
+- סטטוס: התקבל
+- תאריך: 2026-06-01
 
-## Context
+## קונטקסט
 
-`@video-editor/contract` is shared with an external (parent app) team that embeds the editor iframe. The package already owns:
+`@video-editor/contract` משותפת עם צוות חיצוני (אפליקציית הורה) שמטמיע את ה־iframe של העורך. החבילה כבר מחזיקה:
 
-- iframe postMessage schemas (parent ↔ editor)
-- AMQP event envelopes (server → RabbitMQ)
+- סכמות postMessage של iframe (הורה ↔ עורך)
+- מעטפות אירועי AMQP (שרת → RabbitMQ)
 
-`apps/server` previously kept its own HTTP route schemas next to each feature (`features/<feature>/adapters/inbound/http/*.schema.ts`) plus value types in `shared/domain/` (`OverlayType`, `TimeRange`, `VideoMetadata`, the `render-types` barrel). That follows the usual hexagonal convention "each feature owns its schemas".
+`apps/server` החזיקה בעבר סכמות route HTTP משלה ליד כל תכונה (`features/<feature>/adapters/inbound/http/*.schema.ts`) בתוספת טיפוסי ערך ב־`shared/domain/` (`OverlayType`, `TimeRange`, `VideoMetadata`, barrel של `render-types`). זה עוקב אחרי הקונבנציה ההקסגונלית הרגילה "כל תכונה מחזיקה בסכמות שלה".
 
-But:
+אבל:
 
-1. External teams reading `@video-editor/contract` had no way to tell what's "their" surface area vs the editor team's. Anything dragged in via grep looked equally public.
-2. The editor frontend and the editor server share the same schemas (`designPayloadSchema`, `editVideoRequestSchema`, etc.) but historically duplicated or copy-pasted the types. A single source of truth was missing.
-3. New hires kept asking "where do I find the type for X?". Three plausible answers per feature.
+1. צוותים חיצוניים שקראו את `@video-editor/contract` לא היו להם דרך לדעת מה "המשטח שלהם" מול של צוות העורך. כל מה שנגרר דרך grep נראה ציבורי באותה מידה.
+2. ה־frontend של העורך ושרת העורך חולקים את אותן סכמות (`designPayloadSchema`, `editVideoRequestSchema` וכו') אבל היסטורית שכפלו או עשו copy-paste של הטיפוסים. מקור אמת יחיד היה חסר.
+3. עובדים חדשים המשיכו לשאול "איפה אני מוצא את הטיפוס של X?". שלוש תשובות סבירות לכל תכונה.
 
-## Decision
+## החלטה
 
-Move every HTTP route schema and every shared HTTP value type out of `apps/server` and into `@video-editor/contract/internal/<feature>`. The contract package becomes the **single home for all editor-team type contracts**, organised into four explicit buckets:
+העבר כל סכמת route HTTP וכל טיפוס ערך HTTP משותף מתוך `apps/server` אל `@video-editor/contract/internal/<feature>`. חבילת ה־contract הופכת ל**בית יחיד לכל חוזי הטיפוסים של צוות העורך**, מאורגנת לארבעה דליים מפורשים:
 
-| Bucket | Subpath | Audience |
+| דלי | Subpath | קהל יעד |
 |---|---|---|
-| Parent → editor | `iframe/from-parent` | External + editor frontend |
-| Editor → parent | `iframe/to-parent` | External + editor frontend |
-| RabbitMQ events | `events` | External consumers |
-| Editor server HTTP | `internal/<feature>` | **`apps/server` only** |
+| הורה → עורך | `iframe/from-parent` | חיצוני + frontend עורך |
+| עורך → הורה | `iframe/to-parent` | חיצוני + frontend עורך |
+| אירועי RabbitMQ | `events` | צרכנים חיצוניים |
+| HTTP של שרת העורך | `internal/<feature>` | **`apps/server` בלבד** |
 
-External teams know on sight that `/internal/*` is not for them.
+צוותים חיצוניים יודעים מיד ש־`/internal/*` לא בשבילם.
 
-All TS types in the package come from `z.infer<typeof schema>`.
+כל טיפוסי TS בחבילה מגיעים מ־`z.infer<typeof schema>`.
 
-## Consequences
+## השלכות
 
-**Good**
+**טוב**
 
-- One place to look for any type contract owned by the editor team.
-- External teams can't accidentally couple to `/internal/*` — the subpath name is the warning.
-- `apps/server` and `apps/frontend` can both import the same `designPayloadSchema`, `editVideoRequestSchema`, `OverlayType`, etc. without duplication.
-- No drift between Zod schema and TS type — `z.infer` is the only source.
+- מקום אחד לחפש בו כל חוזה טיפוס בבעלות צוות העורך.
+- צוותים חיצוניים לא יכולים להצטמד בטעות ל־`/internal/*` — שם ה־subpath הוא האזהרה.
+- `apps/server` ו־`apps/frontend` יכולים שניהם לייבא את אותם `designPayloadSchema`, `editVideoRequestSchema`, `OverlayType` וכו' ללא שכפול.
+- אין drift בין סכמת Zod לטיפוס TS — `z.infer` הוא המקור היחיד.
 
-**Bad / Surprising**
+**רע / מפתיע**
 
-- Breaks the usual hexagonal "each feature owns its schemas" guideline. `apps/server`'s features now point outward at the contract package for their inbound HTTP schemas.
-- Adds a hard build-order edge: `@video-editor/contract` must build before `apps/server` type-checks. (Already true for the iframe/events subpaths — same build step.)
-- The contract package no longer maps 1:1 to "external surface area". `/internal/*` is internal-only but lives in the same `node_modules/@video-editor/contract` install.
+- שובר את הקו ההקסגונלי הרגיל "כל תכונה מחזיקה בסכמות שלה". התכונות של `apps/server` עכשיו מצביעות החוצה לחבילת ה־contract לסכמות ה־HTTP הנכנסות שלהן.
+- מוסיף קצה build-order קשה: `@video-editor/contract` חייבת לבנות לפני ש־`apps/server` עושה type-check. (כבר נכון ל־subpaths של iframe/events — אותו שלב build.)
+- חבילת ה־contract כבר לא ממפה 1:1 ל"משטח חיצוני". `/internal/*` הוא פנימי-בלבד אבל חי באותה התקנת `node_modules/@video-editor/contract`.
 
-## Alternatives Considered
+## חלופות שנשקלו
 
-1. **Keep schemas in `apps/server`, add CLAUDE.md notes about scope.** Rejected — relies on the external team reading docs instead of seeing the boundary in the import path.
-2. **Create a separate `@video-editor/server-contract` workspace package.** Rejected — adds workspace overhead for a package that no other workspace imports. The `/internal/*` subpath gives the same isolation with one less package.
-3. **Inline shared schemas in `apps/frontend` and `apps/server` independently.** Rejected — that's the duplication problem we already have.
+1. **השאר סכמות ב־`apps/server`, הוסף הערות CLAUDE.md על טווח.** נדחה — מסתמך על כך שהצוות החיצוני יקרא docs במקום לראות את הגבול בנתיב הייבוא.
+2. **צור חבילת workspace נפרדת `@video-editor/server-contract`.** נדחה — מוסיף overhead workspace לחבילה ששום workspace אחר לא מייבא. ה־subpath `/internal/*` נותן את אותה בידוד עם חבילה אחת פחות.
+3. **שלב סכמות משותפות ב־`apps/frontend` ו־`apps/server` באופן עצמאי.** נדחה — זו בעיית השכפול שכבר יש לנו.

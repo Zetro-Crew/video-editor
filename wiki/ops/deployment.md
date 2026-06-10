@@ -1,62 +1,62 @@
-# Deployment
+# פריסה
 
-How to build and deploy the video-editor server stack into a closed, air-gapped network.
+איך לבנות ולפרוס את ה־stack של שרת video-editor לרשת סגורה ומבודדת.
 
-## Topology
+## טופולוגיה
 
-One container image, two deployments:
+container image אחד, שתי deployments:
 
-| Process | Entrypoint | Port | Role |
+| תהליך | Entrypoint | פורט | תפקיד |
 |---|---|---|---|
-| **API** | `node src/index.ts` | `4001` (HTTP) | Accepts uploads, serves preview requests, **enqueues** render commands on RabbitMQ. Returns `202 { id }` and gets out of the way. |
-| **Worker** | `node src/worker.ts` | `8081` (probe + Prometheus metrics) | Consumes the `render.requested` queue, runs FFmpeg, publishes `export.*` events. |
+| **API** | `node src/index.ts` | `4001` (HTTP) | מקבל העלאות, משרת בקשות preview, **מכניס לתור** פקודות רינדור על RabbitMQ. מחזיר `202 { id }` ויוצא מהדרך. |
+| **Worker** | `node src/worker.ts` | `8081` (probe + מטריקות Prometheus) | צורך את התור `render.requested`, מריץ FFmpeg, מפרסם אירועי `export.*`. |
 
-Same image, same env schema. Only `command`/`args` differ in K8s. The DI container splits them via `buildApiContainer` and `buildWorkerContainer` in `src/bootstrap/container.ts`. See [ADR 0005](../architecture/adr/0005-render-worker-deployment) for the why.
+אותו image, אותה schema של env. רק `command`/`args` שונים ב־K8s. ה־DI container מפצל ביניהם דרך `buildApiContainer` ו־`buildWorkerContainer` ב־`src/bootstrap/container.ts`. ראה [ADR 0005](../architecture/adr/0005-render-worker-deployment) לסיבה.
 
-## Image build
+## בניית Image
 
-`Dockerfile` at the repo root. Three stages:
+`Dockerfile` בשורש המאגר. שלושה שלבים:
 
-1. **`pruner`** — runs `turbo prune @video-editor/server --docker` to slim the workspace to just what the server needs (plus its transitive workspace packages).
-2. **`deps`** — `pnpm install --frozen-lockfile` against the pruned manifests, then `pnpm --filter @video-editor/server deploy --prod --legacy /prod/server` to materialise production-only deps under `/prod/server`.
-3. **`runtime`** — copies `/prod/server` with UID 1001 / GID 0 (OpenShift-friendly), runs `node src/index.ts` by default. The worker overrides the command in its K8s spec.
+1. **`pruner`** — מריץ `turbo prune @video-editor/server --docker` כדי להקטין את ה־workspace למה שהשרת צריך (בתוספת חבילות workspace טרנזיטיביות שלו).
+2. **`deps`** — `pnpm install --frozen-lockfile` מול המניפסטים המוקטנים, אחר כך `pnpm --filter @video-editor/server deploy --prod --legacy /prod/server` כדי לחומר תלויות ייצור בלבד תחת `/prod/server`.
+3. **`runtime`** — מעתיק את `/prod/server` עם UID 1001 / GID 0 (ידידותי ל־OpenShift), מריץ `node src/index.ts` כברירת מחדל. ה־worker דורס את הפקודה ב־K8s spec שלו.
 
-Build:
+בנייה:
 
 ```bash
 docker build --build-arg NODE_IMAGE=<your-internal-node:22.18> \
   -t <your-registry.internal>/video-editor-server:<tag> .
 ```
 
-`NODE_IMAGE` is a build arg — point it at your internal Node 22.18+ base image. There is no default; closed-network builds always pin to a vetted internal image.
+`NODE_IMAGE` הוא build arg — הצבע אותו על image בסיס פנימי של Node 22.18+. אין ברירת מחדל; בנייה של רשת סגורה תמיד נועלת על image פנימי מאומת.
 
-Push to your internal registry:
+דחיפה ל־registry הפנימי שלך:
 
 ```bash
 docker push <your-registry.internal>/video-editor-server:<tag>
 ```
 
-Both API and Worker deployments pull this same image.
+גם ה־API וגם ה־Worker deployments מושכים את אותו image.
 
-## K8s manifests
+## מניפסטים של K8s
 
-Worker manifests live in [`deploy/worker/`](https://example.invalid/deploy/worker/) in the repo. They cover the worker only; the API manifest is environment-specific and not committed.
+מניפסטים של Worker נמצאים ב־[`deploy/worker/`](https://example.invalid/deploy/worker/) במאגר. הם מכסים רק את ה־worker; מניפסט ה־API הוא ספציפי לסביבה ולא נכלל ב־commit.
 
-| File | Purpose |
+| קובץ | מטרה |
 |---|---|
-| `deployment.yaml` | Worker Deployment — `command: ["node"]`, `args: ["src/worker.ts"]`, probes, resource limits, anti-affinity, mTLS volume mounts |
-| `service.yaml` | ClusterIP exposing the probe + metrics port |
-| `configmap.yaml` | Non-secret env: probe port, FFmpeg knobs, S3 bucket/region/prefix, MPD transcode tunables |
+| `deployment.yaml` | Deployment של ה־Worker — `command: ["node"]`, `args: ["src/worker.ts"]`, probes, מגבלות משאבים, anti-affinity, mTLS volume mounts |
+| `service.yaml` | ClusterIP שחושף את ה־probe + פורט המטריקות |
+| `configmap.yaml` | env לא-סודי: probe port, כפתורי FFmpeg, S3 bucket/region/prefix, כיוונוני transcode של MPD |
 
-Filled-in fields you must edit before applying:
+שדות שצריך לערוך לפני הפעלה:
 
-- `metadata.namespace` (all three files)
-- `containers[0].image` in `deployment.yaml`
-- `S3_BUCKET` and `S3_ENDPOINT` in `configmap.yaml`
-- The `imagePullSecrets` name if you use a different secret for your internal registry
-- The `splunk::ztube` Collectord index if your environment uses different log labels
+- `metadata.namespace` (כל שלושת הקבצים)
+- `containers[0].image` ב־`deployment.yaml`
+- `S3_BUCKET` ו־`S3_ENDPOINT` ב־`configmap.yaml`
+- שם ה־`imagePullSecrets` אם אתה משתמש בסוד אחר ל־registry הפנימי שלך
+- ה־`splunk::ztube` Collectord index אם הסביבה שלך משתמשת ב־labels אחרים ללוגים
 
-Apply:
+הפעלה:
 
 ```bash
 kubectl apply -f deploy/worker/configmap.yaml
@@ -64,105 +64,105 @@ kubectl apply -f deploy/worker/service.yaml
 kubectl apply -f deploy/worker/deployment.yaml
 ```
 
-## Required infrastructure
+## תשתיות נדרשות
 
 ### RabbitMQ
 
-Production must speak mTLS over `amqps://`. The server detects the scheme and reads three PEM files at boot:
+הייצור חייב לדבר mTLS על `amqps://`. השרת מזהה את הסכמה וקורא שלושה קבצי PEM באתחול:
 
-| Path | Purpose | K8s source in `deploy/worker/deployment.yaml` |
+| נתיב | מטרה | מקור K8s ב־`deploy/worker/deployment.yaml` |
 |---|---|---|
-| `/bundle.pem` | Private CA bundle | `Secret/ssl-values`, key `bundle.pem`, `subPath`-mounted |
-| `/tmp/certificates/rabbitmq/rabbit_cert.pem` | Client certificate | `Secret/rabbit-values`, key `rabbit_cert.pem` |
-| `/tmp/certificates/rabbitmq/rabbit_key.pem` | Client key | `Secret/rabbit-values`, key `rabbit_key.pem` |
+| `/bundle.pem` | bundle CA פרטי | `Secret/ssl-values`, מפתח `bundle.pem`, מותקן ב־`subPath` |
+| `/tmp/certificates/rabbitmq/rabbit_cert.pem` | תעודת לקוח | `Secret/rabbit-values`, מפתח `rabbit_cert.pem` |
+| `/tmp/certificates/rabbitmq/rabbit_key.pem` | מפתח לקוח | `Secret/rabbit-values`, מפתח `rabbit_key.pem` |
 
-`mode: 0400` on all three. The AMQP URL carries no userinfo — the broker authenticates clients by certificate.
+`mode: 0400` בשלושתם. ה־AMQP URL לא נושא userinfo — ה־broker מאמת לקוחות לפי תעודה.
 
-The server asserts AMQP topology on connect:
+השרת מצהיר על טופולוגיית AMQP בעת חיבור:
 
-| Exchange | Type | Notes |
+| Exchange | סוג | הערות |
 |---|---|---|
-| `video-editor` | topic | Public events: `export.started`, `export.completed`, `export.failed` |
-| `video-editor.commands` | direct | Server-internal: `render.requested` |
-| `video-editor.commands.dlx` | direct (DLX) | Dead-letter target for `render.requested` |
+| `video-editor` | topic | אירועים ציבוריים: `export.started`, `export.completed`, `export.failed` |
+| `video-editor.commands` | direct | פנימי לשרת: `render.requested` |
+| `video-editor.commands.dlx` | direct (DLX) | יעד dead-letter עבור `render.requested` |
 
-Queues:
+תורים:
 
-| Queue | Type | Notes |
+| תור | סוג | הערות |
 |---|---|---|
-| `render.requested` | quorum, durable, `x-delivery-limit=5`, `x-overflow=reject-publish`, `x-max-length=10000` | Optional `x-message-ttl` from `RENDER_REQUEST_TTL_MS` |
-| `render.dead` | DLX-bound | DLQ consumer in the worker publishes terminal `export.failed { error: "max retries exceeded" }` |
+| `render.requested` | quorum, durable, `x-delivery-limit=5`, `x-overflow=reject-publish`, `x-max-length=10000` | `x-message-ttl` אופציונלי מ־`RENDER_REQUEST_TTL_MS` |
+| `render.dead` | מקושר ל־DLX | צרכן DLQ ב־worker מפרסם `export.failed { error: "max retries exceeded" }` סופי |
 
 ### S3 / MinIO
 
-Any S3-compatible object store works. The server uses path-style addressing (`S3_FORCE_PATH_STYLE=true`) so it speaks to MinIO out of the box.
+כל אחסון אובייקטים תואם S3 עובד. השרת משתמש בכתובות בסגנון נתיב (`S3_FORCE_PATH_STYLE=true`) כך שהוא מדבר עם MinIO מוכן לעבודה.
 
-Bucket bootstrap:
+איפוס Bucket:
 
-- If `S3_AUTO_CREATE_BUCKET=true` (default), the API creates the bucket on startup if missing.
-- Otherwise create it ahead of time with the configured `S3_BUCKET` name.
+- אם `S3_AUTO_CREATE_BUCKET=true` (ברירת מחדל), ה־API יוצר את ה־bucket באתחול אם חסר.
+- אחרת צור אותו מראש עם שם ה־`S3_BUCKET` המוגדר.
 
 CORS:
 
-- Set `MINIO_API_CORS_ALLOW_ORIGIN` (or your provider's equivalent) to the comma-separated list of parent origins. Browsers PUT files directly to MinIO via presigned URLs.
-- Local dev's `docker-compose.yml` sets this to `http://localhost:3000,http://localhost:8080` as the template.
+- הגדר את `MINIO_API_CORS_ALLOW_ORIGIN` (או המקבילה אצל הספק שלך) לרשימה מופרדת בפסיקים של origins של הורים. דפדפנים מבצעים PUT של קבצים ישירות ל־MinIO דרך URLs מסומנים.
+- ה־`docker-compose.yml` של פיתוח מקומי מגדיר את זה ל־`http://localhost:3000,http://localhost:8080` כתבנית.
 
-Prefixes (one bucket, three logical roots):
+Prefixes (bucket אחד, שלושה שורשים לוגיים):
 
-| Var | Default | Used by |
+| Var | ברירת מחדל | בשימוש על ידי |
 |---|---|---|
-| `S3_UPLOAD_PREFIX` | `uploads` | Direct-to-S3 uploads (API only) |
-| `S3_PREVIEW_PREFIX` | `preview` | HLS preview playlists + segments (API only) |
-| `S3_OUTPUT_PREFIX` | `output` | Worker-written render output; API reads to derive idempotency keys |
+| `S3_UPLOAD_PREFIX` | `uploads` | העלאות ישירות ל־S3 (API בלבד) |
+| `S3_PREVIEW_PREFIX` | `preview` | playlists של HLS preview + segments (API בלבד) |
+| `S3_OUTPUT_PREFIX` | `output` | פלט רינדור שנכתב על ידי Worker; ה־API קורא כדי לגזור מפתחות אידמפוטנטיים |
 
-**`S3_OUTPUT_PREFIX` must match across API and Worker** — render idempotency depends on a deterministic key derived from `jobId`.
+**`S3_OUTPUT_PREFIX` חייב להתאים בין API ל־Worker** — אידמפוטנטיות הרינדור תלויה במפתח דטרמיניסטי שנגזר מ־`jobId`.
 
-### Core + VOD upstream services
+### שירותי Core + VOD במעלה הזרם
 
-Set `CORE_BASE_URL` to the real Core service's `/private` base URL (the editor server appends route paths to it). The server forwards the `ztube-token` cookie it receives from the parent app on each `/private/channels/:id/play` call. See [ADR 0003](../architecture/adr/0003-iframe-auth-via-httponly-cookie).
+הגדר את `CORE_BASE_URL` ל־base URL של `/private` של שירות Core האמיתי (שרת העורך מוסיף נתיבי route אליו). השרת מעביר את עוגיית `ztube-token` שהוא מקבל מאפליקציית ההורה בכל קריאה ל־`/private/channels/:id/play`. ראה [ADR 0003](../architecture/adr/0003-iframe-auth-via-httponly-cookie).
 
-In production, Core and VOD share a domain behind a reverse proxy. The mocks in dev (`apps/core-mock`, `apps/mock-vod`) emulate the same HTTP contract — see [ADR 0002](../architecture/adr/0002-mock-vod-as-separate-app).
+בייצור, Core ו־VOD חולקים domain מאחורי reverse proxy. ה־mocks בפיתוח (`apps/core-mock`, `apps/mock-vod`) מחקים את אותו חוזה HTTP — ראה [ADR 0002](../architecture/adr/0002-mock-vod-as-separate-app).
 
-## Required env (production-required)
+## env נדרש (חובה בייצור)
 
-| Var | Purpose |
+| Var | מטרה |
 |---|---|
-| `QUEUE_URL` | AMQP URL. `amqps://…` triggers mTLS. Neither API nor Worker starts without it. |
-| `S3_BUCKET` / `S3_ENDPOINT` / `S3_ACCESS_KEY_ID` / `S3_SECRET_ACCESS_KEY` | S3 connection. |
-| `SERVER_BASE_URL` | Public URL of the API. Baked into signed segment URLs. |
-| `PREVIEW_SIGNING_SECRET` | HMAC-SHA256 secret (min 32 chars) for `/editor/segment` signing. **Without this the proxy is an SSRF vector — server refuses to start.** |
-| `CORE_BASE_URL` | Upstream Core `/private` base URL. |
+| `QUEUE_URL` | AMQP URL. `amqps://…` מפעיל mTLS. גם ה־API וגם ה־Worker לא יתחילו בלעדיו. |
+| `S3_BUCKET` / `S3_ENDPOINT` / `S3_ACCESS_KEY_ID` / `S3_SECRET_ACCESS_KEY` | חיבור S3. |
+| `SERVER_BASE_URL` | URL ציבורי של ה־API. נצרב לתוך URLs חתומים של segments. |
+| `PREVIEW_SIGNING_SECRET` | סוד HMAC-SHA256 (מינימום 32 תווים) לחתימת `/editor/segment`. **בלעדיו ה־proxy הוא וקטור SSRF — השרת מסרב להתחיל.** |
+| `CORE_BASE_URL` | URL בסיס `/private` של Core במעלה הזרם. |
 
-Optional knobs (defaults are sensible for most deployments) are listed in [architecture/apps/server](../architecture/apps/server).
+כפתורים אופציונליים (ברירות מחדל סבירות לרוב הפריסות) מפורטים ב־[architecture/apps/server](../architecture/apps/server).
 
-## Health and readiness
+## בריאות ומוכנות
 
-Both processes expose probes:
+שני התהליכים חושפים probes:
 
-| Process | Path | Port |
+| תהליך | נתיב | פורט |
 |---|---|---|
 | API | `GET /health` | `PORT` (`4001`) |
 | Worker | `GET /health`, `GET /ready` | `WORKER_PROBE_PORT` (`8081`) |
-| Worker (metrics) | `GET /metrics` (Prometheus) | `WORKER_PROBE_PORT` |
+| Worker (מטריקות) | `GET /metrics` (Prometheus) | `WORKER_PROBE_PORT` |
 
-Worker probes settings used in the committed `deployment.yaml`:
+הגדרות probes של Worker שבשימוש ב־`deployment.yaml` ה־committed:
 
 | Probe | initialDelay | period | failureThreshold |
 |---|---|---|---|
 | readiness | 5s | 5s | 3 |
 | liveness | 30s | 30s | 3 |
 
-> **Heads up:** the committed `configmap.yaml` sets `WORKER_PROBE_PORT: "8080"` while `deployment.yaml`'s container exposes `containerPort: 8081`. Decide one value and align both before deploying. This wiki page does not assert which is correct — check your team's current value.
+> **שים לב:** ה־`configmap.yaml` ה־committed מגדיר `WORKER_PROBE_PORT: "8080"` בעוד ש־`deployment.yaml` חושף `containerPort: 8081`. החלט על ערך אחד ותאם את שניהם לפני הפריסה. הדף הזה לא קובע מה נכון — בדוק את הערך הנוכחי של הצוות שלך.
 
-## Graceful shutdown
+## כיבוי מבוקר
 
-- **API.** Stop HTTP → publisher `drain(5s)` → publisher `close()`. The publisher's `close()` cancels any pending reconnect timer and rejects in-flight waiters.
-- **Worker.** Cancel AMQP consumer → wait for in-flight render up to ~540s → publisher `drain(5s)` → publisher `close()` → probe server stop.
-- K8s: `terminationGracePeriodSeconds: 600` on the worker. Sized to the render duration. Renders exceeding the budget are `SIGKILL`'d; their messages are redelivered to a sibling worker. Each SIGKILL counts toward `x-delivery-limit=5`.
+- **API.** עצור HTTP → publisher `drain(5s)` → publisher `close()`. ה־`close()` של ה־publisher מבטל כל reconnect timer ממתין ודוחה ממתינים בטיסה.
+- **Worker.** בטל את צרכן ה־AMQP → המתן לרינדור בטיסה עד ~540s → publisher `drain(5s)` → publisher `close()` → עצור את שרת ה־probe.
+- K8s: `terminationGracePeriodSeconds: 600` ב־worker. מותאם למשך הרינדור. רינדורים שעולים על התקציב נכבים ב־`SIGKILL`; ההודעות שלהם נמסרות מחדש ל־worker אח. כל SIGKILL נספר לעבר `x-delivery-limit=5`.
 
-## Closed-network reminders
+## תזכורות לרשת סגורה
 
-- Bundle everything. FFmpeg is shipped via `@ffmpeg-installer/ffmpeg`; no system FFmpeg dependency.
-- No public CDN links anywhere in served HTML/JS.
-- All upstream URLs (Core, VOD, S3, RabbitMQ, OTel collector, Pyroscope) must be reachable from inside the network.
-- No external package fetches at runtime — `pnpm install` runs against your internal registry only.
+- חבר הכול. FFmpeg מסופק דרך `@ffmpeg-installer/ffmpeg`; אין תלות ב־FFmpeg של המערכת.
+- אין קישורי CDN ציבוריים ב־HTML/JS שמשרתים.
+- כל ה־URLs במעלה הזרם (Core, VOD, S3, RabbitMQ, OTel collector, Pyroscope) חייבים להיות נגישים מתוך הרשת.
+- אין משיכות חבילות חיצוניות בזמן ריצה — `pnpm install` רץ רק מול ה־registry הפנימי שלך.

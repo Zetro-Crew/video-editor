@@ -1,27 +1,27 @@
 # @video-editor/contract
 
-Shared contracts for the video editor. Pure Zod schemas + TypeScript types — no runtime network calls. Every TS type is derived via `z.infer<typeof schema>` so schemas and types never drift.
+חוזים משותפים לעורך הווידאו. סכמות Zod טהורות + טיפוסי TypeScript — אין קריאות רשת בזמן ריצה. כל טיפוס TS נגזר דרך `z.infer<typeof schema>` כך שסכמות וטיפוסים לעולם לא נסחפים.
 
-## Four Subpaths
+## ארבעה Subpaths
 
-| Subpath | Direction / Owner | Who imports |
+| Subpath | כיוון / בעלים | מי מייבא |
 |---|---|---|
-| `@video-editor/contract/iframe/from-parent` | Parent **sends** to editor | Parent app + editor frontend |
-| `@video-editor/contract/iframe/to-parent` | Editor **sends** to parent | Parent app + editor frontend |
-| `@video-editor/contract/events` | Server **publishes** to RabbitMQ | Anyone consuming events |
-| `@video-editor/contract/internal/<feature>` | Editor server's own HTTP API schemas | **`apps/server` only** — external teams must not import |
+| `@video-editor/contract/iframe/from-parent` | הורה **שולח** לעורך | אפליקציית הורה + frontend עורך |
+| `@video-editor/contract/iframe/to-parent` | עורך **שולח** להורה | אפליקציית הורה + frontend עורך |
+| `@video-editor/contract/events` | השרת **מפרסם** ל־RabbitMQ | כל מי שצורך אירועים |
+| `@video-editor/contract/internal/<feature>` | סכמות HTTP API פנימיות של שרת העורך | **`apps/server` בלבד** — צוותים חיצוניים אסור לייבא |
 
-`SavedMediaItem` / `SavedMediaPayload` are re-exported from both `iframe/to-parent` and `events` (same shape used in `EDITOR_MEDIA_SAVED` and `export.started.data`). Pick whichever subpath matches your context.
+`SavedMediaItem` / `SavedMediaPayload` מיוצאים מחדש משני `iframe/to-parent` ו־`events` (אותה צורה שמשמשת ב־`EDITOR_MEDIA_SAVED` וב־`export.started.data`). בחר בכל subpath שמתאים לקונטקסט שלך.
 
-There is no root `@video-editor/contract` export. Every caller imports a subpath so the bucket they touch is explicit.
+אין ייצוא שורש של `@video-editor/contract`. כל קורא מייבא subpath כך שהדלי שהוא נוגע בו מפורש.
 
-## Installation
+## התקנה
 
 ```json
 { "dependencies": { "@video-editor/contract": "workspace:*" } }
 ```
 
-## Iframe Protocol
+## פרוטוקול Iframe
 
 ```
 Parent page                       Editor iframe (at /editor/embed)
@@ -34,7 +34,7 @@ Parent page                       Editor iframe (at /editor/embed)
          ────────────────────────────────────── EDITOR_MEDIA_SAVED ──▶
 ```
 
-### Validate incoming messages (parent → editor)
+### אמת הודעות נכנסות (הורה → עורך)
 
 ```ts
 import { parentToEditorMessageSchema } from "@video-editor/contract/iframe/from-parent";
@@ -44,7 +44,7 @@ if (!result.success) return;
 // result.data is fully typed
 ```
 
-### Build response messages (editor → parent)
+### בנה הודעות תגובה (עורך → הורה)
 
 ```ts
 import {
@@ -57,25 +57,25 @@ import {
 window.parent.postMessage(createPreviewItemAddedMessage(itemId), targetOrigin);
 ```
 
-### `PreviewItemPayload` (inbound)
+### `PreviewItemPayload` (נכנס)
 
-Discriminated union on `kind`:
+Discriminated union לפי `kind`:
 
-| `kind` | Description |
+| `kind` | תיאור |
 |---|---|
-| `recording-range` | A recording segment with a time range |
-| `media` | A generic media asset |
-| `audio-range` | An audio segment with a time range |
+| `recording-range` | קטע הקלטה עם טווח זמן |
+| `media` | asset מדיה גנרי |
+| `audio-range` | קטע אודיו עם טווח זמן |
 
-## Events
+## אירועים
 
-Single topic exchange `video-editor`. Three routing keys:
+topic exchange יחיד `video-editor`. שלושה routing keys:
 
-| Routing key | Purpose |
+| Routing key | מטרה |
 |---|---|
-| `export.started` | Render job started |
-| `export.completed` | Render output uploaded |
-| `export.failed` | Render job failed |
+| `export.started` | job רינדור התחיל |
+| `export.completed` | פלט רינדור הועלה |
+| `export.failed` | job רינדור נכשל |
 
 ```ts
 import {
@@ -85,9 +85,9 @@ import {
 } from "@video-editor/contract/events";
 ```
 
-See [`src/events/README.md`](src/events/README) for envelope shape, AMQP headers, queue binding, dead-lettering, versioning, delivery guarantees.
+ראה [`src/events/README.md`](src/events/README) למבנה מעטפת, AMQP headers, קישור תור, dead-lettering, גרסאות, הבטחות מסירה.
 
-## Internal (server-owner only)
+## פנימי (בעלי שרת בלבד)
 
 ```ts
 import { designPayloadSchema } from "@video-editor/contract/internal/render";
@@ -96,9 +96,9 @@ import { getSignedUrlRequestSchema } from "@video-editor/contract/internal/uploa
 import { OverlayType, type TimeRange } from "@video-editor/contract/internal/shared";
 ```
 
-External consumers must not import `/internal/*`. See `docs/adr/0004-server-http-schemas-in-shared-contract-package.md`.
+צרכנים חיצוניים אסור לייבא `/internal/*`. ראה [ADR 0004](../adr/0004-server-http-schemas-in-shared-contract-package).
 
-## Source Structure
+## מבנה מקור
 
 ```
 src/
@@ -133,7 +133,7 @@ src/
     └── shared/{overlay-type,time-range,video-metadata,index}.ts
 ```
 
-## Commands
+## פקודות
 
 ```bash
 pnpm build        # tsc -p tsconfig.json (required before test)
@@ -143,6 +143,6 @@ pnpm lint         # biome check .
 pnpm format       # biome format . --write
 ```
 
-## Dependencies
+## תלויות
 
-- `zod` v4 — runtime validation. All TS types come from `z.infer<typeof schema>`.
+- `zod` v4 — אימות בזמן ריצה. כל טיפוסי TS מגיעים מ־`z.infer<typeof schema>`.

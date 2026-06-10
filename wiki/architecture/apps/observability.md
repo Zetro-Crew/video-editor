@@ -1,28 +1,24 @@
-# 🌐 @ztube/observability
+# @ztube/observability
 
-[![OpenTelemetry](https://img.shields.io/badge/OpenTelemetry-Enabled-blue)](https://opentelemetry.io/)
-[![Pyroscope](https://img.shields.io/badge/Pyroscope-Integrated-red)](https://pyroscope.io/)
-[![Fastify](https://img.shields.io/badge/Fastify-First-brightgreen)](https://www.fastify.io/)
-
-> **The source of truth for visibility.** A corporate-grade observability toolkit designed for high-performance Node.js microservices.
+> **מקור האמת לנראות.** ערכת כלי observability ברמת תאגיד שתוכננה ל־microservices של Node.js בעלי ביצועים גבוהים.
 
 ---
 
-## 🚀 Overview
+## סקירה
 
-`@ztube/observability` is a unified infrastructure layer that combines **Distributed Tracing**, **Metrics**, **Profiling**, and **Structured Logging** into a single, high-performance package. It is designed to be the foundation of any service within the zTube ecosystem, ensuring that operations are visible, measurable, and debuggable.
+`@ztube/observability` היא שכבת תשתית מאוחדת שמשלבת **Distributed Tracing**, **מטריקות**, **Profiling** ו**Logging מובנה** לחבילה אחת בעלת ביצועים גבוהים. היא תוכננה להיות הבסיס של כל שירות בתוך אקוסיסטם zTube, ומבטיחה שפעולות נראות, מדידות וניתנות לדיבוג.
 
-### Key Pillars
-- **🔭 Distributed Tracing**: Automated OpenTelemetry instrumentation for HTTP, AMQP, MongoDB, Redis, and AWS.
-- **📊 Real-time Metrics**: Automatic collection of Host (CPU/Mem) and Runtime (GC/Event Loop) metrics.
-- **🔥 Continuous Profiling**: Deep integration with Pyroscope for CPU and Heap profiling with trace-to-profile linking.
-- **📜 Structured Logging**: Context-aware logging using Pino, with automatic correlation IDs and trace injection.
+### עמודים מרכזיים
+- **Distributed Tracing**: אינסטרומנטציה אוטומטית של OpenTelemetry עבור HTTP, AMQP, MongoDB, Redis ו־AWS.
+- **מטריקות בזמן אמת**: איסוף אוטומטי של מטריקות Host (CPU/Mem) ו־Runtime (GC/Event Loop).
+- **Profiling רציף**: אינטגרציה עמוקה עם Pyroscope ל־profiling של CPU ו־Heap עם קישור trace-to-profile.
+- **Logging מובנה**: logging מודע-קונטקסט באמצעות Pino, עם correlation IDs אוטומטיים והזרקת trace.
 
 ---
 
-## 🛠️ Architecture
+## ארכיטקטורה
 
-The package follows a **Modular Infrastructure** pattern, providing specialized adapters for different frameworks while maintaining a unified core.
+החבילה עוקבת אחר דפוס **Modular Infrastructure**, מספקת adapters מתמחים ל־frameworks שונים תוך שמירה על ליבה מאוחדת.
 
 ```mermaid
 graph TD
@@ -37,7 +33,7 @@ graph TD
 
 ---
 
-## 📦 Installation
+## התקנה
 
 ```bash
 pnpm add @ztube/observability
@@ -45,10 +41,10 @@ pnpm add @ztube/observability
 
 ---
 
-## 📖 Usage
+## שימוש
 
-### 1. The "Golden Standard" Initialization
-Call `initTelemetry` as early as possible in your application entry point.
+### 1. אתחול "תקן הזהב"
+קרא ל־`initTelemetry` מוקדם ככל האפשר בנקודת הכניסה של האפליקציה.
 
 ```typescript
 import { initTelemetry } from "@ztube/observability";
@@ -63,8 +59,8 @@ await initTelemetry({
 });
 ```
 
-### 2. Context-Aware Tracing
-Wrap critical business logic in custom spans. Traces are automatically linked to Pyroscope profiles if profiling is enabled.
+### 2. Tracing מודע-קונטקסט
+עטוף לוגיקה עסקית קריטית ב־spans מותאמים אישית. Traces מקושרים אוטומטית ל־profiles של Pyroscope אם profiling מופעל.
 
 ```typescript
 import { addCustomSpan } from "@ztube/observability";
@@ -79,11 +75,11 @@ const data = await addCustomSpan("process-frame", async (span) => {
 });
 ```
 
-### 3. Corporate Logging
-The package provides a standardized `Logger` based on Pino, designed for structured logging and high performance.
+### 3. Logging תאגידי
+החבילה מספקת `Logger` סטנדרטי המבוסס על Pino, שתוכנן ל־logging מובנה וביצועים גבוהים.
 
-#### Static Usage (Internal/Global)
-Use the exported `Logger` for global or internal logging. It is pre-configured but can be re-configured during initialization.
+#### שימוש סטטי (פנימי/גלובלי)
+השתמש ב־`Logger` המיוצא ל־logging גלובלי או פנימי. הוא מוגדר מראש אך ניתן להגדירו מחדש במהלך האתחול.
 
 ```typescript
 import { Logger } from "@ztube/observability";
@@ -98,8 +94,8 @@ try {
 }
 ```
 
-#### Instance Management
-For services that require dependency injection or child loggers with specific context:
+#### ניהול Instance
+לשירותים שדורשים dependency injection או child loggers עם קונטקסט ספציפי:
 
 ```typescript
 import { LoggerManager } from "@ztube/observability";
@@ -112,7 +108,7 @@ childLogger.logInfo("Processing chunk");
 ```
 
 ### 4. Fastify Premium Logging
-Enable high-performance, structured logging for your Fastify services.
+הפעל logging בעל ביצועים גבוהים ומובנה לשירותי Fastify שלך.
 
 ```typescript
 import { fastifyLoggingPlugin } from "@ztube/observability/fastify";
@@ -125,22 +121,22 @@ server.register(fastifyLoggingPlugin, {
 
 ---
 
-## ⚙️ Configuration
+## הגדרות
 
-| Option | Type | Default | Description |
+| אפשרות | סוג | ברירת מחדל | תיאור |
 | :--- | :--- | :--- | :--- |
-| `serviceName` | `string` | **Required** | The name identifier for the service. |
-| `serviceVersion` | `string` | `1.0.0` | Semantic version of the service. |
-| `otelEndpoint` | `string` | **Required** | OTLP gRPC endpoint (e.g., Aspire, Jaeger). |
-| `pyroscopeServerAddress` | `string` | `undefined` | Server address for continuous profiling. |
-| `logLevel` | `string` | `info` | Minimum log level (trace, debug, info, warn, error). |
-| `samplingRatio` | `number` | `1.0` | Probability of sampling a trace (0 to 1). |
+| `serviceName` | `string` | **חובה** | שם המזהה של השירות. |
+| `serviceVersion` | `string` | `1.0.0` | גרסה סמנטית של השירות. |
+| `otelEndpoint` | `string` | **חובה** | endpoint של OTLP gRPC (למשל Aspire, Jaeger). |
+| `pyroscopeServerAddress` | `string` | `undefined` | כתובת שרת ל־profiling רציף. |
+| `logLevel` | `string` | `info` | רמת log מינימלית (trace, debug, info, warn, error). |
+| `samplingRatio` | `number` | `1.0` | הסתברות לדגימת trace (0 עד 1). |
 
 ---
 
-## 🧪 Development & Testing
+## פיתוח ובדיקות
 
-We maintain a strict quality gate for observability infrastructure.
+אנו שומרים על שער איכות קפדני לתשתית observability.
 
 ```bash
 # Build the package
@@ -155,5 +151,5 @@ pnpm test-ui
 
 ---
 
-## 🛡️ License
-Proprietary. © Daniel Rispler / zTube Monorepo.
+## רישיון
+קנייני. © Daniel Rispler / zTube Monorepo.

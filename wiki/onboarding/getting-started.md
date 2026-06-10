@@ -1,79 +1,79 @@
 # React Video Editor
 
-A full-stack, browser-based video editor built on [Remotion](https://www.remotion.dev/) and React 19. Compose scenes on a drag-and-drop timeline, apply transitions and overlays, then export to video — all from the browser.
+עורך וידאו מבוסס דפדפן, full-stack, שנבנה על גבי [Remotion](https://www.remotion.dev/) ו־React 19. הרכב סצנות על ציר זמן drag-and-drop, החל transitions ו־overlays, ואז ייצא לווידאו — הכול מהדפדפן.
 
-> **Deployment target:** Closed, air-gapped network environments. All infrastructure (MinIO, RabbitMQ, FFmpeg) is self-hosted. No public internet access is required or expected at runtime.
+> **יעד הפריסה:** סביבות רשת סגורות ומבודדות (air-gapped). כל התשתית (MinIO, RabbitMQ, FFmpeg) self-hosted. אין צורך או ציפייה לגישת אינטרנט ציבורית בזמן ריצה.
 
-## Documentation
+## תיעוד
 
-The `wiki/` folder mirrors the GitLab project wiki for closed-network deployments. Copy its contents into your `<project>.wiki.git` repo after each refresh. Regenerate with `pnpm wiki:build`.
+תיקיית `wiki/` משקפת את הוויקי של GitLab עבור פריסות רשת סגורה. העתק את התוכן שלה למאגר `<project>.wiki.git` שלך בעת הצורך.
 
-## Architecture
+## ארכיטקטורה
 
-| App / Package | Description | Port |
+| אפליקציה / חבילה | תיאור | פורט |
 |---|---|---|
-| `apps/frontend` | Vite + React 19 SPA — the editor UI | 3000 |
-| `apps/server` | Fastify + Node.js. **API** (port 4001) handles uploads + enqueues render jobs; **Worker** (probe port 8081) consumes the queue + runs FFmpeg | 4001 / 8081 |
-| `apps/iframe-demo` | Angular 21 harness for iframe integration testing | 8080 |
-| `apps/core-mock` | Dev-only Fastify mock of the upstream Core service | 8002 |
-| `apps/mock-vod` | Dev-only Fastify mock of the upstream VOD service | 5050 |
-| `packages/contract` | `@video-editor/contract` — Zod schemas/types. Subpaths: `/iframe/from-parent`, `/iframe/to-parent`, `/events`, `/internal/*` | — |
-| `packages/observability` | `@ztube/observability` — OpenTelemetry tracing, metrics, structured logging | — |
+| `apps/frontend` | Vite + React 19 SPA — ממשק המשתמש של העורך | 3000 |
+| `apps/server` | Fastify + Node.js. **API** (פורט 4001) מטפל בהעלאות + מכניס לתור jobs רינדור; **Worker** (probe פורט 8081) צורך את התור + מריץ FFmpeg | 4001 / 8081 |
+| `apps/iframe-demo` | Angular 21 harness לבדיקת אינטגרציית iframe | 8080 |
+| `apps/core-mock` | Mock רק לפיתוח של שירות Core מבוסס Fastify במעלה הזרם | 8002 |
+| `apps/mock-vod` | Mock רק לפיתוח של שירות VOD מבוסס Fastify במעלה הזרם | 5050 |
+| `packages/contract` | `@video-editor/contract` — סכמות/טיפוסים של Zod. Subpaths: `/iframe/from-parent`, `/iframe/to-parent`, `/events`, `/internal/*` | — |
+| `packages/observability` | `@ztube/observability` — מעקב OpenTelemetry, מטריקות, לוגים מובנים | — |
 
-## Prerequisites
+## דרישות מקדימות
 
 - Node.js 22.18+
 - pnpm 10+
-- Docker (for MinIO + RabbitMQ)
-- FFmpeg (installed automatically via `@ffmpeg-installer/ffmpeg`)
+- Docker (עבור MinIO + RabbitMQ)
+- FFmpeg (מותקן אוטומטית דרך `@ffmpeg-installer/ffmpeg`)
 
-## Getting Started
+## תחילת עבודה
 
-**1. Install dependencies**
+**1. התקן תלויות**
 
 ```bash
 pnpm install
 ```
 
-**2. Start infrastructure**
+**2. הפעל תשתיות**
 
 ```bash
 docker compose up -d
 ```
 
-This starts MinIO (S3-compatible storage, port 9000/9001) and RabbitMQ (port 5672, management UI 15672).
+זה מפעיל את MinIO (אחסון תואם S3, פורטים 9000/9001) ו־RabbitMQ (פורט 5672, ממשק ניהול 15672).
 
-**3. Configure the server**
+**3. הגדר את השרת**
 
-Copy and edit the server environment:
+העתק וערוך את סביבת השרת:
 
 ```bash
 cp apps/server/.env.example apps/server/.env
 ```
 
-Key variables (all have defaults for local dev):
+משתנים מרכזיים (לכולם יש ברירות מחדל לפיתוח מקומי):
 
-| Variable | Default | Description |
+| משתנה | ברירת מחדל | תיאור |
 |---|---|---|
-| `PORT` | `4001` | API server port |
-| `S3_ENDPOINT` | `http://localhost:9000` | MinIO endpoint |
-| `S3_ACCESS_KEY_ID` | `minioadmin` | MinIO access key |
-| `S3_SECRET_ACCESS_KEY` | `minioadmin123` | MinIO secret |
-| `CORE_BASE_URL` | required | Upstream Core service base URL (includes `/private`). Dev: `http://localhost:8002/private` |
-| `PREVIEW_SIGNING_SECRET` | required | HMAC-SHA256 secret (min 32 chars) for signed segment-proxy URLs |
-| `QUEUE_URL` | required | AMQP connection URL for export event publishing. `amqps://` triggers mTLS (reads `/bundle.pem` + `/tmp/certificates/rabbitmq/rabbit_{cert,key}.pem` at boot) |
+| `PORT` | `4001` | פורט שרת ה־API |
+| `S3_ENDPOINT` | `http://localhost:9000` | endpoint של MinIO |
+| `S3_ACCESS_KEY_ID` | `minioadmin` | מפתח גישה ל־MinIO |
+| `S3_SECRET_ACCESS_KEY` | `minioadmin123` | סוד של MinIO |
+| `CORE_BASE_URL` | חובה | URL בסיס של שירות Core במעלה הזרם (כולל `/private`). פיתוח: `http://localhost:8002/private` |
+| `PREVIEW_SIGNING_SECRET` | חובה | סוד HMAC-SHA256 (מינימום 32 תווים) ל־URLs חתומים של segment proxy |
+| `QUEUE_URL` | חובה | URL חיבור AMQP לפרסום אירועי ייצוא. `amqps://` מפעיל mTLS (קורא `/bundle.pem` + `/tmp/certificates/rabbitmq/rabbit_{cert,key}.pem` באתחול) |
 
-See [apps/server/README.md](apps/server/README) for the full env schema.
+ראה [apps/server/README.md](apps/server/README) ל־schema המלא של env.
 
-**4. Run everything**
+**4. הרץ הכול**
 
 ```bash
 pnpm dev
 ```
 
-This runs frontend, server, and iframe-demo in parallel via Turborepo.
+זה מריץ frontend, server ו־iframe-demo במקביל דרך Turborepo.
 
-## Workspace Commands
+## פקודות workspace
 
 ```bash
 pnpm dev          # Run all apps in parallel
@@ -83,35 +83,35 @@ pnpm format       # Format all apps (Biome)
 pnpm test         # Run all test suites
 ```
 
-Per-app commands are documented in each app's README.
+פקודות לכל אפליקציה מתועדות ב־README של כל אפליקציה.
 
-## Key Features
+## תכונות מרכזיות
 
-- **Timeline editor** — drag, trim, and reorder video/audio/image tracks
-- **Remotion Player** — frame-accurate preview in the browser
-- **FFmpeg processing** — server-side HLS/DASH ingest, overlay composition
-- **S3 storage** — upload assets to MinIO (local) or any S3-compatible store
-- **Export pipeline** — FFmpeg (via raw `spawn`) renders and processes video on the server
-- **iframe embedding** — embed the editor in any page via postMessage API
-- **RabbitMQ events** — server publishes `export.started`, `export.completed`, `export.failed` to the `video-editor` topic exchange
+- **עורך ציר זמן** — גרור, חתוך וסדר מחדש tracks של וידאו/אודיו/תמונה
+- **Remotion Player** — preview מדויק לפריים בדפדפן
+- **עיבוד FFmpeg** — קליטת HLS/DASH בצד שרת, הרכבת overlay
+- **אחסון S3** — העלה assets ל־MinIO (מקומי) או כל אחסון תואם S3
+- **Pipeline ייצוא** — FFmpeg (דרך `spawn` גולמי) מרנדר ומעבד וידאו בשרת
+- **הטמעת iframe** — הטמע את העורך בכל דף דרך API של postMessage
+- **אירועי RabbitMQ** — השרת מפרסם `export.started`, `export.completed`, `export.failed` ל־topic exchange של `video-editor`
 
-## iframe Integration
+## אינטגרציית iframe
 
-The editor can be embedded at `/editor/embed` and controlled via `postMessage`. The `@video-editor/contract` package provides typed Zod schemas across four subpaths:
+ניתן להטמיע את העורך ב־`/editor/embed` ולשלוט עליו דרך `postMessage`. החבילה `@video-editor/contract` מספקת סכמות Zod מוקלדות בארבעה subpaths:
 
-- `@video-editor/contract/iframe/from-parent` — parent → editor messages
-- `@video-editor/contract/iframe/to-parent` — editor → parent messages
-- `@video-editor/contract/events` — RabbitMQ event envelopes (external consumers)
-- `@video-editor/contract/internal/<feature>` — server-owner HTTP schemas (not for external use)
+- `@video-editor/contract/iframe/from-parent` — הודעות הורה → עורך
+- `@video-editor/contract/iframe/to-parent` — הודעות עורך → הורה
+- `@video-editor/contract/events` — מעטפות אירועי RabbitMQ (צרכנים חיצוניים)
+- `@video-editor/contract/internal/<feature>` — סכמות HTTP בבעלות השרת (לא לשימוש חיצוני)
 
-See [packages/contract/README.md](packages/contract/README) and [apps/iframe-demo/README.md](apps/iframe-demo/README) for details.
+ראה [packages/contract/README.md](packages/contract/README) ו־[apps/iframe-demo/README.md](apps/iframe-demo/README) לפרטים.
 
 ## Tech Stack
 
 **Frontend:** React 19, Vite, Remotion, Zustand, TanStack Query, Tailwind v4, shadcn/ui, `@designcombo/*`
 
-**Server:** Fastify 5, Node.js 22, FFmpeg (bundled via `@ffmpeg-installer/ffmpeg`), AWS SDK v3 (S3/MinIO), `amqplib`, Zod, Sharp
+**Server:** Fastify 5, Node.js 22, FFmpeg (מסופק דרך `@ffmpeg-installer/ffmpeg`), AWS SDK v3 (S3/MinIO), `amqplib`, Zod, Sharp
 
-**Observability:** OpenTelemetry tracing + metrics, Pyroscope profiling, Pino logging (via `@ztube/observability`)
+**Observability:** מעקב + מטריקות OpenTelemetry, profiling של Pyroscope, logging של Pino (דרך `@ztube/observability`)
 
-**Tooling:** pnpm, Turborepo, Biome, TypeScript, Vitest, Playwright
+**כלים:** pnpm, Turborepo, Biome, TypeScript, Vitest, Playwright

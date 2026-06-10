@@ -1,14 +1,12 @@
-# CLAUDE.md
+# סיור במאגר
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+מדריך זה משקף את התוכן של `CLAUDE.md` בשורש המאגר ומתעד את מבנה ה־monorepo עבור מפתחים שמצטרפים.
 
-**Closed network deployment:** Production runs in closed, air-gapped network environments with no public internet access. All dependencies must be self-hosted or bundled. Do not introduce external CDN links, public API calls, or any runtime fetches to public URLs.
+**פריסת רשת סגורה:** ייצור רץ בסביבות רשת סגורות ומבודדות (air-gapped) ללא גישת אינטרנט ציבורית. כל התלויות חייבות להיות self-hosted או מסופקות. אל תכניס קישורי CDN חיצוניים, קריאות API ציבוריות או משיכות בזמן ריצה ל־URLs ציבוריים.
 
-**Keep this file updated:** Whenever you add features, change architecture, add/remove dependencies, or modify config — update this file and the relevant per-app `CLAUDE.md` to reflect the current state. The `README.md` must also be updated to stay accurate.
+## מבנה Monorepo
 
-## Monorepo Structure
-
-pnpm + Turborepo monorepo. Workspace root is `apps/*` and `packages/*`.
+monorepo של pnpm + Turborepo. השורש של ה־workspace הוא `apps/*` ו־`packages/*`.
 
 ```
 apps/
@@ -22,22 +20,22 @@ packages/
   observability/    — OpenTelemetry + Pino + Pyroscope toolkit (@ztube/observability)
 ```
 
-`core-mock` and `mock-vod` coordinate via `POST /__internal/register-token` so cross-service `vod-token` trust mirrors the real Core/VOD relationship. See [docs/adr/0002-mock-vod-as-separate-app.md](docs/adr/0002-mock-vod-as-separate-app).
+`core-mock` ו־`mock-vod` מתאמים דרך `POST /__internal/register-token` כך ש־`vod-token` cross-service trust משקף את הקשר האמיתי של Core/VOD. ראה [ADR 0002](../architecture/adr/0002-mock-vod-as-separate-app).
 
-Per-app guidance:
-- [apps/frontend/CLAUDE.md](apps/frontend/CLAUDE)
-- [apps/server/CLAUDE.md](apps/server/CLAUDE)
-- [apps/iframe-demo/CLAUDE.md](apps/iframe-demo/CLAUDE)
-- [apps/mock-vod/CLAUDE.md](apps/mock-vod/CLAUDE)
-- [packages/contract/CLAUDE.md](packages/contract/CLAUDE)
+הדרכה לכל אפליקציה:
+- [frontend](../architecture/apps/frontend)
+- [server](../architecture/apps/server)
+- [iframe-demo](../architecture/apps/iframe-demo)
+- [mock-vod](../architecture/apps/mock-vod)
+- [contract](../architecture/apps/contract)
 
-## Repo Rules
+## כללי מאגר
 
-- Server runtime is Node.js `22.18+`.
-- Use `pnpm` for all package management. Add dependencies with `pnpm add` or `pnpm add -D`, and do not use `npm`.
-- Use only imports with `.ts` and not `.js`.
-- Server TypeScript is executed directly with Node.js. Do not introduce `tsx`/`ts-node` for normal app execution.
-- After each completed prompt, run these checks before finishing:
+- runtime של השרת הוא Node.js `22.18+`.
+- השתמש ב־`pnpm` לכל ניהול חבילות. הוסף תלויות עם `pnpm add` או `pnpm add -D`, ואל תשתמש ב־`npm`.
+- השתמש רק ב־imports עם `.ts` ולא `.js`.
+- TypeScript של השרת מורץ ישירות עם Node.js. אל תכניס `tsx`/`ts-node` להרצת אפליקציה רגילה.
+- אחרי כל prompt מושלם, הרץ את הבדיקות האלה לפני סיום:
   ```bash
   pnpm lint
   turbo run type-check
@@ -45,16 +43,15 @@ Per-app guidance:
   pnpm knip
   ```
 
-## Development Philosophy
+## פילוסופיית פיתוח
 
-Prefer TDD: red → green → refactor. One test at a time, vertical slices only — never write all tests then all code.
+מעדיפים TDD: red → green → refactor. טסט אחד בכל פעם, vertical slices בלבד — לעולם לא לכתוב את כל הטסטים ואז את כל הקוד.
 
-- Write one failing test for one behavior, implement minimal code to pass, repeat.
-- Tests verify behavior through public interfaces, not implementation details. Tests must survive internal refactors.
-- No mocking internal collaborators. Use real code paths.
-- Run `/tdd` skill for guidance when building features or fixing bugs test-first.
+- כתוב טסט נכשל אחד להתנהגות אחת, הטמע קוד מינימלי לעבור, חזור.
+- טסטים מאמתים התנהגות דרך ממשקים ציבוריים, לא פרטי מימוש. טסטים חייבים לשרוד refactors פנימיים.
+- אין mocking של משתפי פעולה פנימיים. השתמש בנתיבי קוד אמיתיים.
 
-## Commands
+## פקודות
 
 ```bash
 # Root — runs both apps in parallel via Turborepo
@@ -79,100 +76,91 @@ cd apps/server && pnpm test   # vitest run
 cd packages/contract && pnpm test   # builds then runs dist/**/*.test.js
 ```
 
-## Local Dev Setup
+## הגדרת פיתוח מקומי
 
-MinIO (S3-compatible storage) and RabbitMQ must be running before the app works:
+MinIO (אחסון תואם S3) ו־RabbitMQ חייבים להיות פעילים לפני שהאפליקציה עובדת:
 
 ```bash
 docker compose up -d
 ```
 
-Configure `apps/server/.env`. Frontend needs no `.env` in dev. The server defaults to `http://localhost:4001`. Vite proxies `/render`, `/editor`, and `/upload` to it during local development. Uploads use the presigned-URL flow: client requests a signed URL from `/upload/signed-url`, then PUTs the file directly to MinIO on `http://localhost:9000` (MinIO CORS in `docker-compose.yml` allows `http://localhost:3000` and `http://localhost:8080`).
+הגדר את `apps/server/.env`. ה־frontend לא צריך `.env` בפיתוח. השרת מגדיר ברירת מחדל ל־`http://localhost:4001`. Vite מבצע proxy ל־`/render`, `/editor` ו־`/upload` אליו במהלך פיתוח מקומי. העלאות משתמשות בזרימת presigned-URL: הלקוח מבקש URL חתום מ־`/upload/signed-url`, ואז מבצע PUT של הקובץ ישירות ל־MinIO ב־`http://localhost:9000` (CORS של MinIO ב־`docker-compose.yml` מתיר `http://localhost:3000` ו־`http://localhost:8080`).
 
-**Optional frontend env:**
-- `VITE_EDITOR_PARENT_ORIGINS` — comma-separated allowed origins for iframe postMessage (required when embedding the editor in an iframe).
+**env אופציונלי של frontend:**
+- `VITE_EDITOR_PARENT_ORIGINS` — origins מותרים מופרדים בפסיקים עבור iframe postMessage (נדרש כשמטמיעים את העורך ב־iframe).
 
-## Architecture
+## ארכיטקטורה
 
 ### Frontend (`apps/frontend`)
 
-Vite + React 19 SPA on port 3000. Core feature is `src/features/editor/` — the full video editing UI with scene canvas (Moveable/Selecto), timeline (`@designcombo/timeline`), Remotion `<Player>`, and per-type property panels. State via 8 Zustand stores. Supports iframe embedding via `useEditorPostMessage` hook.
+Vite + React 19 SPA על פורט 3000. התכונה המרכזית היא `src/features/editor/` — ממשק המשתמש המלא של עריכת וידאו עם canvas של סצנה (Moveable/Selecto), ציר זמן (`@designcombo/timeline`), Remotion `<Player>` ו־panels של מאפיינים לכל סוג. State דרך 8 stores של Zustand. תומך בהטמעת iframe דרך hook של `useEditorPostMessage`.
 
-→ See [apps/frontend/CLAUDE.md](apps/frontend/CLAUDE) for full detail.
+→ ראה [architecture/apps/frontend](../architecture/apps/frontend) לפירוט המלא.
 
 ### Server (`apps/server`)
 
-Fastify + Node.js 22.18+. Two entrypoints, one image:
+Fastify + Node.js 22.18+. שני entrypoints, image אחד:
 
-- **API** on port 4001 (`src/index.ts`) — HTTP only. Enqueues render commands on a RabbitMQ queue.
-- **Worker** on probe port 8081 (`src/worker.ts`) — consumes the queue, runs FFmpeg, publishes lifecycle events.
+- **API** על פורט 4001 (`src/index.ts`) — HTTP בלבד. מכניס לתור פקודות רינדור על תור RabbitMQ.
+- **Worker** על probe פורט 8081 (`src/worker.ts`) — צורך את התור, מריץ FFmpeg, מפרסם אירועי מחזור חיים.
 
-Follows **hexagonal architecture** (Ports & Adapters): features live in `src/features/<name>/` with `adapters/inbound/{http,amqp}/`, `adapters/outbound/{ffmpeg,s3,amqp,http}/`, `application/use-cases/`, and `domain/`. Shared domain types and ports in `src/shared/`. Infrastructure adapters in `src/infrastructure/`.
+עוקב אחר **ארכיטקטורה הקסגונלית** (Ports & Adapters): תכונות חיות ב־`src/features/<name>/` עם `adapters/inbound/{http,amqp}/`, `adapters/outbound/{ffmpeg,s3,amqp,http}/`, `application/use-cases/` ו־`domain/`. טיפוסי domain משותפים ו־ports ב־`src/shared/`. Adapters של תשתית ב־`src/infrastructure/`.
 
-Three features: `upload`, `render`, `preview`.
+שלוש תכונות: `upload`, `render`, `preview`.
 
 Routes (API):
 | Method | Path | Feature |
 |--------|------|---------|
 | POST | `/upload/signed-url` | upload |
-| POST | `/render` | render — returns 202 `{ id }`; 503 if broker unavailable. No GET endpoint — clients track lifecycle via AMQP `export.*` events |
+| POST | `/render` | render — מחזיר 202 `{ id }`; 503 אם broker לא זמין. אין endpoint של GET — לקוחות עוקבים אחר מחזור החיים דרך אירועי AMQP `export.*` |
 | POST | `/editor/preview-source` | preview |
 | GET | `/editor/segment` | preview |
 | GET | `/editor/demo-assets/:filename` | preview |
 
-Worker manifests live in `deploy/worker/`. See [docs/adr/0005-render-worker-deployment.md](docs/adr/0005-render-worker-deployment).
+מניפסטים של Worker חיים ב־`deploy/worker/`. ראה [ADR 0005](../architecture/adr/0005-render-worker-deployment).
 
-→ See [apps/server/CLAUDE.md](apps/server/CLAUDE) for full detail.
+→ ראה [architecture/apps/server](../architecture/apps/server) לפירוט המלא.
 
 ### Iframe Demo (`apps/iframe-demo`)
 
-Angular 21 standalone app on port 8080. Embeds `/editor/embed` in a floating, draggable/resizable iframe. Provides a control panel to send `EDITOR_ADD_PREVIEW_ITEM` and `EDITOR_CLEAR_PROJECT` messages and displays responses. Primary harness for testing the iframe integration.
+אפליקציית Angular 21 standalone על פורט 8080. מטמיעה את `/editor/embed` ב־iframe צף, נגרר ובר־שינוי גודל. מספקת לוח שליטה לשליחת הודעות `EDITOR_ADD_PREVIEW_ITEM` ו־`EDITOR_CLEAR_PROJECT` ומציגה תגובות. ה־harness העיקרי לבדיקת אינטגרציית ה־iframe.
 
-→ See [apps/iframe-demo/CLAUDE.md](apps/iframe-demo/CLAUDE) for full detail.
+→ ראה [architecture/apps/iframe-demo](../architecture/apps/iframe-demo) לפירוט המלא.
 
-### Package: contract (`packages/contract`)
+### חבילה: contract (`packages/contract`)
 
-Published as `@video-editor/contract`. Two sub-paths:
-- `/iframe` — Zod schemas + types for the editor↔parent postMessage protocol.
-- `/events` — versioned `Envelope<T>` + Zod schemas for AMQP events published to the `video-editor` topic exchange (`export.started`, `export.completed`, `export.failed`). External teams bind queues against this exchange and import schemas from `/events` for consumer-side validation.
+מתפרסמת כ־`@video-editor/contract`. שני sub-paths:
+- `/iframe` — סכמות Zod + טיפוסים עבור פרוטוקול postMessage עורך↔הורה.
+- `/events` — `Envelope<T>` מגורסם + סכמות Zod עבור אירועי AMQP שמפורסמים ל־topic exchange של `video-editor` (`export.started`, `export.completed`, `export.failed`). צוותים חיצוניים קושרים תורים מול ה־exchange הזה ומייבאים סכמות מ־`/events` לאימות בצד הצרכן.
 
-Root export (`@video-editor/contract`) re-exports `iframe` + shared `SavedMediaItem`/`SavedMediaPayload`.
+הייצוא השורשי (`@video-editor/contract`) מייצא מחדש את `iframe` + `SavedMediaItem`/`SavedMediaPayload` משותפים.
 
-→ See [packages/contract/CLAUDE.md](packages/contract/CLAUDE) for full detail and [packages/contract/src/events/README.md](packages/contract/src/events/README) for the consumer onboarding doc.
+→ ראה [architecture/apps/contract](../architecture/apps/contract) לפירוט המלא ואת [integrators/event-consumers](../integrators/event-consumers) למסמך onboarding של הצרכן.
 
-## Key External Dependencies
+## תלויות חיצוניות מרכזיות
 
-- **`@designcombo/*`** — proprietary packages (state, timeline, transitions, animations, frames, events, types). Core to editor behavior.
-- **Remotion** — video composition engine. `@remotion/player` renders the canvas preview in the browser.
-- **`@ffmpeg-installer/ffmpeg`** — bundled FFmpeg binary (no system install needed). Server uses raw `spawn` for all FFmpeg processing.
-- **`@fastify/multipart`** — file upload handling (500 MB limit).
-- **`@ztube/observability`** — internal package providing OpenTelemetry tracing/metrics, Pino structured logging, and Pyroscope profiling for server + worker.
+- **`@designcombo/*`** — חבילות קנייניות (state, timeline, transitions, animations, frames, events, types). מרכזיות להתנהגות העורך.
+- **Remotion** — מנוע הרכבת וידאו. `@remotion/player` מרנדר את ה־preview של ה־canvas בדפדפן.
+- **`@ffmpeg-installer/ffmpeg`** — binary FFmpeg מסופק (לא נדרשת התקנת מערכת). השרת משתמש ב־`spawn` גולמי לכל עיבוד FFmpeg.
+- **`@fastify/multipart`** — טיפול בהעלאת קבצים (מגבלה של 500 MB).
+- **`@ztube/observability`** — חבילה פנימית שמספקת tracing/metrics של OpenTelemetry, logging מובנה של Pino ו־profiling של Pyroscope עבור server + worker.
 
 ## Wiki
 
-The `wiki/` folder at the repo root is the GitLab project wiki, shaped for the closed network. The operator copies its contents into the `<project>.wiki.git` repo by hand after each refresh.
+תיקיית `wiki/` בשורש המאגר היא הוויקי של פרויקט GitLab, מעוצבת לרשת הסגורה. המפעיל מעתיק את התוכן שלה למאגר `<project>.wiki.git` ידנית בעת הצורך.
 
-- **Generated pages** (onboarding, architecture, ADRs, per-app/package READMEs) come from `README.md`, `CLAUDE.md`, `CONTEXT.md`, `docs/architecture.md`, `docs/adr/*.md`, `apps/*/README.md`, and `packages/*/README.md`. Source those files — never edit the generated wiki pages directly.
-- **Hand-written pages** (everything under `wiki/integrators/`, `wiki/ops/`, `wiki/product/`) are edited directly in `wiki/`. The generator never touches them.
+הוויקי מתוחזק ידנית בעברית. התוכן מבוסס על קבצי המקור (`README.md`, `CLAUDE.md`, `CONTEXT.md`, `docs/architecture.md`, `docs/adr/*.md`, `apps/*/README.md`, `packages/*/README.md`) אבל אינו נוצר אוטומטית — סנכרון נעשה ידנית.
 
-To refresh generated pages after editing any source:
-
-```bash
-pnpm wiki:build
-```
-
-The generator (`scripts/build-wiki.ts`) is idempotent. It tracks its outputs in `wiki/.generated.json` and only ever touches files listed there.
-
-## Agent skills
+## כישורי סוכן
 
 ### Issue tracker
 
-GitHub Issues at `danielrispler/react-video-editor` (not yet in active use; configured for future use). See `docs/agents/issue-tracker.md`.
+GitHub Issues ב־`danielrispler/react-video-editor` (עדיין לא בשימוש פעיל; מוגדר לשימוש עתידי). ראה `docs/agents/issue-tracker.md`.
 
 ### Triage labels
 
-Default canonical strings (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`). See `docs/agents/triage-labels.md`.
+מחרוזות קנוניות ברירת מחדל (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`). ראה `docs/agents/triage-labels.md`.
 
-### Domain docs
+### מסמכי Domain
 
-Single-context — one `CONTEXT.md` + `docs/adr/` at repo root. See `docs/agents/domain.md`.
+קונטקסט יחיד — `CONTEXT.md` אחד + `docs/adr/` בשורש המאגר. ראה `docs/agents/domain.md`.

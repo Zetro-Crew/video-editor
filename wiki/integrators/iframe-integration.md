@@ -1,27 +1,27 @@
-# Iframe Integration
+# הטמעת iframe
 
-Embed the editor inside your parent application and drive it via `postMessage`. All message shapes are validated by the Zod schemas in `@video-editor/contract`.
+הטמע את העורך בתוך אפליקציית ההורה שלך והפעל אותו דרך `postMessage`. כל מבני ההודעות נבדקים מול סכמות Zod מתוך `@video-editor/contract`.
 
-## Install
+## התקנה
 
 ```bash
 pnpm add @video-editor/contract@<version>
 ```
 
-Pin the version. The package is published to your internal package registry — same as any other internal library. **Do not clone this repo to consume it.**
+נעל את הגרסה. החבילה מתפרסמת ל־registry הפנימי שלך — כמו כל ספרייה פנימית אחרת. **אל תשכפל את המאגר הזה כדי לצרוך אותה.**
 
-Public subpaths:
+Subpaths ציבוריים:
 
-| Subpath | Direction |
+| Subpath | כיוון |
 |---|---|
-| `@video-editor/contract/iframe/from-parent` | Parent → editor (you send) |
-| `@video-editor/contract/iframe/to-parent` | Editor → parent (you receive) |
+| `@video-editor/contract/iframe/from-parent` | הורה → עורך (אתה שולח) |
+| `@video-editor/contract/iframe/to-parent` | עורך → הורה (אתה מקבל) |
 
-> `@video-editor/contract/internal/*` is editor-server-private. Importing it from integrator code will break without notice.
+> `@video-editor/contract/internal/*` הוא פרטי לשרת העורך. ייבוא ממנו מקוד מתממשק יישבר ללא הודעה מראש.
 
-## Embed
+## הטמעה
 
-Mount an iframe pointing at the editor's embed route:
+הצב iframe שמצביע על נתיב ההטמעה של העורך:
 
 ```html
 <iframe
@@ -31,19 +31,19 @@ Mount an iframe pointing at the editor's embed route:
 ></iframe>
 ```
 
-The editor **must** be served from the same registrable domain as the parent app. Auth uses an `HttpOnly` cookie (`ztube-token`) that the browser attaches automatically on same-origin server fetches. Cross-domain embedding is not supported under this design — see [ADR 0003](../architecture/adr/0003-iframe-auth-via-httponly-cookie).
+על העורך **להישרת** מאותו registrable domain כמו אפליקציית ההורה. ההזדהות מתבצעת באמצעות עוגיית `HttpOnly` (`ztube-token`) שהדפדפן מצרף אוטומטית בבקשות שרת same-origin. הטמעה cross-domain אינה נתמכת תחת התכנון הזה — ראה [ADR 0003](../architecture/adr/0003-iframe-auth-via-httponly-cookie).
 
-## Configure allowed parent origins (editor side)
+## הגדרת origins מותרים של הורה (בצד העורך)
 
-Set `VITE_EDITOR_PARENT_ORIGINS` on the editor frontend deployment to the comma-separated list of parent origins permitted to send messages:
+הגדר את `VITE_EDITOR_PARENT_ORIGINS` בפריסה של ה־frontend של העורך לרשימה מופרדת בפסיקים של origins של הורים שמותר להם לשלוח הודעות:
 
 ```bash
 VITE_EDITOR_PARENT_ORIGINS=https://app.example.com,https://staging.example.com
 ```
 
-Unset → defaults to `window.location.origin`.
+לא מוגדר → ברירת מחדל היא `window.location.origin`.
 
-## Message flow
+## זרימת הודעות
 
 ```
 Parent app                                Editor iframe (/editor/embed)
@@ -56,23 +56,23 @@ Parent app                                Editor iframe (/editor/embed)
                               ←── EDITOR_MEDIA_SAVED (after export) ──
 ```
 
-`EDITOR_READY` fires once on iframe init. Treat it as your "the editor is ready to receive messages" signal.
+`EDITOR_READY` נורית פעם אחת באתחול ה־iframe. התייחס אליו כאל סיגנל "העורך מוכן לקבל הודעות".
 
-## Inbound messages — what you send
+## הודעות נכנסות — מה שאתה שולח
 
-Schemas live in `@video-editor/contract/iframe/from-parent`.
+הסכמות נמצאות ב־`@video-editor/contract/iframe/from-parent`.
 
 ### `EDITOR_ADD_PREVIEW_ITEM`
 
-Append a track to the editor timeline. Payload is a discriminated union on `kind`.
+הוסף track לציר הזמן של העורך. ה־payload הוא discriminated union לפי `kind`.
 
-| `kind` | Use case |
+| `kind` | מקרה שימוש |
 |---|---|
-| `recording-range` | A time window of a managed channel recording. The editor resolves it into an HLS playlist via the server. |
-| `media` | An arbitrary media URL (mp4 or HLS). You provide a playback URL directly. |
-| `audio-range` | An audio segment with a time range. |
+| `recording-range` | חלון זמן של הקלטת ערוץ מנוהל. העורך פותר אותו ל־HLS playlist דרך השרת. |
+| `media` | URL מדיה שרירותי (mp4 או HLS). אתה מספק URL נגינה ישירות. |
+| `audio-range` | מקטע אודיו עם טווח זמן. |
 
-Shared envelope:
+מעטפת משותפת:
 
 ```ts
 import type { EditorAddPreviewItemMessage } from "@video-editor/contract/iframe/from-parent";
@@ -103,11 +103,11 @@ iframe.contentWindow!.postMessage(message, editorOrigin);
 }
 ```
 
-Constraints (enforced by the schema):
+מגבלות (נאכפות על ידי הסכמה):
 - `endTimeMs > startTimeMs`
-- `durationMs ≤ 3 600 000` (1h)
+- `durationMs ≤ 3 600 000` (1 שעה)
 - `sourceOffsetMs ≤ durationMs`
-- `playback.src` must be an `http(s)` URL
+- `playback.src` חייב להיות URL מסוג `http(s)`
 
 #### `kind: "media"`
 
@@ -137,11 +137,11 @@ Constraints (enforced by the schema):
 }
 ```
 
-If `playback.kind !== "hls"`, the `src` must end in a known audio extension (`.mp3`, `.wav`, `.m4a`, `.aac`, `.ogg`, `.m3u8`).
+אם `playback.kind !== "hls"`, ה־`src` חייב להסתיים בסיומת אודיו מוכרת (`.mp3`, `.wav`, `.m4a`, `.aac`, `.ogg`, `.m3u8`).
 
 ### `EDITOR_CLEAR_PROJECT`
 
-Wipe all tracks and reset the timeline.
+נקה את כל ה־tracks ואפס את ציר הזמן.
 
 ```ts
 {
@@ -150,9 +150,9 @@ Wipe all tracks and reset the timeline.
 }
 ```
 
-## Outbound messages — what you receive
+## הודעות יוצאות — מה שאתה מקבל
 
-Schemas live in `@video-editor/contract/iframe/to-parent`. Always validate incoming messages before acting on them.
+הסכמות נמצאות ב־`@video-editor/contract/iframe/to-parent`. בדוק תמיד הודעות נכנסות לפני שאתה פועל לפיהן.
 
 ### `EDITOR_READY`
 
@@ -160,11 +160,11 @@ Schemas live in `@video-editor/contract/iframe/to-parent`. Always validate incom
 { type: "EDITOR_READY" }
 ```
 
-Fires once after the iframe finishes initializing. Queue any pending sends until you see this.
+נורית פעם אחת אחרי שה־iframe סיים את האתחול. הכנס לתור כל שליחה ממתינה עד שתראה את ההודעה הזו.
 
 ### `EDITOR_PREVIEW_ITEM_ADDED`
 
-Ack for `EDITOR_ADD_PREVIEW_ITEM`.
+אישור (ack) ל־`EDITOR_ADD_PREVIEW_ITEM`.
 
 ```ts
 {
@@ -176,7 +176,7 @@ Ack for `EDITOR_ADD_PREVIEW_ITEM`.
 
 ### `EDITOR_PREVIEW_ITEM_REJECTED`
 
-Nack for `EDITOR_ADD_PREVIEW_ITEM`.
+דחייה (nack) ל־`EDITOR_ADD_PREVIEW_ITEM`.
 
 ```ts
 {
@@ -188,11 +188,11 @@ Nack for `EDITOR_ADD_PREVIEW_ITEM`.
 
 ### `EDITOR_PROJECT_CLEARED`
 
-Ack for `EDITOR_CLEAR_PROJECT`.
+אישור (ack) ל־`EDITOR_CLEAR_PROJECT`.
 
 ### `EDITOR_MEDIA_SAVED`
 
-Fires when the user exports a rendered video. The render itself happens asynchronously on the server; this message confirms the parent that the export has been saved per the user's selections.
+נורית כשהמשתמש מייצא וידאו מרונדר. הרינדור עצמו מתרחש אסינכרונית בשרת; ההודעה הזו מאשרת להורה שהייצוא נשמר לפי הבחירות של המשתמש.
 
 ```ts
 {
@@ -208,11 +208,11 @@ Fires when the user exports a rendered video. The render itself happens asynchro
 }
 ```
 
-If you also subscribe to AMQP events, the same `mediaId`/`mediaName`/`exportType`/`items` payload appears in the `export.started` event under `data` — see [Event Consumers](event-consumers).
+אם אתה גם נרשם לאירועי AMQP, אותו payload של `mediaId`/`mediaName`/`exportType`/`items` מופיע באירוע `export.started` תחת `data` — ראה [צרכני אירועים](event-consumers).
 
-## Worked example
+## דוגמה מלאה
 
-Full parent-side bridge using `safeParse`:
+גשר מלא בצד הורה עם `safeParse`:
 
 ```ts
 import {
@@ -280,12 +280,12 @@ if (ready) send(message);
 else pending.push(message);
 ```
 
-## Working harness in this repo
+## הרצת harness במאגר הזה
 
-`apps/iframe-demo` (Angular 21) is a development harness for this protocol. It loads the editor in a draggable iframe, sends `EDITOR_ADD_PREVIEW_ITEM` and `EDITOR_CLEAR_PROJECT`, and displays both the outgoing payload and the responses. Use it to validate your message shapes interactively. See [architecture/apps/iframe-demo](../architecture/apps/iframe-demo).
+`apps/iframe-demo` (Angular 21) הוא harness פיתוח לפרוטוקול הזה. הוא טוען את העורך ב־iframe נגרר, שולח `EDITOR_ADD_PREVIEW_ITEM` ו־`EDITOR_CLEAR_PROJECT`, ומציג גם את ה־payload היוצא וגם את התגובות. השתמש בו לאימות אינטראקטיבי של מבני ההודעות שלך. ראה [architecture/apps/iframe-demo](../architecture/apps/iframe-demo).
 
-## Auth — the short version
+## הזדהות — הגרסה הקצרה
 
-You do **not** send the auth token via `postMessage`. The editor and its server share a registrable domain (in production, a gateway routes both; in dev, the Vite proxy does). Same-origin `fetch` from the iframe carries the `HttpOnly` `ztube-token` cookie automatically. The server reads it from the inbound `Cookie` header and forwards it upstream to Core. The parent app never touches the token.
+אתה **לא** שולח את ה־token של ההזדהות דרך `postMessage`. העורך והשרת שלו חולקים registrable domain (בייצור gateway מנתב את שניהם; בפיתוח Vite proxy עושה זאת). `fetch` של same-origin מתוך ה־iframe נושא את עוגיית `HttpOnly` בשם `ztube-token` אוטומטית. השרת קורא אותה מתוך header של `Cookie` הנכנס ומעביר אותה במעלה הזרם ל־Core. אפליקציית ההורה לעולם לא נוגעת ב־token.
 
-See [ADR 0003](../architecture/adr/0003-iframe-auth-via-httponly-cookie) for the rationale.
+ראה [ADR 0003](../architecture/adr/0003-iframe-auth-via-httponly-cookie) לרציונל.

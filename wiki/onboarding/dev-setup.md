@@ -1,50 +1,50 @@
-# Dev Setup
+# הגדרת סביבת פיתוח
 
-Local environment setup for the video-editor monorepo.
+הגדרת סביבה מקומית עבור ה־monorepo של video-editor.
 
-## Prerequisites
+## דרישות מקדימות
 
-- Node.js **22.18+** (TypeScript is executed directly by Node — no `tsx`/`ts-node`).
+- Node.js **22.18+** (TypeScript מורץ ישירות על ידי Node — אין `tsx`/`ts-node`).
 - pnpm **10+**.
-- Docker (for MinIO + RabbitMQ).
+- Docker (עבור MinIO + RabbitMQ).
 
-## Bring up infrastructure
+## הפעלת תשתיות
 
 ```bash
 docker compose up -d
 ```
 
-This starts MinIO (S3-compatible storage, ports `9000`/`9001`) and RabbitMQ (`5672`, management UI on `15672`). Default MinIO credentials: `minioadmin` / `minioadmin123`.
+זה מפעיל את MinIO (אחסון תואם S3, פורטים `9000`/`9001`) ו־RabbitMQ (`5672`, ממשק ניהול ב־`15672`). אישורי MinIO ברירת מחדל: `minioadmin` / `minioadmin123`.
 
-## Configure the server
+## הגדרת השרת
 
 ```bash
 cp apps/server/.env.example apps/server/.env
 ```
 
-Defaults work for local dev; the full env schema is documented under [architecture/apps/server](../architecture/apps/server).
+ברירות המחדל עובדות לפיתוח מקומי; ה־schema המלא של env מתועד ב־[architecture/apps/server](../architecture/apps/server).
 
-## Run everything
+## הרץ הכול
 
 ```bash
 pnpm install
 pnpm dev
 ```
 
-Turborepo runs all apps in parallel.
+Turborepo מריץ את כל האפליקציות במקביל.
 
-## Default URLs
+## URLs ברירת מחדל
 
-| App | URL |
+| אפליקציה | URL |
 |---|---|
 | Frontend | http://localhost:3000 |
 | Server API | http://localhost:4001 |
 | Iframe demo | http://localhost:8080 |
 | Core mock | http://localhost:8002 |
 | Mock VOD | http://localhost:5050 |
-| MinIO console | http://localhost:9001 |
-| RabbitMQ console | http://localhost:15672 |
+| קונסולת MinIO | http://localhost:9001 |
+| קונסולת RabbitMQ | http://localhost:15672 |
 
-## Optional frontend env
+## env אופציונלי של frontend
 
-- `VITE_EDITOR_PARENT_ORIGINS` — comma-separated allowed origins for iframe `postMessage` (set when embedding the editor in another origin's page).
+- `VITE_EDITOR_PARENT_ORIGINS` — origins מותרים מופרדים בפסיקים עבור iframe `postMessage` (הגדר כשמטמיעים את העורך בדף של origin אחר).

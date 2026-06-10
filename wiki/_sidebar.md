@@ -1,14 +1,14 @@
-## Onboarding
-- [Getting Started](onboarding/getting-started)
-- [Repo Tour](onboarding/repo-tour)
-- [Dev Setup](onboarding/dev-setup)
-- [Workflow](onboarding/workflow)
+## קליטה
+- [תחילת עבודה](onboarding/getting-started)
+- [סיור במאגר](onboarding/repo-tour)
+- [הגדרת סביבת פיתוח](onboarding/dev-setup)
+- [תהליך עבודה](onboarding/workflow)
 
-## Architecture
-- [Overview](architecture/overview)
-- [Glossary](architecture/glossary)
+## ארכיטקטורה
+- [סקירה כללית](architecture/overview)
+- [מילון מונחים](architecture/glossary)
 - [ADRs](architecture/adr/index)
-- Apps & Packages
+- אפליקציות וחבילות
   - [frontend](architecture/apps/frontend)
   - [server](architecture/apps/server)
   - [iframe-demo](architecture/apps/iframe-demo)
@@ -17,15 +17,15 @@
   - [contract](architecture/apps/contract)
   - [observability](architecture/apps/observability)
 
-## Integrators
-- [Iframe Integration](integrators/iframe-integration)
-- [Event Consumers](integrators/event-consumers)
+## מתממשקים
+- [הטמעת iframe](integrators/iframe-integration)
+- [צרכני אירועים](integrators/event-consumers)
 
-## Ops
-- [Deployment](ops/deployment)
-- [Monitoring](ops/monitoring)
+## תפעול
+- [פריסה](ops/deployment)
+- [ניטור](ops/monitoring)
 - [Runbooks](ops/runbooks)
 
-## Product
-- [Feature Overview](product/feature-overview)
-- [User Glossary](product/user-glossary)
+## מוצר
+- [סקירת תכונות](product/feature-overview)
+- [מילון משתמש](product/user-glossary)

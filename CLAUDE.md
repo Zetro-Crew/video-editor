@@ -152,16 +152,7 @@ Root export (`@video-editor/contract`) re-exports `iframe` + shared `SavedMediaI
 
 The `wiki/` folder at the repo root is the GitLab project wiki, shaped for the closed network. The operator copies its contents into the `<project>.wiki.git` repo by hand after each refresh.
 
-- **Generated pages** (onboarding, architecture, ADRs, per-app/package READMEs) come from `README.md`, `CLAUDE.md`, `CONTEXT.md`, `docs/architecture.md`, `docs/adr/*.md`, `apps/*/README.md`, and `packages/*/README.md`. Source those files — never edit the generated wiki pages directly.
-- **Hand-written pages** (everything under `wiki/integrators/`, `wiki/ops/`, `wiki/product/`) are edited directly in `wiki/`. The generator never touches them.
-
-To refresh generated pages after editing any source:
-
-```bash
-pnpm wiki:build
-```
-
-The generator (`scripts/build-wiki.ts`) is idempotent. It tracks its outputs in `wiki/.generated.json` and only ever touches files listed there.
+The wiki is **hand-maintained in Hebrew**. There is no generator. The pages mirror content from the English source files (`README.md`, `CLAUDE.md`, `CONTEXT.md`, `docs/architecture.md`, `docs/adr/*.md`, `apps/*/README.md`, `packages/*/README.md`) but diverge intentionally — when those sources change, update the relevant Hebrew pages by hand. Filenames, link targets, library names, code blocks, env vars, and CLI commands stay in English; prose is Hebrew.
 
 ## Agent skills
 
