@@ -1,6 +1,7 @@
 {
 	"name": "video-editor",
 	"version": "0.1.0",
+	"description": "we are the champions, my friends, and we'll keep on fighting till the end",
 	"private": true,
 	"scripts": {
 		"dev": "turbo run dev",

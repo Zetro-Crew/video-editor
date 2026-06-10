@@ -100,16 +100,33 @@ const useCanvasTimeline = ({
 			guideLineColor: "rgba(239, 83, 80, 0.95)",
 		});
 
+		// initScrollbars registers the mouse-wheel pan handler and the onViewportChange callback.
+		// After init, suppress the canvas-drawn scrollbars entirely (hideX/hideY) so they never
+		// render on the canvas bitmap. The HTML div in timeline.tsx replaces the horizontal one;
+		// vertical scrolling is not needed in this layout.
 		canvas.initScrollbars({
 			offsetX: 16,
 			offsetY: 0,
 			extraMarginX: 50,
 			extraMarginY: 0,
 			scrollbarWidth: 8,
-			scrollbarColor: "rgba(89, 91, 94, 1)",
+			scrollbarColor: "rgba(0, 0, 0, 0)",
 		});
+		const internalScrollbars = (
+			canvas as unknown as { _scrollbars?: { hideX: boolean; hideY: boolean } }
+		)._scrollbars;
+		if (internalScrollbars) {
+			internalScrollbars.hideX = true;
+			internalScrollbars.hideY = true;
+		}
 
-		canvas.onViewportChange((left: number) => setScrollLeft(left + 16));
+		canvas.onViewportChange((left: number) => {
+			const newScrollLeft = left + 16;
+			setScrollLeft(newScrollLeft);
+			if (horizontalScrollbarVpRef.current) {
+				horizontalScrollbarVpRef.current.scrollLeft = newScrollLeft;
+			}
+		});
 
 		canvasRef.current = canvas;
 		setCanvasSize({ width: containerWidth, height: containerHeight });

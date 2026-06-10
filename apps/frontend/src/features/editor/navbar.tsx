@@ -1,12 +1,9 @@
 import { dispatch } from "@designcombo/events";
 import type StateManager from "@designcombo/state";
 import { HISTORY_REDO, HISTORY_UNDO } from "@designcombo/state";
-import { generateId } from "@designcombo/timeline";
-import type { IDesign } from "@designcombo/types";
 import { debounce } from "lodash-es";
 import { Keyboard } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
-import { toast } from "sonner";
 import { Icons } from "@/components/shared/icons";
 
 import AutosizeInput from "@/components/ui/autosize-input";
@@ -18,7 +15,6 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import useCompositionStore from "@/features/editor/store/use-composition-store";
 import { useIsLargeScreen, useIsSmallScreen } from "@/hooks/use-media-query";
 import DownloadProgressModal from "./download-progress-modal";
-import { useDownloadState } from "./store/use-download-state";
 
 const MIN_CANVAS_SIZE = 64;
 const MAX_CANVAS_SIZE = 4096;
@@ -182,7 +178,6 @@ export default function Navbar({
 						onCanvasHeightChange={setCanvasHeight}
 						onCanvasWidthChange={setCanvasWidth}
 					/>
-					<DownloadPopover stateManager={stateManager} />
 				</div>
 			</div>
 		</div>
@@ -255,47 +250,5 @@ const CanvasSizePopover = ({
 				</Tooltip>
 			</PopoverContent>
 		</Popover>
-	);
-};
-
-const DownloadPopover = ({ stateManager }: { stateManager: StateManager }) => {
-	const { actions } = useDownloadState();
-	const { size } = useCompositionStore();
-
-	const handleOpen = () => {
-		const data: IDesign = {
-			id: generateId(),
-			...stateManager.toJSON(),
-			size,
-		};
-
-		const invalidCount = Object.values((data.trackItemsMap as Record<string, any>) ?? {}).filter(
-			(item) => !Number.isFinite(item.display?.from) || !Number.isFinite(item.display?.to),
-		).length;
-
-		if (invalidCount > 0) {
-			toast.error(
-				`${invalidCount} item${invalidCount > 1 ? "s have" : " has"} invalid timing. Remove and re-add them before exporting.`,
-			);
-			return;
-		}
-
-		actions.setPayload(data);
-		actions.setDisplayProgressModal(true);
-	};
-
-	return (
-		<Tooltip>
-			<TooltipTrigger asChild>
-				<Button
-					onClick={handleOpen}
-					className="flex h-8 w-20 gap-1 border border-border rounded-full shrink-0"
-					size="sm"
-				>
-					<span>שמור</span>
-				</Button>
-			</TooltipTrigger>
-			<TooltipContent side="bottom">שמור פרויקט</TooltipContent>
-		</Tooltip>
 	);
 };

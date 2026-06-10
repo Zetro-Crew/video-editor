@@ -20,6 +20,8 @@ const usePlayheadAutoScroll = ({
 	horizontalScrollbarVpRef,
 }: UsePlayheadAutoScrollProps) => {
 	const canvasBoundingXRef = useRef(0);
+	const scrollLeftRef = useRef(scrollLeft);
+	scrollLeftRef.current = scrollLeft;
 
 	useEffect(() => {
 		const el = canvasElRef.current;
@@ -38,7 +40,7 @@ const usePlayheadAutoScroll = ({
 		if (!horizontalScrollbar) return;
 
 		const position = timeMsToUnits((currentFrame / fps) * 1000, scale.zoom);
-		const playheadPos = position - scrollLeft + 40;
+		const playheadPos = position - scrollLeftRef.current + 40;
 
 		if (playheadPos < canvasBoundingXRef.current) return;
 
@@ -52,7 +54,7 @@ const usePlayheadAutoScroll = ({
 		horizontalScrollbar.scrollTo({
 			left: scaleScroll > 1 ? currentPosScroll + scrollDivWidth : totalScrollWidth - scrollDivWidth,
 		});
-	}, [currentFrame, fps, scale, scrollLeft, horizontalScrollbarVpRef]);
+	}, [currentFrame, fps, scale, horizontalScrollbarVpRef]);
 };
 
 export default usePlayheadAutoScroll;
