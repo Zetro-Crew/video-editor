@@ -23,7 +23,7 @@ export const useTimelineEdgeScroll = ({
 	onScroll,
 }: UseTimelineEdgeScrollOptions) => {
 	const dwellTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-	const rafRef = useRef<number>(0);
+	const rafRef = useRef<number | null>(null);
 	const activeDirectionRef = useRef<-1 | 0 | 1>(0);
 	const speedRef = useRef(BASE_SPEED);
 	const onScrollRef = useRef(onScroll);
@@ -38,7 +38,7 @@ export const useTimelineEdgeScroll = ({
 			clearTimeout(dwellTimerRef.current);
 			dwellTimerRef.current = null;
 		}
-		cancelAnimationFrame(rafRef.current);
+		if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
 		activeDirectionRef.current = 0;
 		setEdgeState({ side: null, phase: null });
 	}, []);
@@ -56,7 +56,7 @@ export const useTimelineEdgeScroll = ({
 				onScrollRef.current(next);
 				rafRef.current = requestAnimationFrame(tick);
 			};
-			cancelAnimationFrame(rafRef.current);
+			if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
 			rafRef.current = requestAnimationFrame(tick);
 		},
 		[scrollLeftRef],
@@ -85,6 +85,8 @@ export const useTimelineEdgeScroll = ({
 				return;
 			}
 
+			// Update speed before the early-return so the active tick() loop picks up the new
+			// value on its next frame without restarting — tick() reads speedRef.current directly.
 			speedRef.current = speed;
 
 			if (activeDirectionRef.current === dir) return;

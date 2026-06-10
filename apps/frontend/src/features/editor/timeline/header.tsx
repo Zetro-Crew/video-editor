@@ -6,7 +6,7 @@ import {
 	TIMELINE_SCALE_CHANGED,
 } from "@designcombo/state";
 import type Timeline from "@designcombo/timeline";
-import type { ITimelineScaleState, ITrack, ITrackType } from "@designcombo/types";
+import type { ITimelineScaleState, ITrack } from "@designcombo/types";
 import { CopyPlus, SquareSplitHorizontal, Trash, Volume2, ZoomIn, ZoomOut } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -30,7 +30,7 @@ import {
 	getZoomByIndex,
 } from "../utils/timeline";
 
-const VIDEO_TRACK_TYPES = new Set<ITrackType>([
+const VIDEO_TRACK_TYPES = new Set<string>([
 	"video",
 	"image",
 	"shape",
@@ -82,7 +82,7 @@ const setTrackGroupVisible = (
 	hiddenRef: React.MutableRefObject<{ video: HiddenGroupState; audio: HiddenGroupState }>,
 ) => {
 	const group = isVideoGroup ? "video" : "audio";
-	const typeSet = isVideoGroup ? (VIDEO_TRACK_TYPES as Set<string>) : AUDIO_ALL_TYPES;
+	const typeSet = isVideoGroup ? VIDEO_TRACK_TYPES : AUDIO_ALL_TYPES;
 	const isAffected = (type: string) => typeSet.has(type);
 	const objects = timeline.getObjects() as unknown as CanvasObj[];
 
@@ -111,6 +111,12 @@ const setTrackGroupVisible = (
 	// explicitly so removeTracks() + rebuild happen after we've mutated timeline.tracks.
 	applyTimelineLayout(timeline);
 };
+
+const TrackCheckmark = () => (
+	<svg viewBox="0 0 10 10" width="8" height="8" fill="none" stroke="currentColor" strokeWidth="1.5">
+		<polyline points="2,5 4,7 8,3" />
+	</svg>
+);
 
 const IconPlayerPlayFilled = ({ size }: { size: number }) => (
 	<svg xmlns="http://www.w3.org/2000/svg" width={size} viewBox="0 0 24 24" fill="currentColor">
@@ -179,7 +185,7 @@ const Header = () => {
 		audio: { tracks: [], itemIds: new Set() },
 	});
 
-	const hasVideoTracks = storeTracks.some((t) => (VIDEO_TRACK_TYPES as Set<string>).has(t.type));
+	const hasVideoTracks = storeTracks.some((t) => VIDEO_TRACK_TYPES.has(t.type));
 	const hasAudioTracks = storeTracks.some((t) => AUDIO_ALL_TYPES.has(t.type));
 
 	const prevHasVideoRef = useRef(hasVideoTracks);
@@ -304,23 +310,10 @@ const Header = () => {
 									disabled={!hasVideoTracks}
 									className={`flex items-center gap-1 rounded px-1.5 py-0.5 text-xs transition-colors ${!hasVideoTracks ? "opacity-30 cursor-not-allowed" : showVideoTracks ? "text-foreground" : "text-muted-foreground/40"}`}
 								>
-									{/* <Video size={12} aria-hidden="true" /> */}
-
 									<span
 										className={`size-3 rounded-sm border flex items-center justify-center ${!hasVideoTracks ? "border-muted-foreground/30" : showVideoTracks ? "border-foreground bg-foreground/20" : "border-muted-foreground/40"}`}
 									>
-										{hasVideoTracks && showVideoTracks && (
-											<svg
-												viewBox="0 0 10 10"
-												width="8"
-												height="8"
-												fill="none"
-												stroke="currentColor"
-												strokeWidth="1.5"
-											>
-												<polyline points="2,5 4,7 8,3" />
-											</svg>
-										)}
+										{hasVideoTracks && showVideoTracks && <TrackCheckmark />}
 									</span>
 									<span>וידאו</span>
 								</button>
@@ -339,18 +332,7 @@ const Header = () => {
 									<span
 										className={`size-3 rounded-sm border flex items-center justify-center ${!hasAudioTracks ? "border-muted-foreground/30" : showAudioTracks ? "border-foreground bg-foreground/20" : "border-muted-foreground/40"}`}
 									>
-										{hasAudioTracks && showAudioTracks && (
-											<svg
-												viewBox="0 0 10 10"
-												width="8"
-												height="8"
-												fill="none"
-												stroke="currentColor"
-												strokeWidth="1.5"
-											>
-												<polyline points="2,5 4,7 8,3" />
-											</svg>
-										)}
+										{hasAudioTracks && showAudioTracks && <TrackCheckmark />}
 									</span>
 									<span>שמע</span>
 								</button>

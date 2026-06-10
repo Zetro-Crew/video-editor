@@ -37,6 +37,8 @@ import WaveAudioBars from "./items/wave-audio-bars";
 import Playhead from "./playhead";
 import Ruler from "./ruler";
 
+const SCROLLBAR_HEIGHT = 12; // px — height of the HTML horizontal scrollbar track
+
 const TimelineBottomBar = ({ stateManager }: { stateManager: StateManager }) => {
 	const { actions } = useDownloadState();
 	const { size } = useCompositionStore();
@@ -136,7 +138,7 @@ const Timeline = ({ stateManager }: { stateManager: StateManager }) => {
 			scrollLeftRef.current = newScrollLeft;
 			setScrollLeft(newScrollLeft);
 		},
-		[canvasRef, horizontalScrollbarVpRef, setScrollLeft],
+		[setScrollLeft],
 	);
 
 	const { onEdgeMouseMove, stopEdgeScroll, edgeState } = useTimelineEdgeScroll({
@@ -370,7 +372,7 @@ const Timeline = ({ stateManager }: { stateManager: StateManager }) => {
 				>
 					<div style={{ width: timelineOffsetX }} className="relative flex-none" />
 					<div
-						style={{ height: canvasSize.height + 12 }}
+						style={{ height: canvasSize.height + SCROLLBAR_HEIGHT }}
 						className="relative flex-1"
 						onMouseMove={onTracksMouseMove}
 						onClick={onTracksClick}
@@ -391,7 +393,7 @@ const Timeline = ({ stateManager }: { stateManager: StateManager }) => {
 					className="absolute bottom-0 right-0 overflow-x-auto overflow-y-hidden"
 					style={{
 						left: timelineOffsetX,
-						height: 12,
+						height: SCROLLBAR_HEIGHT,
 						scrollbarWidth: "thin",
 						scrollbarColor: "rgba(89, 91, 94, 1) transparent",
 						direction: "ltr",
