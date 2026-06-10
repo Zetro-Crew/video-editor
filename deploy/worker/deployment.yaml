@@ -70,13 +70,13 @@ spec:
                 path: bundle.pem
             defaultMode: 0400
       containers:
-        - name: worker
+        - name: video-editor-worker
           image: # TODO: your-registry.internal/video-editor-server:latest
           command: ["node"]
           args: ["src/worker.ts"]
           ports:
             - name: probe
-              containerPort: 8081
+              containerPort: 8080
           envFrom:
             - configMapRef:
                 name: video-editor-worker-config
