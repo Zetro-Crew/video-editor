@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { createZMonitor, Logger } from "@ztube/observability";
+import amqplib, { type credentials } from "amqplib";
 import type { ApiEnvConfig, CommonEnvConfig, WorkerEnvConfig } from "../config/env.ts";
 import { GeneratePreviewUseCase } from "../features/preview/application/use-cases/GeneratePreviewUseCase.ts";
 import { RenderDLQConsumer } from "../features/render/adapters/inbound/amqp/RenderDLQConsumer.ts";
@@ -13,8 +14,6 @@ import { FfmpegRunner } from "../infrastructure/ffmpeg/ffmpeg.utils.ts";
 import { RabbitMQPublisher } from "../infrastructure/messaging/RabbitMQPublisher.ts";
 import { S3StorageAdapter } from "../infrastructure/storage/S3StorageAdapter.ts";
 import type { StoragePort } from "../shared/application/ports/outbound/StoragePort.ts";
-import amqplib from "amqplib";
-import { credentials } from "amqplib";
 
 const CA_PATH = "/bundle.pem";
 const CLIENT_CERT_PATH = "/tmp/certificates/rabbitmq/rabbit_cert.pem";
@@ -31,12 +30,12 @@ export interface ConnectionSSLOptions {
 
 export function loadAmqpSocketOptions(url: string): ConnectionSSLOptions | undefined {
 	if (!url.startsWith("amqps://")) return undefined;
-	
+
 	return {
 		cert: readPemFile(CLIENT_CERT_PATH),
 		key: readPemFile(CLIENT_KEY_PATH),
 		ca: readPemFile(CA_PATH),
-		credentials: amqplib.credentials.external()
+		credentials: amqplib.credentials.external(),
 	};
 }
 

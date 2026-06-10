@@ -1,9 +1,5 @@
 # React Video Editor
 
-<p align="left">
-  <img src="apps/frontend/public/icon.svg" alt="React Video Editor" width="48" height="48">
-</p>
-
 A full-stack, browser-based video editor built on [Remotion](https://www.remotion.dev/) and React 19. Compose scenes on a drag-and-drop timeline, apply transitions and overlays, then export to video — all from the browser.
 
 > **Deployment target:** Closed, air-gapped network environments. All infrastructure (MinIO, RabbitMQ, FFmpeg) is self-hosted. No public internet access is required or expected at runtime.

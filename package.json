@@ -2,13 +2,15 @@
 	"name": "video-editor",
 	"version": "0.1.0",
 	"private": true,
+	"type": "module",
 	"scripts": {
 		"dev": "turbo run dev",
 		"build": "turbo run build",
 		"lint": "turbo run lint",
 		"type-check": "turbo run type-check",
 		"test": "turbo run test",
-		"knip": "knip"
+		"knip": "knip",
+		"wiki:build": "node scripts/build-wiki.ts"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "catalog:",

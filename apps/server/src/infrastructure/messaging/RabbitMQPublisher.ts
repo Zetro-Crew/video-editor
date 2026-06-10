@@ -17,10 +17,10 @@ import {
 import { Logger } from "@ztube/observability";
 import type { ChannelModel, ConfirmChannel, RecoveringChannelModel } from "amqplib";
 import { connect } from "amqplib";
+import type { ConnectionSSLOptions } from "../../bootstrap/container.ts";
 import type { MonitorFactory } from "./MonitorFactory.ts";
 import { COMMANDS_EXCHANGE } from "./schemas/commands.ts";
 import { assertRenderTopology } from "./topology.ts";
-import type { ConnectionSSLOptions } from "../../bootstrap/container.ts";
 
 export interface ExportEventPublisherPort {
 	publishExportStarted(event: ExportStartedData): Promise<void>;
