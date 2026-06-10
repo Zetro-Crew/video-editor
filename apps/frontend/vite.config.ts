@@ -7,7 +7,7 @@ export default defineConfig(({ mode }) => {
 	const env = loadEnv(mode, process.cwd(), "");
 
 	return {
-		base: env.VITE_PUBLIC_PATH,
+		base: env.VITE_PUBLIC_PATH ?? "/",
 		test: {
 			environment: "node",
 			include: ["src/**/*.test.ts", "src/**/*.test.tsx"],
@@ -29,6 +29,10 @@ export default defineConfig(({ mode }) => {
 					target: process.env.VITE_API_URL || "http://localhost:4001",
 					changeOrigin: true,
 				},
+				"^/private/(media|users|channels)": {
+					target: process.env.VITE_CORE_URL || "http://localhost:8002",
+					changeOrigin: true,
+				},
 			},
 		},
 		build: {
@@ -42,7 +46,9 @@ export default defineConfig(({ mode }) => {
 						if (id.includes("@radix-ui/")) return "vendor-radix";
 						if (id.includes("@designcombo/")) return "vendor-designcombo";
 						if (id.includes("remotion")) return "vendor-remotion";
-						if (/node_modules\/(react|react-dom|scheduler|react-router|react-router-dom)\//.test(id))
+						if (
+							/node_modules\/(react|react-dom|scheduler|react-router|react-router-dom)\//.test(id)
+						)
 							return "vendor-react";
 					},
 				},

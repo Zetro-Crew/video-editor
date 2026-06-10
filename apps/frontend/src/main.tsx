@@ -25,7 +25,7 @@ if (!rootElement) {
 }
 
 ReactDOM.createRoot(rootElement).render(
-	<BrowserRouter basename="/api/video_editor/frontend">
+	<BrowserRouter basename={import.meta.env.BASE_URL.replace(/\/$/, "")}>
 		<ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
 			<QueryProvider>
 				<App />
