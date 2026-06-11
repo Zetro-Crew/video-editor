@@ -1,6 +1,8 @@
 packages:
   - "apps/**"
   - "packages/**"
+overrides:
+  '@ztube/observability': 'link:../observability-sdk'
 patchedDependencies:
   '@designcombo/frames@0.0.3': patches/@designcombo__frames@0.0.3.patch
 catalog:
