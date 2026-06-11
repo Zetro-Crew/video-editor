@@ -339,49 +339,54 @@ const Header = () => {
 					alignItems: "center",
 				}}
 			>
-				{/* col-1 → visual RIGHT in RTL: track toggles (outer edge, highest priority) + zoom (inner) */}
+				{/* col-1 → visual RIGHT in RTL.
+				    RTL flex order (first DOM = rightmost visual):
+				      1. ZoomControl  ← absolute right edge
+				      2. Divider (explicit element, hidden on mobile)
+				      3. וידאו toggle
+				      4. שמע toggle  ← leftmost of this group (nearest to center) */}
 				<div className="flex items-center min-w-0 overflow-hidden">
-					<div className="hidden md:flex items-center gap-1 border-e border-border/60 pe-3 me-1">
-						<Tooltip>
-							<TooltipTrigger asChild>
-								<button
-									type="button"
-									onClick={handleToggleVideo}
-									aria-label="הצג/הסתר רצועות וידאו"
-									disabled={!hasVideoTracks}
-									className={`flex items-center gap-1 rounded px-1.5 py-0.5 text-xs transition-colors ${!hasVideoTracks ? "opacity-30 cursor-not-allowed" : showVideoTracks ? "text-foreground" : "text-muted-foreground/40"}`}
-								>
-									<span
-										className={`size-3 rounded-sm border flex items-center justify-center ${!hasVideoTracks ? "border-muted-foreground/30" : showVideoTracks ? "border-foreground bg-foreground/20" : "border-muted-foreground/40"}`}
-									>
-										{hasVideoTracks && showVideoTracks && <TrackCheckmark />}
-									</span>
-									<span>וידאו</span>
-								</button>
-							</TooltipTrigger>
-							<TooltipContent side="top">הצג/הסתר רצועות וידאו</TooltipContent>
-						</Tooltip>
-						<Tooltip>
-							<TooltipTrigger asChild>
-								<button
-									type="button"
-									onClick={handleToggleAudio}
-									aria-label="הצג/הסתר רצועות שמע"
-									disabled={!hasAudioTracks}
-									className={`flex items-center gap-1 rounded px-1.5 py-0.5 text-xs transition-colors ${!hasAudioTracks ? "opacity-30 cursor-not-allowed" : showAudioTracks ? "text-foreground" : "text-muted-foreground/40"}`}
-								>
-									<span
-										className={`size-3 rounded-sm border flex items-center justify-center ${!hasAudioTracks ? "border-muted-foreground/30" : showAudioTracks ? "border-foreground bg-foreground/20" : "border-muted-foreground/40"}`}
-									>
-										{hasAudioTracks && showAudioTracks && <TrackCheckmark />}
-									</span>
-									<span>שמע</span>
-								</button>
-							</TooltipTrigger>
-							<TooltipContent side="top">הצג/הסתר רצועות שמע</TooltipContent>
-						</Tooltip>
-					</div>
 					<ZoomControl scale={scale} onChangeTimelineScale={changeScale} duration={duration} />
+					{/* Vertical divider between zoom control and toggles */}
+					<div aria-hidden="true" className="hidden md:block self-stretch w-px bg-border/60 mx-2" />
+					<Tooltip>
+						<TooltipTrigger asChild>
+							<button
+								type="button"
+								onClick={handleToggleVideo}
+								aria-label="הצג/הסתר רצועות וידאו"
+								disabled={!hasVideoTracks}
+								className={`hidden md:flex items-center gap-1 rounded px-1.5 py-0.5 text-xs transition-colors ${!hasVideoTracks ? "opacity-30 cursor-not-allowed" : showVideoTracks ? "text-foreground" : "text-muted-foreground/40"}`}
+							>
+								<span
+									className={`size-3 rounded-sm border flex items-center justify-center ${!hasVideoTracks ? "border-muted-foreground/30" : showVideoTracks ? "border-foreground bg-foreground/20" : "border-muted-foreground/40"}`}
+								>
+									{hasVideoTracks && showVideoTracks && <TrackCheckmark />}
+								</span>
+								<span>וידאו</span>
+							</button>
+						</TooltipTrigger>
+						<TooltipContent side="top">הצג/הסתר רצועות וידאו</TooltipContent>
+					</Tooltip>
+					<Tooltip>
+						<TooltipTrigger asChild>
+							<button
+								type="button"
+								onClick={handleToggleAudio}
+								aria-label="הצג/הסתר רצועות שמע"
+								disabled={!hasAudioTracks}
+								className={`hidden md:flex items-center gap-1 rounded px-1.5 py-0.5 text-xs transition-colors ${!hasAudioTracks ? "opacity-30 cursor-not-allowed" : showAudioTracks ? "text-foreground" : "text-muted-foreground/40"}`}
+							>
+								<span
+									className={`size-3 rounded-sm border flex items-center justify-center ${!hasAudioTracks ? "border-muted-foreground/30" : showAudioTracks ? "border-foreground bg-foreground/20" : "border-muted-foreground/40"}`}
+								>
+									{hasAudioTracks && showAudioTracks && <TrackCheckmark />}
+								</span>
+								<span>שמע</span>
+							</button>
+						</TooltipTrigger>
+						<TooltipContent side="top">הצג/הסתר רצועות שמע</TooltipContent>
+					</Tooltip>
 				</div>
 
 				{/* CENTER: time display + player buttons in one row */}
@@ -401,15 +406,15 @@ const Header = () => {
 						<TooltipTrigger asChild>
 							<Button
 								className="hidden md:inline-flex"
-								onClick={() => playerRef?.current?.seekTo(0)}
+								onClick={() => playerRef?.current?.seekTo(Math.round((duration * fps) / 1000))}
 								variant={"ghost"}
 								size={"icon"}
-								aria-label="קפוץ להתחלה"
+								aria-label="קפוץ לסוף"
 							>
-								<IconPlayerSkipBack size={18} aria-hidden="true" />
+								<IconPlayerSkipForward size={18} aria-hidden="true" />
 							</Button>
 						</TooltipTrigger>
-						<TooltipContent side="top">קפוץ להתחלה</TooltipContent>
+						<TooltipContent side="top">קפוץ לסוף</TooltipContent>
 					</Tooltip>
 					<Tooltip>
 						<TooltipTrigger asChild>
@@ -433,20 +438,30 @@ const Header = () => {
 						<TooltipTrigger asChild>
 							<Button
 								className="hidden md:inline-flex"
-								onClick={() => playerRef?.current?.seekTo(Math.round((duration * fps) / 1000))}
+								onClick={() => playerRef?.current?.seekTo(0)}
 								variant={"ghost"}
 								size={"icon"}
-								aria-label="קפוץ לסוף"
+								aria-label="קפוץ להתחלה"
 							>
-								<IconPlayerSkipForward size={18} aria-hidden="true" />
+								<IconPlayerSkipBack size={18} aria-hidden="true" />
 							</Button>
 						</TooltipTrigger>
-						<TooltipContent side="top">קפוץ לסוף</TooltipContent>
+						<TooltipContent side="top">קפוץ להתחלה</TooltipContent>
 					</Tooltip>
 				</div>
 
-				{/* RIGHT side (visual LEFT in RTL): layer actions + sound popover */}
-				<div className="flex items-center justify-end px-2 min-w-0 overflow-hidden">
+				{/* col-3 → visual LEFT in RTL.
+				    A flex-1 spacer is the FIRST DOM child. In RTL flex, first = rightmost visual,
+				    so the spacer grows to fill the gap between buttons and the center column.
+				    Buttons land at the physical-left edge.
+				    RTL flex order of buttons (first = rightmost):
+				      1. סאונד  ← rightmost of group (nearest to center)
+				      2. שכפול
+				      3. פצל
+				      4. מחק   ← absolute left edge */}
+				<div className="flex items-center min-w-0 overflow-hidden">
+					{/* grow spacer: fills the right side (toward center) so buttons pin left */}
+					<div aria-hidden="true" className="flex-1" />
 					<Popover
 						onOpenChange={(open) => {
 							if (open && playerRef?.current)
@@ -606,7 +621,7 @@ const ZoomControl = ({
 	};
 
 	return (
-		<div className="flex items-center justify-start min-w-0">
+		<div className="flex items-center justify-start min-w-0" dir="ltr">
 			<div className="flex ps-4 pe-2">
 				<Tooltip>
 					<TooltipTrigger asChild>
@@ -622,17 +637,17 @@ const ZoomControl = ({
 					<TooltipContent side="top">הקטן תצוגה</TooltipContent>
 				</Tooltip>
 				<Slider
-					className="w-28 hidden md:flex"
+					className="w-28 hidden md:flex [&_[data-slot='slider-range']]:bg-red-400 [&_[data-slot='slider-thumb']]:border-red-400"
 					value={[localValue]}
 					min={0}
 					max={12}
 					step={1}
 					onValueChange={(e) => {
-						setLocalValue(e[0]); // Update local state
+						setLocalValue(e[0]);
 					}}
 					onValueCommit={() => {
 						const zoom = getZoomByIndex(localValue);
-						onChangeTimelineScale(zoom); // Propagate value to parent when user commits change
+						onChangeTimelineScale(zoom);
 					}}
 				/>
 				<Tooltip>
