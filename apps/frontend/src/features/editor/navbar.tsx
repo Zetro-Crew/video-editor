@@ -2,7 +2,7 @@ import { dispatch } from "@designcombo/events";
 import type StateManager from "@designcombo/state";
 import { HISTORY_REDO, HISTORY_UNDO } from "@designcombo/state";
 import { debounce } from "lodash-es";
-import { Keyboard } from "lucide-react";
+import { Frame, Keyboard } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { Icons } from "@/components/shared/icons";
 
@@ -202,8 +202,13 @@ const CanvasSizePopover = ({
 			<Tooltip>
 				<TooltipTrigger asChild>
 					<PopoverTrigger asChild>
-						<Button className="h-8 rounded-full border border-border" variant="outline">
-							קנבס
+						<Button
+							className="h-8 w-8 rounded-full border border-border"
+							variant="outline"
+							size="icon"
+							aria-label="קנבס"
+						>
+							<Frame size={16} aria-hidden="true" />
 						</Button>
 					</PopoverTrigger>
 				</TooltipTrigger>

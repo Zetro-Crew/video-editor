@@ -158,19 +158,22 @@ const useCanvasTimeline = ({
 	// scroll positions. All external callers must go through here so clamping and
 	// canvas sync happen exactly once. Do NOT call either from onViewportChange —
 	// the canvas already moved itself on that path.
-	const scrollTo = useCallback((desired: number): void => {
-		const scrollbarEl = horizontalScrollbarVpRef.current;
-		const canvas = canvasRef.current;
-		if (!scrollbarEl || !canvas || scrollbarEl.clientWidth === 0) return;
+	const scrollTo = useCallback(
+		(desired: number): void => {
+			const scrollbarEl = horizontalScrollbarVpRef.current;
+			const canvas = canvasRef.current;
+			if (!scrollbarEl || !canvas || scrollbarEl.clientWidth === 0) return;
 
-		const maxScroll = Math.max(0, scrollbarEl.scrollWidth - scrollbarEl.clientWidth);
-		const clamped = Math.min(Math.max(desired, 0), maxScroll);
+			const maxScroll = Math.max(0, scrollbarEl.scrollWidth - scrollbarEl.clientWidth);
+			const clamped = Math.min(Math.max(desired, 0), maxScroll);
 
-		canvas.scrollTo({ scrollLeft: clamped });
-		scrollbarEl.scrollLeft = clamped;
-		scrollLeftRef.current = clamped;
-		setScrollLeft(clamped);
-	}, [setScrollLeft]);
+			canvas.scrollTo({ scrollLeft: clamped });
+			scrollbarEl.scrollLeft = clamped;
+			scrollLeftRef.current = clamped;
+			setScrollLeft(clamped);
+		},
+		[setScrollLeft],
+	);
 
 	// Clamps and applies a vertical scroll position. contentHeight must be the
 	// total height of all currently-rendered tracks (from computeTracksHeight).

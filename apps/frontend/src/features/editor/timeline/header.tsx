@@ -6,7 +6,7 @@ import {
 	TIMELINE_SCALE_CHANGED,
 } from "@designcombo/state";
 import type Timeline from "@designcombo/timeline";
-import type { ITimelineScaleState, ITrack } from "@designcombo/types";
+import type { IAudio, ITimelineScaleState, ITrack, ITrackItem } from "@designcombo/types";
 import { CopyPlus, SquareSplitHorizontal, Trash, Volume2, ZoomIn, ZoomOut } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -15,10 +15,13 @@ import { Slider } from "@/components/ui/slider";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useIsMediumScreen } from "@/hooks/use-media-query";
 import { PLAYER_PAUSE, PLAYER_PLAY } from "../constants/events";
+import Speed from "../control-item/common/speed";
+import Volume from "../control-item/common/volume";
 import { useCurrentPlayerFrame } from "../hooks/use-current-frame";
 import { useTimelineOffsetX } from "../hooks/use-timeline-offset";
+import { useTrackItemEditor } from "../hooks/use-track-item-editor";
 import useUpdateAnsestors from "../hooks/use-update-ansestors";
-import { useHasSelection } from "../store/selectors";
+import { useActiveItem, useHasSelection } from "../store/selectors";
 import useCompositionStore from "../store/use-composition-store";
 import useEditorRefs from "../store/use-editor-refs";
 import useTimelineViewStore from "../store/use-timeline-view-store";
@@ -129,9 +132,7 @@ const setTrackGroupVisible = (
 		const currentActiveIds = useCompositionStore.getState().activeIds;
 		const hasAffectedActive = currentActiveIds.some((id) => affectedItemIds.has(id));
 		if (hasAffectedActive) {
-			(
-				timeline as unknown as { discardActiveObject: () => void }
-			).discardActiveObject?.();
+			(timeline as unknown as { discardActiveObject: () => void }).discardActiveObject?.();
 			useCompositionStore.setState({ activeIds: [] });
 		}
 
@@ -151,6 +152,20 @@ const setTrackGroupVisible = (
 	}
 
 	applyTimelineLayout(timeline);
+};
+
+const AudioTrackControls = ({ trackItem }: { trackItem: ITrackItem & IAudio }) => {
+	const { properties, update } = useTrackItemEditor(trackItem);
+	return (
+		<div className="space-y-4">
+			<p className="text-sm font-medium text-center">סאונד</p>
+			<Volume
+				value={(properties.details as { volume?: number }).volume ?? 100}
+				onChange={(v) => update({ details: { volume: v } })}
+			/>
+			<Speed value={properties.playbackRate ?? 1} onChange={(v) => update({ playbackRate: v })} />
+		</div>
+	);
 };
 
 const TrackCheckmark = () => (
@@ -210,17 +225,10 @@ const Header = () => {
 	const [playing, setPlaying] = useState(false);
 	const { duration, fps } = useCompositionStore();
 	const storeTracks = useCompositionStore((s) => s.tracks);
-	const {
-		scale,
-		showVideoTracks,
-		showAudioTracks,
-		setShowVideoTracks,
-		setShowAudioTracks,
-		playbackRate,
-		setPlaybackRate,
-	} = useTimelineViewStore();
-	const [volume, setVolume] = useState(100);
+	const { scale, showVideoTracks, showAudioTracks, setShowVideoTracks, setShowAudioTracks } =
+		useTimelineViewStore();
 	const { playerRef, timeline } = useEditorRefs();
+	const activeItem = useActiveItem();
 	const hiddenRef = useRef<{ video: HiddenGroupState; audio: HiddenGroupState }>({
 		video: { tracks: [], itemIds: new Set() },
 		audio: { tracks: [], itemIds: new Set() },
@@ -228,6 +236,8 @@ const Header = () => {
 
 	const hasVideoTracks = storeTracks.some((t) => VIDEO_TRACK_TYPES.has(t.type));
 	const hasAudioTracks = storeTracks.some((t) => AUDIO_ALL_TYPES.has(t.type));
+	const activeAudioItem =
+		activeItem && AUDIO_ALL_TYPES.has(activeItem.type) ? (activeItem as ITrackItem & IAudio) : null;
 
 	const prevHasVideoRef = useRef(hasVideoTracks);
 	const prevHasAudioRef = useRef(hasAudioTracks);
@@ -455,74 +465,36 @@ const Header = () => {
 				    so the spacer grows to fill the gap between buttons and the center column.
 				    Buttons land at the physical-left edge.
 				    RTL flex order of buttons (first = rightmost):
-				      1. סאונד  ← rightmost of group (nearest to center)
-				      2. שכפול
+				      1. שמע  ← rightmost of group (nearest to center)
+				      2. שכפל
 				      3. פצל
 				      4. מחק   ← absolute left edge */}
 				<div className="flex items-center min-w-0 overflow-hidden">
 					{/* grow spacer: fills the right side (toward center) so buttons pin left */}
 					<div aria-hidden="true" className="flex-1" />
-					<Popover
-						onOpenChange={(open) => {
-							if (open && playerRef?.current)
-								setVolume(Math.round(playerRef.current.getVolume() * 100));
-						}}
-					>
-						<Tooltip>
-							<TooltipTrigger asChild>
-								<PopoverTrigger asChild>
-									<Button
-										variant={"ghost"}
-										size={isLargeScreen ? "default" : "icon"}
-										className="flex items-center gap-1.5 px-3"
-										aria-label="הגדרות סאונד ומהירות"
-									>
-										<Volume2 size={18} aria-hidden="true" />
-										<span className="hidden lg:block text-sm font-medium">סאונד</span>
-									</Button>
-								</PopoverTrigger>
-							</TooltipTrigger>
-							<TooltipContent side="top">עוצמת קול ומהירות</TooltipContent>
-						</Tooltip>
-						<PopoverContent side="top" className="w-64 p-4 space-y-4">
-							<p className="text-sm font-medium text-center">סאונד</p>
-							<div className="space-y-2">
-								<p className="text-xs text-muted-foreground">עוצמת הקול</p>
-								<div className="flex items-center gap-2">
-									<span className="text-xs font-medium tabular-nums w-8 text-center bg-muted rounded px-1 py-0.5">
-										{volume}
-									</span>
-									<Slider
-										className="flex-1"
-										value={[volume]}
-										min={0}
-										max={100}
-										step={1}
-										onValueChange={([v]) => {
-											setVolume(v);
-											playerRef?.current?.setVolume(v / 100);
-										}}
-									/>
-								</div>
-							</div>
-							<div className="space-y-2">
-								<p className="text-xs text-muted-foreground">מהירות</p>
-								<div className="flex items-center gap-2">
-									<span className="text-xs font-medium tabular-nums w-8 text-center bg-muted rounded px-1 py-0.5">
-										X{playbackRate}
-									</span>
-									<Slider
-										className="flex-1"
-										value={[playbackRate]}
-										min={0.25}
-										max={2}
-										step={0.25}
-										onValueChange={([v]) => setPlaybackRate(v)}
-									/>
-								</div>
-							</div>
-						</PopoverContent>
-					</Popover>
+					{activeAudioItem && (
+						<Popover>
+							<Tooltip>
+								<TooltipTrigger asChild>
+									<PopoverTrigger asChild>
+										<Button
+											variant={"ghost"}
+											size={isLargeScreen ? "default" : "icon"}
+											className="flex items-center gap-1.5 px-3"
+											aria-label="הגדרות שמע ומהירות"
+										>
+											<Volume2 size={18} aria-hidden="true" />
+											<span className="hidden lg:block text-sm font-medium">שמע</span>
+										</Button>
+									</PopoverTrigger>
+								</TooltipTrigger>
+								<TooltipContent side="top">עוצמת קול ומהירות</TooltipContent>
+							</Tooltip>
+							<PopoverContent side="top" className="w-64 p-4">
+								<AudioTrackControls trackItem={activeAudioItem} />
+							</PopoverContent>
+						</Popover>
+					)}
 					<Tooltip>
 						<TooltipTrigger asChild>
 							<Button
@@ -533,7 +505,7 @@ const Header = () => {
 								className="flex items-center gap-1.5 px-3"
 							>
 								<CopyPlus size={18} aria-hidden="true" />
-								<span className="hidden lg:block text-sm font-medium">שכפול</span>
+								<span className="hidden lg:block text-sm font-medium">שכפל</span>
 							</Button>
 						</TooltipTrigger>
 						<TooltipContent side="top">שכפל שכבה</TooltipContent>
