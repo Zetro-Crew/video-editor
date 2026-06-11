@@ -31,12 +31,24 @@ export const useResizbleTimeline = () => {
 				timelineContainerRef.current.style.borderTopColor = "#2B64EB";
 				timelineContainerRef.current.style.cursor = "row-resize";
 			}
+			// Mirror the formula in use-canvas-timeline.ts init:
+			//   playhead.clientHeight = container - 40 (header)
+			//   playhead-handle.clientHeight = handle indicator height
+			//   -40 = ruler height
+			// Result: canvas viewport = container - header - handle - ruler
 			const containerHeight =
 				(document.getElementById("playhead")?.clientHeight || 0) -
-				(document.getElementById("playhead-handle")?.clientHeight || 0);
-			timeline?.resize({
-				height: containerHeight,
-			});
+				(document.getElementById("playhead-handle")?.clientHeight || 0) -
+				40;
+			if (timeline && containerHeight > 0) {
+				timeline.resize({ height: containerHeight });
+				// Reset vertical scroll to top when the container is resized so the
+				// canvas viewport doesn't sit scrolled past the new bounds.
+				timeline.scrollTo({ scrollTop: 0 });
+				timeline.renderTracks();
+				timeline.alignItemsToTrack();
+				timeline.requestRenderAll();
+			}
 			setTimelineHeight(currentHeight);
 		};
 		const onMouseUp = () => {

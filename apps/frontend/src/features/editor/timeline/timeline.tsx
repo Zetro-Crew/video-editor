@@ -3,7 +3,7 @@ import { calculateTimelineWidth, generateId, unitsToTimeMs } from "@designcombo/
 import type { IDesign } from "@designcombo/types";
 import { useTheme } from "next-themes";
 import type React from "react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { TIMELINE_OFFSET_CANVAS_LEFT, TIMELINE_OFFSET_CANVAS_RIGHT } from "../constants/constants";
 import { clearProject } from "../external-preview/payload-intake";
@@ -117,7 +117,7 @@ const Timeline = ({ stateManager }: { stateManager: StateManager }) => {
 	const { timelineContainerRef, timelineHeight, onMouseDown, onMouseMove, onMouseOut } =
 		useResizbleTimeline();
 
-	const { canvasRef, canvasSize, horizontalScrollbarVpRef, scrollLeft, setScrollLeft } =
+	const { canvasRef, canvasSize, horizontalScrollbarVpRef, scrollLeft, scrollLeftRef, scrollTo } =
 		useCanvasTimeline({
 			canvasElRef,
 			timelineContainerRef,
@@ -125,21 +125,6 @@ const Timeline = ({ stateManager }: { stateManager: StateManager }) => {
 			scale,
 			duration,
 		});
-
-	const scrollLeftRef = useRef(scrollLeft);
-	scrollLeftRef.current = scrollLeft;
-
-	const scrollTo = useCallback(
-		(newScrollLeft: number) => {
-			canvasRef.current?.scrollTo({ scrollLeft: newScrollLeft });
-			if (horizontalScrollbarVpRef.current) {
-				horizontalScrollbarVpRef.current.scrollLeft = newScrollLeft;
-			}
-			scrollLeftRef.current = newScrollLeft;
-			setScrollLeft(newScrollLeft);
-		},
-		[setScrollLeft],
-	);
 
 	const { onEdgeMouseMove, stopEdgeScroll, edgeState } = useTimelineEdgeScroll({
 		scrollLeftRef,
@@ -189,9 +174,10 @@ const Timeline = ({ stateManager }: { stateManager: StateManager }) => {
 		currentFrame,
 		fps,
 		scale,
-		scrollLeft,
+		scrollLeftRef,
 		canvasElRef,
 		horizontalScrollbarVpRef,
+		onScroll: scrollTo,
 	});
 
 	useEffect(() => {
@@ -283,7 +269,7 @@ const Timeline = ({ stateManager }: { stateManager: StateManager }) => {
 	};
 
 	return (
-		<div className="flex flex-col w-full">
+		<div className="flex flex-col w-full min-w-0 overflow-hidden">
 			<div
 				ref={timelineContainerRef}
 				id="timeline-container"
@@ -358,7 +344,7 @@ const Timeline = ({ stateManager }: { stateManager: StateManager }) => {
 				</div>
 
 				<div
-					className="flex"
+					className="flex overflow-hidden"
 					style={{
 						cursor:
 							edgeState.side === "left"
@@ -373,7 +359,7 @@ const Timeline = ({ stateManager }: { stateManager: StateManager }) => {
 					<div style={{ width: timelineOffsetX }} className="relative flex-none" />
 					<div
 						style={{ height: canvasSize.height + SCROLLBAR_HEIGHT }}
-						className="relative flex-1"
+						className="relative flex-1 min-w-0"
 						onMouseMove={onTracksMouseMove}
 						onClick={onTracksClick}
 					>
@@ -406,13 +392,15 @@ const Timeline = ({ stateManager }: { stateManager: StateManager }) => {
 					<div
 						style={{
 							height: 1,
-							width: Math.max(
-								canvasSize.width,
+							// Width must equal the canvas library's own scrollable content width:
+							// calculateTimelineWidth + spacing.left + spacing.right + extraMarginX (50).
+							// Do NOT use canvasSize.width here — that is the viewport width (a different
+							// quantity) and causes over-scroll when content is narrower than the viewport.
+							width:
 								calculateTimelineWidth(duration, scale.zoom) +
-									TIMELINE_OFFSET_CANVAS_LEFT +
-									TIMELINE_OFFSET_CANVAS_RIGHT +
-									50,
-							),
+								TIMELINE_OFFSET_CANVAS_LEFT +
+								TIMELINE_OFFSET_CANVAS_RIGHT +
+								50,
 						}}
 					/>
 				</div>

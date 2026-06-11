@@ -68,11 +68,35 @@ const computeTracksHeight = (tracks: ITrack[], timeline: Timeline): number => {
 };
 
 const applyTimelineLayout = (timeline: Timeline) => {
-	const newHeight = computeTracksHeight(timeline.tracks, timeline);
-	timeline.resize({ height: newHeight });
+	// canvas.resize() must NOT be called here. The canvas viewport height is fixed to
+	// the container's visible area; it must only change when the container is physically
+	// resized. Growing the canvas to content height (a previous approach) made internal
+	// vertical scroll impossible (viewport = content) and caused DOM overflow clipping.
+	//
+	// renderTracks() / requestRenderAll() may reset the canvas viewport (horizontal
+	// scroll position) without firing onViewportChange. Capture the current position
+	// from viewportTransform before the layout operations, then restore it one RAF
+	// frame later — after the library's own requestRenderAll() RAF has settled.
+	const vt = (timeline as unknown as { viewportTransform: number[] }).viewportTransform;
+	const scrollLeftBefore = vt ? Math.max(0, 16 - vt[4]) : 0;
+
 	timeline.renderTracks();
 	timeline.alignItemsToTrack();
 	timeline.requestRenderAll();
+
+	// Clamp vertical scroll to the new content bounds. When tracks are hidden the
+	// content shrinks; without clamping the view stays scrolled into empty space.
+	const contentHeight = computeTracksHeight(timeline.tracks, timeline);
+	const canvasHeight = (timeline as unknown as { height: number }).height;
+	const currentScrollTop = vt ? Math.max(0, -vt[5]) : 0;
+	const maxScrollTop = Math.max(0, contentHeight - canvasHeight);
+	if (currentScrollTop > maxScrollTop) {
+		timeline.scrollTo({ scrollTop: maxScrollTop });
+	}
+
+	requestAnimationFrame(() => {
+		timeline.scrollTo({ scrollLeft: scrollLeftBefore });
+	});
 };
 
 const setTrackGroupVisible = (
@@ -91,6 +115,26 @@ const setTrackGroupVisible = (
 		const affectedItemIds = new Set(affectedTracks.flatMap((t) => t.items));
 		hiddenRef.current[group] = { tracks: affectedTracks, itemIds: affectedItemIds };
 		timeline.tracks = timeline.tracks.filter((t) => !isAffected(t.type));
+
+		// Clear selection before hiding objects. The canvas library keeps an internal
+		// "active object" pointer that is independent of obj.visible. If an item from
+		// this group is selected when it becomes invisible, the library still draws its
+		// handles on the next renderAll, creating orphaned floating handles.
+		//
+		// Use the Zustand store as the reliable source (it mirrors canvas selection via
+		// LAYER_SELECTION events). If any selected ID belongs to this group, clear both
+		// the canvas-level selection and the Zustand state. discardActiveObject alone
+		// is not sufficient because the library may not re-dispatch selection:cleared
+		// as a LAYER_SELECTION event through the @designcombo/events subject.
+		const currentActiveIds = useCompositionStore.getState().activeIds;
+		const hasAffectedActive = currentActiveIds.some((id) => affectedItemIds.has(id));
+		if (hasAffectedActive) {
+			(
+				timeline as unknown as { discardActiveObject: () => void }
+			).discardActiveObject?.();
+			useCompositionStore.setState({ activeIds: [] });
+		}
+
 		for (const obj of objects) {
 			if (obj.id && affectedItemIds.has(obj.id)) obj.visible = false;
 		}
@@ -106,9 +150,6 @@ const setTrackGroupVisible = (
 		}
 	}
 
-	// resize() fires onResizeCanvas (updates React canvasSize) but does NOT rebuild Track/Helper
-	// Fabric objects unless { force: true } — which isn't in the public type. Call renderTracks()
-	// explicitly so removeTracks() + rebuild happen after we've mutated timeline.tracks.
 	applyTimelineLayout(timeline);
 };
 
@@ -293,14 +334,14 @@ const Header = () => {
 					position: "relative",
 					height: 40,
 					width: "100%",
-					display: "flex",
+					display: "grid",
+					gridTemplateColumns: "minmax(0, 1fr) auto minmax(0, 1fr)",
 					alignItems: "center",
 				}}
 			>
-				{/* col-1 → visual RIGHT in RTL: zoom (outer edge) + track toggles (inner) */}
-				<div className="flex items-center">
-					<ZoomControl scale={scale} onChangeTimelineScale={changeScale} duration={duration} />
-					<div className="hidden md:flex items-center gap-1 border-s border-border/60 ps-3 ms-1">
+				{/* col-1 → visual RIGHT in RTL: track toggles (outer edge, highest priority) + zoom (inner) */}
+				<div className="flex items-center min-w-0 overflow-hidden">
+					<div className="hidden md:flex items-center gap-1 border-e border-border/60 pe-3 me-1">
 						<Tooltip>
 							<TooltipTrigger asChild>
 								<button
@@ -340,10 +381,11 @@ const Header = () => {
 							<TooltipContent side="top">הצג/הסתר רצועות שמע</TooltipContent>
 						</Tooltip>
 					</div>
+					<ZoomControl scale={scale} onChangeTimelineScale={changeScale} duration={duration} />
 				</div>
 
 				{/* CENTER: time display + player buttons in one row */}
-				<div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-1 pointer-events-auto">
+				<div className="flex items-center justify-center gap-1 pointer-events-auto">
 					<div className="hidden md:flex items-center tabular-nums gap-1 text-xs text-muted-foreground">
 						<span>{timeToString({ time: duration })}</span>
 						<span className="px-0.5">|</span>
@@ -403,8 +445,8 @@ const Header = () => {
 					</Tooltip>
 				</div>
 
-				{/* RIGHT side: layer actions + sound popover */}
-				<div className="flex items-center justify-end px-2 ms-auto">
+				{/* RIGHT side (visual LEFT in RTL): layer actions + sound popover */}
+				<div className="flex items-center justify-end px-2 min-w-0 overflow-hidden">
 					<Popover
 						onOpenChange={(open) => {
 							if (open && playerRef?.current)
@@ -564,8 +606,8 @@ const ZoomControl = ({
 	};
 
 	return (
-		<div className="flex items-center justify-end">
-			<div className="flex pl-4 pr-2">
+		<div className="flex items-center justify-start min-w-0">
+			<div className="flex ps-4 pe-2">
 				<Tooltip>
 					<TooltipTrigger asChild>
 						<Button
