@@ -73,6 +73,23 @@ export const previewController: FastifyPluginAsync<PreviewControllerOptions> = a
 			throw new HttpError({ statusCode: HttpStatus.FORBIDDEN, message: "Invalid signature" });
 		}
 
+		const cookieHeader = request.headers.cookie ?? "";
+		const cookieMatch = cookieHeader.match(/(?:^|;\s*)ztube-token=([^;]+)/);
+		let ztubeToken = "";
+		if (cookieMatch) {
+			try {
+				ztubeToken = decodeURIComponent(cookieMatch[1]);
+			} catch (err) {
+				if (err instanceof URIError) {
+					throw new HttpError({
+						statusCode: HttpStatus.BAD_REQUEST,
+						message: "Invalid ztube-token cookie",
+					});
+				}
+				throw err;
+			}
+		}
+
 		const clientAbort = new AbortController();
 		const onAborted = () => clientAbort.abort();
 		request.raw.once("aborted", onAborted);
@@ -81,7 +98,10 @@ export const previewController: FastifyPluginAsync<PreviewControllerOptions> = a
 		let upstream: Response;
 		try {
 			upstream = await fetch(decoded, {
-				headers: { "vod-token": token },
+				headers: {
+					"vod-token": token,
+					...(ztubeToken ? { Cookie: `ztube-token=${ztubeToken}` } : {}),
+				},
 				signal: upstreamSignal,
 			});
 		} catch (err) {
