@@ -12,4 +12,3 @@
   - [core-mock](apps/core-mock)
   - [mock-vod](apps/mock-vod)
   - [contract](apps/contract)
-  - [observability](apps/observability)

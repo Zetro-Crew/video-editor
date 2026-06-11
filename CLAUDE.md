@@ -19,7 +19,6 @@ apps/
   mock-vod/    — Fastify mock of the VOD service (port 5050)
 packages/
   contract/         — shared postMessage + AMQP event contract (@video-editor/contract)
-  observability/    — OpenTelemetry + Pino + Pyroscope toolkit (@ztube/observability)
 ```
 
 `core-mock` and `mock-vod` coordinate via `POST /__internal/register-token` so cross-service `vod-token` trust mirrors the real Core/VOD relationship. See [docs/adr/0002-mock-vod-as-separate-app.md](docs/adr/0002-mock-vod-as-separate-app.md).
@@ -146,7 +145,7 @@ Root export (`@video-editor/contract`) re-exports `iframe` + shared `SavedMediaI
 - **Remotion** — video composition engine. `@remotion/player` renders the canvas preview in the browser.
 - **`@ffmpeg-installer/ffmpeg`** — bundled FFmpeg binary (no system install needed). Server uses raw `spawn` for all FFmpeg processing.
 - **`@fastify/multipart`** — file upload handling (500 MB limit).
-- **`@ztube/observability`** — internal package providing OpenTelemetry tracing/metrics, Pino structured logging, and Pyroscope profiling for server + worker.
+- **`@ztube/observability`** — external package (separate repo, installed from the internal registry) providing OpenTelemetry tracing/metrics, Pino structured logging, and Pyroscope profiling for server + worker.
 
 ## Wiki
 

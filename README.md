@@ -22,7 +22,6 @@ The `wiki/` folder mirrors the GitLab project wiki for closed-network deployment
 | `apps/core-mock` | Dev-only Fastify mock of the upstream Core service | 8002 |
 | `apps/mock-vod` | Dev-only Fastify mock of the upstream VOD service | 5050 |
 | `packages/contract` | `@video-editor/contract` — Zod schemas/types. Subpaths: `/iframe/from-parent`, `/iframe/to-parent`, `/events`, `/internal/*` | — |
-| `packages/observability` | `@ztube/observability` — OpenTelemetry tracing, metrics, structured logging | — |
 
 ## Prerequisites
 

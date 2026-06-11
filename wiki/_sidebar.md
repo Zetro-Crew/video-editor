@@ -15,7 +15,6 @@
   - [core-mock](architecture/apps/core-mock)
   - [mock-vod](architecture/apps/mock-vod)
   - [contract](architecture/apps/contract)
-  - [observability](architecture/apps/observability)
 
 ## מתממשקים
 - [הטמעת iframe](integrators/iframe-integration)

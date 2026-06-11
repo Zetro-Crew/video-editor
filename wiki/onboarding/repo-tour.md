@@ -17,7 +17,6 @@ apps/
   mock-vod/    — Fastify mock of the VOD service (port 5050)
 packages/
   contract/         — shared postMessage + AMQP event contract (@video-editor/contract)
-  observability/    — OpenTelemetry + Pino + Pyroscope toolkit (@ztube/observability)
 ```
 
 `core-mock` ו־`mock-vod` מתאמים דרך `POST /__internal/register-token` כך ש־`vod-token` cross-service trust משקף את הקשר האמיתי של Core/VOD. ראה [ADR 0002](../architecture/adr/0002-mock-vod-as-separate-app).
@@ -143,7 +142,7 @@ Routes (API):
 - **Remotion** — מנוע הרכבת וידאו. `@remotion/player` מרנדר את ה־preview של ה־canvas בדפדפן.
 - **`@ffmpeg-installer/ffmpeg`** — binary FFmpeg מסופק (לא נדרשת התקנת מערכת). השרת משתמש ב־`spawn` גולמי לכל עיבוד FFmpeg.
 - **`@fastify/multipart`** — טיפול בהעלאת קבצים (מגבלה של 500 MB).
-- **`@ztube/observability`** — חבילה פנימית שמספקת tracing/metrics של OpenTelemetry, logging מובנה של Pino ו־profiling של Pyroscope עבור server + worker.
+- **`@ztube/observability`** — חבילה חיצונית (במאגר נפרד, מותקנת מהרג'יסטרי הפנימי) שמספקת tracing/metrics של OpenTelemetry, logging מובנה של Pino ו־profiling של Pyroscope עבור server + worker.
 
 ## Wiki
 

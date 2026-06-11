@@ -1,6 +1,6 @@
 # ניטור
 
-השרת וה־worker פולטים traces, מטריקות, profiles ולוגים מובנים דרך החבילה הפנימית [`@ztube/observability`](../architecture/apps/observability), שעוטפת את OpenTelemetry, Pyroscope ו־Pino.
+השרת וה־worker פולטים traces, מטריקות, profiles ולוגים מובנים דרך החבילה `@ztube/observability` (חבילה חיצונית מהרג'יסטרי הפנימי), שעוטפת את OpenTelemetry, Pyroscope ו־Pino.
 
 ## סיגנלים
 

@@ -32,11 +32,6 @@
     "packages/contract": {
       "entry": [],
       "project": ["src/**/*.ts"]
-    },
-    "packages/observability": {
-      "entry": [],
-      "project": ["src/**/*.ts"],
-      "ignore": ["src/example/**"]
     }
   }
 }

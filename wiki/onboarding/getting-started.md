@@ -18,7 +18,6 @@
 | `apps/core-mock` | Mock רק לפיתוח של שירות Core מבוסס Fastify במעלה הזרם | 8002 |
 | `apps/mock-vod` | Mock רק לפיתוח של שירות VOD מבוסס Fastify במעלה הזרם | 5050 |
 | `packages/contract` | `@video-editor/contract` — סכמות/טיפוסים של Zod. Subpaths: `/iframe/from-parent`, `/iframe/to-parent`, `/events`, `/internal/*` | — |
-| `packages/observability` | `@ztube/observability` — מעקב OpenTelemetry, מטריקות, לוגים מובנים | — |
 
 ## דרישות מקדימות
 
