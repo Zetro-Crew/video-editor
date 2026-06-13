@@ -27,7 +27,7 @@ const FIXTURE_MPD = `<?xml version="1.0" encoding="utf-8"?>
 	<BaseURL>media/</BaseURL>
 </MPD>`;
 
-const FIXTURE_WINDOW = { startMs: 1_778_412_270_000, endMs: 1_778_412_300_000 };
+const FIXTURE_WINDOW = { startMs: 1_778_412_270_000, endMs: 1_778_412_870_000 };
 const RELATIVE_MPD_PATH = "/vod/demo-recording/manifest.mpd";
 const SEGMENT_BYTES = new Uint8Array([0, 1, 2, 3, 4, 5, 6, 7]);
 
