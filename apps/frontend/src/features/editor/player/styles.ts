@@ -113,7 +113,7 @@ export const calculateTextStyles = (details: IText["details"]): React.CSSPropert
 			: "",
 		fontFamily: details.fontFamily || "Arial",
 		fontWeight: details.fontWeight || "normal",
-		lineHeight: details.lineHeight || "normal",
+		lineHeight: details.lineHeight ?? 1.2,
 		letterSpacing: details.letterSpacing || "normal",
 		wordSpacing: details.wordSpacing || "normal",
 		wordWrap: details.wordWrap || "",

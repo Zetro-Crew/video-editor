@@ -1,7 +1,9 @@
 import type { IBoxShadow, IText, ITextDetails, ITrackItem } from "@designcombo/types";
+import { ChevronRight } from "lucide-react";
 import React from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useTrackItemEditor } from "../hooks/use-track-item-editor";
+import useLayoutStore from "../store/use-layout-store";
 import { TextControls } from "./common/text";
 
 interface ITextControlProps {
@@ -23,6 +25,7 @@ interface ITextControlProps {
 const BasicText = ({ trackItem, type }: { trackItem: ITrackItem & IText; type?: string }) => {
 	const showAll = !type;
 	const { properties, update } = useTrackItemEditor(trackItem);
+	const { setControlItemOpen } = useLayoutStore();
 	const d = properties.details as ITextDetails;
 
 	const textProperties: ITextControlProps = {
@@ -68,6 +71,17 @@ const BasicText = ({ trackItem, type }: { trackItem: ITrackItem & IText; type?: 
 			dir="rtl"
 			className="flex lg:h-[calc(100vh-84px)] flex-1 flex-col overflow-hidden min-h-[340px]"
 		>
+			<div className="flex shrink-0 items-center gap-2 border-b border-border/60 px-4 py-3">
+				<button
+					type="button"
+					onClick={() => setControlItemOpen(false)}
+					aria-label="חזרה"
+					className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+				>
+					<ChevronRight size={18} />
+				</button>
+				<span className="text-sm font-semibold">טקסט</span>
+			</div>
 			<ScrollArea className="h-full">
 				<div className="flex flex-col gap-2 px-4 py-4">
 					{components

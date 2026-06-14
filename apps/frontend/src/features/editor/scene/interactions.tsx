@@ -674,7 +674,7 @@ export function SceneInteractions({
 										...trackItemsMap[targetId].details,
 										width: Number.parseFloat(target.style.width),
 										height: Number.parseFloat(target.style.height),
-										fontSize: Number.parseFloat(textDiv.style.fontSize),
+										fontSize: Math.round(Number.parseFloat(textDiv.style.fontSize)),
 									},
 								},
 							},

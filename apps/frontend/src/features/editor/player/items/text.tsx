@@ -50,7 +50,7 @@ export default function Text({ item, options }: { item: IText; options: Sequence
 
 	const children = (
 		<BoxAnim
-			style={calculateContainerStyles(details)}
+			style={calculateContainerStyles(details, {}, {}, "text")}
 			animationIn={editableTextId === id ? null : animationIn}
 			animationOut={editableTextId === id ? null : animationOut}
 			frame={currentFrame}
