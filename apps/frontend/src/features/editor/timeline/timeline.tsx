@@ -56,7 +56,7 @@ const Timeline = ({ stateManager }: { stateManager: StateManager }) => {
 	const { scale } = useTimelineViewStore();
 	const fps = useCompositionStore((s) => s.fps);
 	const duration = useCompositionStore((s) => s.duration);
-	const { playerRef } = useEditorRefs();
+	const { playerRef, timeline } = useEditorRefs();
 	const currentFrame = useCurrentPlayerFrame(playerRef);
 	const timelineOffsetX = useTimelineOffsetX();
 	const { theme } = useTheme();
@@ -132,6 +132,42 @@ const Timeline = ({ stateManager }: { stateManager: StateManager }) => {
 		}, 5);
 		return () => clearTimeout(timeout);
 	}, [theme]);
+
+	useEffect(() => {
+		const el = containerRef.current;
+		if (!el || !timeline) return;
+
+		type TL = {
+			viewportTransform: number[];
+			scrollTo: (o: { scrollTop?: number; scrollLeft?: number }) => void;
+			requestRenderAll: () => void;
+		};
+		const tl = timeline as unknown as TL;
+
+		const handleWheel = (e: WheelEvent) => {
+			if (e.ctrlKey || e.deltaY === 0 || Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
+
+			e.preventDefault();
+			e.stopPropagation();
+
+			const vt = tl.viewportTransform;
+			if (!vt) return;
+
+			const currentScrollTop = Math.max(0, -vt[5]);
+			let delta = e.deltaY;
+			if (e.deltaMode === 1) delta *= 16;  // lines → px
+			if (e.deltaMode === 2) delta *= 400; // pages → px
+			const normalized = Math.sign(delta) * Math.min(Math.abs(delta) * 0.12, 28);
+			tl.scrollTo({ scrollTop: Math.max(0, currentScrollTop + normalized) });
+			// Force a full canvas repaint so hidden-track clip paths and visibility
+			// masks are applied at the new scroll position.
+			tl.requestRenderAll();
+		};
+
+		el.addEventListener("wheel", handleWheel, { capture: true, passive: false });
+
+		return () => el.removeEventListener("wheel", handleWheel, { capture: true });
+	}, [timeline]);
 
 	const mouseXToTimeMs = (clientX: number): number | null => {
 		const rect = containerRectRef.current;
