@@ -194,7 +194,9 @@ export function SceneInteractions({
 					const { clientX, clientY } = e.inputEvent as MouseEvent;
 					const hitActive = targets.some((t) => {
 						const r = t.getBoundingClientRect();
-						return clientX >= r.left && clientX <= r.right && clientY >= r.top && clientY <= r.bottom;
+						return (
+							clientX >= r.left && clientX <= r.right && clientY >= r.top && clientY <= r.bottom
+						);
 					});
 					if (hitActive) {
 						e.stop();

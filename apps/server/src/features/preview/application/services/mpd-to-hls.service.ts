@@ -23,10 +23,16 @@ export interface MpdToHlsOutput {
 
 interface SegmentTemplate {
 	timescale: number;
-	duration: number;
+	duration: number | undefined;
 	startNumber: number;
 	initialization: string;
 	media: string;
+}
+
+interface Segment {
+	number: number;
+	startMs: number;
+	durationMs: number;
 }
 
 interface ParsedRepresentation {
@@ -34,6 +40,7 @@ interface ParsedRepresentation {
 	width: number;
 	height: number;
 	segmentTemplate: SegmentTemplate;
+	timelineSegments: Segment[] | undefined;
 	mpdBase: string;
 	periodBase: string;
 	inheritedQuery: string;
@@ -131,13 +138,19 @@ function parseMpd(mpdXml: string, mpdUrl: string): ParsedRepresentation {
 	if (!st) throw new Error("Invalid MPD: missing SegmentTemplate");
 
 	const timescale = Number(st["@_timescale"]);
-	const duration = Number(st["@_duration"]);
+	const durationAttr = st["@_duration"];
+	const duration = durationAttr === undefined ? undefined : Number(durationAttr);
 	const startNumber = Number(st["@_startNumber"] ?? 1);
 	const initialization: string = String(st["@_initialization"] ?? "");
 	const media: string = String(st["@_media"] ?? "");
 
-	if (!timescale || !duration || !initialization || !media) {
+	const timelineSegments = expandSegmentTimeline(st.SegmentTimeline, timescale, startNumber);
+
+	if (!timescale || !initialization || !media) {
 		throw new Error("Invalid MPD: SegmentTemplate missing required attributes");
+	}
+	if (!timelineSegments && (duration === undefined || !duration)) {
+		throw new Error("Invalid MPD: SegmentTemplate needs either SegmentTimeline or @duration");
 	}
 
 	// RFC3986 BaseURL resolution: resolve(period.BaseURL, resolve(mpd.BaseURL, mpdDocumentURL)).
@@ -162,10 +175,66 @@ function parseMpd(mpdXml: string, mpdUrl: string): ParsedRepresentation {
 			initialization,
 			media,
 		},
+		timelineSegments,
 		mpdBase,
 		periodBase,
 		inheritedQuery,
 	};
+}
+
+function expandSegmentTimeline(
+	timelineNode: unknown,
+	timescale: number,
+	startNumber: number,
+): Segment[] | undefined {
+	if (!timelineNode || typeof timelineNode !== "object") return undefined;
+	const sEntries = (timelineNode as { S?: unknown }).S;
+	const list = Array.isArray(sEntries) ? sEntries : sEntries !== undefined ? [sEntries] : [];
+	if (list.length === 0) return undefined;
+
+	const segments: Segment[] = [];
+	let cursorTicks = 0;
+	let nextNumber = startNumber;
+
+	for (const sUnknown of list) {
+		if (!sUnknown || typeof sUnknown !== "object") continue;
+		const s = sUnknown as Record<string, unknown>;
+		const dAttr = s["@_d"];
+		if (dAttr === undefined) {
+			throw new Error("Invalid MPD: SegmentTimeline.S missing required @d");
+		}
+		const d = Number(dAttr);
+		if (!Number.isFinite(d) || d <= 0) {
+			throw new Error("Invalid MPD: SegmentTimeline.S has invalid @d");
+		}
+		const tAttr = s["@_t"];
+		if (tAttr !== undefined) {
+			const t = Number(tAttr);
+			if (!Number.isFinite(t) || t < 0) {
+				throw new Error("Invalid MPD: SegmentTimeline.S has invalid @t");
+			}
+			cursorTicks = t;
+		}
+		const rAttr = s["@_r"];
+		const r = rAttr === undefined ? 0 : Number(rAttr);
+		if (!Number.isInteger(r)) {
+			throw new Error("Invalid MPD: SegmentTimeline.S @r must be an integer");
+		}
+		if (r < 0) {
+			throw new Error("Invalid MPD: SegmentTimeline.S @r=-1 (unbounded repeat) is not supported");
+		}
+		const repeatCount = r + 1;
+		for (let i = 0; i < repeatCount; i++) {
+			segments.push({
+				number: nextNumber++,
+				startMs: (cursorTicks / timescale) * 1000,
+				durationMs: (d / timescale) * 1000,
+			});
+			cursorTicks += d;
+		}
+	}
+
+	return segments.length > 0 ? segments : undefined;
 }
 
 function resolveSegmentUrl(template: string, periodBase: string, inheritedQuery: string): string {
@@ -206,39 +275,23 @@ export function generateHlsPlaylist(input: MpdToHlsInput): MpdToHlsOutput {
 		width,
 		height,
 		segmentTemplate: st,
+		timelineSegments,
 		periodBase,
 		inheritedQuery,
 	} = parseMpd(mpdXml, mpdUrl);
 
-	const segDurationMs = (st.duration / st.timescale) * 1000;
-	const segDurationS = st.duration / st.timescale;
-
-	const firstSegIdx = Math.max(
-		0,
-		Math.floor((requestedStartMs - segmentStartTimeMs) / segDurationMs),
-	);
-	const firstSegNumber = st.startNumber + firstSegIdx;
-	const firstSegStartMs = segmentStartTimeMs + firstSegIdx * segDurationMs;
-
-	const sourceOffsetMs = Math.max(0, requestedStartMs - firstSegStartMs);
-
-	const lastSegIdx = Math.max(
-		firstSegIdx,
-		Math.floor((requestedEndMs - segmentStartTimeMs - 1) / segDurationMs),
-	);
-	const lastSegNumber = st.startNumber + lastSegIdx;
-
-	const segCount = lastSegIdx - firstSegIdx + 1;
-	if (segCount > 10_000) {
-		throw new Error(
-			`Segment count ${segCount} exceeds maximum 10000. Check that requestedEndMs and segmentStartTimeMs use the same time reference.`,
-		);
-	}
+	const { selected, sourceOffsetMs } = timelineSegments
+		? selectTimelineSegments(timelineSegments, segmentStartTimeMs, requestedStartMs, requestedEndMs)
+		: selectUniformSegments(st, segmentStartTimeMs, requestedStartMs, requestedEndMs);
 
 	const initUri = resolveSegmentUrl(
 		substituteTemplate(st.initialization, id),
 		periodBase,
 		inheritedQuery,
+	);
+
+	const targetDurationS = Math.ceil(
+		selected.reduce((max, seg) => Math.max(max, seg.durationMs), 0) / 1000,
 	);
 
 	// MEDIA-SEQUENCE must be 0: mediabunny's HLS demuxer offsets the first
@@ -249,19 +302,19 @@ export function generateHlsPlaylist(input: MpdToHlsInput): MpdToHlsOutput {
 	const lines: string[] = [
 		"#EXTM3U",
 		"#EXT-X-VERSION:7",
-		`#EXT-X-TARGETDURATION:${Math.ceil(segDurationS)}`,
+		`#EXT-X-TARGETDURATION:${targetDurationS}`,
 		"#EXT-X-MEDIA-SEQUENCE:0",
 		"#EXT-X-PLAYLIST-TYPE:VOD",
 		`#EXT-X-MAP:URI="${initUri}"`,
 	];
 
-	for (let n = firstSegNumber; n <= lastSegNumber; n++) {
+	for (const seg of selected) {
 		const segUri = resolveSegmentUrl(
-			substituteTemplate(st.media, id, n),
+			substituteTemplate(st.media, id, seg.number),
 			periodBase,
 			inheritedQuery,
 		);
-		lines.push(`#EXTINF:${segDurationS.toFixed(3)},`);
+		lines.push(`#EXTINF:${(seg.durationMs / 1000).toFixed(3)},`);
 		lines.push(segUri);
 	}
 
@@ -274,4 +327,72 @@ export function generateHlsPlaylist(input: MpdToHlsInput): MpdToHlsOutput {
 		width,
 		height,
 	};
+}
+
+function selectTimelineSegments(
+	allSegments: Segment[],
+	segmentStartTimeMs: number,
+	requestedStartMs: number,
+	requestedEndMs: number,
+): { selected: Segment[]; sourceOffsetMs: number } {
+	const relStart = requestedStartMs - segmentStartTimeMs;
+	const relEnd = requestedEndMs - segmentStartTimeMs;
+
+	let firstIdx = -1;
+	for (let i = 0; i < allSegments.length; i++) {
+		if (allSegments[i].startMs > relStart) break;
+		firstIdx = i;
+	}
+	if (firstIdx < 0) firstIdx = 0;
+
+	let lastIdx = firstIdx;
+	for (let i = firstIdx; i < allSegments.length; i++) {
+		if (allSegments[i].startMs >= relEnd) break;
+		lastIdx = i;
+	}
+
+	const selected = allSegments.slice(firstIdx, lastIdx + 1);
+	const sourceOffsetMs = Math.max(0, relStart - selected[0].startMs);
+	return { selected, sourceOffsetMs };
+}
+
+function selectUniformSegments(
+	st: SegmentTemplate,
+	segmentStartTimeMs: number,
+	requestedStartMs: number,
+	requestedEndMs: number,
+): { selected: Segment[]; sourceOffsetMs: number } {
+	if (st.duration === undefined) {
+		throw new Error("Invalid MPD: SegmentTemplate@duration missing");
+	}
+	const segDurationMs = (st.duration / st.timescale) * 1000;
+
+	const firstSegIdx = Math.max(
+		0,
+		Math.floor((requestedStartMs - segmentStartTimeMs) / segDurationMs),
+	);
+	const firstSegStartMs = firstSegIdx * segDurationMs;
+	const sourceOffsetMs = Math.max(0, requestedStartMs - segmentStartTimeMs - firstSegStartMs);
+
+	const lastSegIdx = Math.max(
+		firstSegIdx,
+		Math.floor((requestedEndMs - segmentStartTimeMs - 1) / segDurationMs),
+	);
+
+	const segCount = lastSegIdx - firstSegIdx + 1;
+	if (segCount > 10_000) {
+		throw new Error(
+			`Segment count ${segCount} exceeds maximum 10000. Check that requestedEndMs and segmentStartTimeMs use the same time reference.`,
+		);
+	}
+
+	const selected: Segment[] = [];
+	for (let i = 0; i < segCount; i++) {
+		selected.push({
+			number: st.startNumber + firstSegIdx + i,
+			startMs: firstSegStartMs + i * segDurationMs,
+			durationMs: segDurationMs,
+		});
+	}
+	return { selected, sourceOffsetMs };
 }

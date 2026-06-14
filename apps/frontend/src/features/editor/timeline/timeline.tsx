@@ -155,7 +155,7 @@ const Timeline = ({ stateManager }: { stateManager: StateManager }) => {
 
 			const currentScrollTop = Math.max(0, -vt[5]);
 			let delta = e.deltaY;
-			if (e.deltaMode === 1) delta *= 16;  // lines → px
+			if (e.deltaMode === 1) delta *= 16; // lines → px
 			if (e.deltaMode === 2) delta *= 400; // pages → px
 			const normalized = Math.sign(delta) * Math.min(Math.abs(delta) * 0.12, 28);
 			tl.scrollTo({ scrollTop: Math.max(0, currentScrollTop + normalized) });
