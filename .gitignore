@@ -25,6 +25,18 @@
 .DS_Store
 *.pem
 
+# screenshot / debug images dropped at repo root or app root during dev
+/*.png
+/*.jpg
+/apps/*/*.png
+/apps/*/*.jpg
+
+# playwright-cli session logs
+.playwright-cli/
+
+# figma API response dumps
+figma_*.json
+
 # debug
 npm-debug.log*
 yarn-debug.log*

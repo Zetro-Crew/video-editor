@@ -19,6 +19,7 @@ import Scene from "./scene/scene";
 import type { SceneRef } from "./scene/scene.types";
 import { ShortcutsModal } from "./shortcuts-modal";
 import { useActiveItem } from "./store/selectors";
+import useCompositionStore from "./store/use-composition-store";
 import useEditorRefs from "./store/use-editor-refs";
 import useLayoutStore from "./store/use-layout-store";
 import useUploadStore from "./store/use-upload-store";
@@ -114,6 +115,10 @@ const SHAPES_DIRECT = [
 ].map((s) => ({ ...s, dataUrl: svgToDataUrl(s.svg) }));
 
 const addShape = (shape: (typeof SHAPES_DIRECT)[0]) => {
+	const { size } = useCompositionStore.getState();
+	const left = Math.round(size.width / 2 - shape.width / 2);
+	const top = Math.round(size.height / 2 - shape.height / 2);
+
 	dispatch(ADD_SHAPE, {
 		payload: {
 			id: generateId(),
@@ -131,8 +136,8 @@ const addShape = (shape: (typeof SHAPES_DIRECT)[0]) => {
 				opacity: 100,
 				transform: "",
 				border: "",
-				top: "0px",
-				left: "0px",
+				top: `${top}px`,
+				left: `${left}px`,
 				flipX: false,
 				flipY: false,
 				rotate: "0deg",

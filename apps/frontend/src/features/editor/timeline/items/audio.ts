@@ -44,7 +44,7 @@ class Audio extends Trimmable {
 		this.display = props.display;
 		this.trim = props.trim;
 		this.duration = props.duration;
-		this.fill = "#2D1625";
+		this.fill = "#63303A";
 		this.src = props.src;
 		this.metadata = props.metadata;
 		this.objectCaching = false;

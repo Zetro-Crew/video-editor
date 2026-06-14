@@ -4,6 +4,7 @@ import { ADD_AUDIO, ADD_VIDEO } from "@designcombo/state";
 import { generateId } from "@designcombo/timeline";
 import type { ITrackItem } from "@designcombo/types";
 import type { PreviewItemPayload } from "@video-editor/contract/iframe/from-parent";
+import { TRACK_APPEND_INDEX } from "../constants/constants";
 import { resetEditorForNewProject } from "../state/reset-editor";
 import { resolvePreviewSource } from "./preview-source-api";
 
@@ -351,6 +352,8 @@ export const addPreviewItemToEditor = async (
 		},
 		options: {
 			isSelected: false,
+			trackIndex: TRACK_APPEND_INDEX,
+			isNewTrack: true,
 		},
 	});
 	appendItemState(

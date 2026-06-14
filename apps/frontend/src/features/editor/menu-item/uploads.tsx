@@ -15,6 +15,7 @@ import ModalUpload from "@/components/modal-upload";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { TRACK_APPEND_INDEX } from "../constants/constants";
 import useUploadStore from "../store/use-upload-store";
 import { getMediaDurationMs, getUploadAssetUrl } from "../utils/upload-media";
 
@@ -172,7 +173,7 @@ export const Uploads = () => {
 				details: { src },
 				metadata: {},
 			},
-			options: {},
+			options: { trackIndex: TRACK_APPEND_INDEX, isNewTrack: true },
 		});
 	};
 

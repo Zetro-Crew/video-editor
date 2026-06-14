@@ -3,6 +3,7 @@ import { ADD_AUDIO, ADD_IMAGE, ADD_VIDEO } from "@designcombo/state";
 import { generateId } from "@designcombo/timeline";
 import type React from "react";
 import { useCallback, useState } from "react";
+import { TRACK_APPEND_INDEX } from "../constants/constants";
 
 enum AcceptedDropTypes {
 	IMAGE = "image",
@@ -37,7 +38,10 @@ const useDragAndDrop = (onDragStateChange?: (isDragging: boolean) => void) => {
 				dispatch(ADD_VIDEO, { payload });
 				break;
 			case AcceptedDropTypes.AUDIO:
-				dispatch(ADD_AUDIO, { payload });
+				dispatch(ADD_AUDIO, {
+					payload,
+					options: { trackIndex: TRACK_APPEND_INDEX, isNewTrack: true },
+				});
 				break;
 		}
 	}, []);

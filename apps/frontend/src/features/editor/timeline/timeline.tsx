@@ -1,14 +1,15 @@
 import type StateManager from "@designcombo/state";
-import { unitsToTimeMs } from "@designcombo/timeline";
+import { calculateTimelineWidth, unitsToTimeMs } from "@designcombo/timeline";
 import { useTheme } from "next-themes";
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
-import { TIMELINE_OFFSET_CANVAS_LEFT } from "../constants/constants";
+import { TIMELINE_OFFSET_CANVAS_LEFT, TIMELINE_OFFSET_CANVAS_RIGHT } from "../constants/constants";
 import useCanvasTimeline from "../hooks/use-canvas-timeline";
 import { useCurrentPlayerFrame } from "../hooks/use-current-frame";
 import usePlayheadAutoScroll from "../hooks/use-playhead-auto-scroll";
 import { useResizbleTimeline } from "../hooks/use-resizable-timeline";
 import { useStateManagerEvents } from "../hooks/use-state-manager-events";
+import { EDGE_ZONE_WIDTH, useTimelineEdgeScroll } from "../hooks/use-timeline-edge-scroll";
 import { useTimelineOffsetX } from "../hooks/use-timeline-offset";
 import useCompositionStore from "../store/use-composition-store";
 import useEditorRefs from "../store/use-editor-refs";
@@ -32,6 +33,8 @@ import WaveAudioBars from "./items/wave-audio-bars";
 import Playhead from "./playhead";
 import Ruler from "./ruler";
 
+const SCROLLBAR_HEIGHT = 12; // px — height of the HTML horizontal scrollbar track
+
 CanvasTimeline.registerItems({
 	Text,
 	Image,
@@ -53,14 +56,14 @@ const Timeline = ({ stateManager }: { stateManager: StateManager }) => {
 	const { scale } = useTimelineViewStore();
 	const fps = useCompositionStore((s) => s.fps);
 	const duration = useCompositionStore((s) => s.duration);
-	const { playerRef } = useEditorRefs();
+	const { playerRef, timeline } = useEditorRefs();
 	const currentFrame = useCurrentPlayerFrame(playerRef);
 	const timelineOffsetX = useTimelineOffsetX();
 	const { theme } = useTheme();
 	const { timelineContainerRef, timelineHeight, onMouseDown, onMouseMove, onMouseOut } =
 		useResizbleTimeline();
 
-	const { canvasRef, canvasSize, horizontalScrollbarVpRef, scrollLeft, setScrollLeft } =
+	const { canvasRef, canvasSize, horizontalScrollbarVpRef, scrollLeft, scrollLeftRef, scrollTo } =
 		useCanvasTimeline({
 			canvasElRef,
 			timelineContainerRef,
@@ -68,6 +71,11 @@ const Timeline = ({ stateManager }: { stateManager: StateManager }) => {
 			scale,
 			duration,
 		});
+
+	const { onEdgeMouseMove, stopEdgeScroll, edgeState } = useTimelineEdgeScroll({
+		scrollLeftRef,
+		onScroll: scrollTo,
+	});
 
 	const containerRef = useRef<HTMLDivElement>(null);
 	const containerRectRef = useRef<DOMRect | null>(null);
@@ -112,9 +120,10 @@ const Timeline = ({ stateManager }: { stateManager: StateManager }) => {
 		currentFrame,
 		fps,
 		scale,
-		scrollLeft,
+		scrollLeftRef,
 		canvasElRef,
 		horizontalScrollbarVpRef,
+		onScroll: scrollTo,
 	});
 
 	useEffect(() => {
@@ -123,6 +132,42 @@ const Timeline = ({ stateManager }: { stateManager: StateManager }) => {
 		}, 5);
 		return () => clearTimeout(timeout);
 	}, [theme]);
+
+	useEffect(() => {
+		const el = containerRef.current;
+		if (!el || !timeline) return;
+
+		type TL = {
+			viewportTransform: number[];
+			scrollTo: (o: { scrollTop?: number; scrollLeft?: number }) => void;
+			requestRenderAll: () => void;
+		};
+		const tl = timeline as unknown as TL;
+
+		const handleWheel = (e: WheelEvent) => {
+			if (e.ctrlKey || e.deltaY === 0 || Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
+
+			e.preventDefault();
+			e.stopPropagation();
+
+			const vt = tl.viewportTransform;
+			if (!vt) return;
+
+			const currentScrollTop = Math.max(0, -vt[5]);
+			let delta = e.deltaY;
+			if (e.deltaMode === 1) delta *= 16;  // lines → px
+			if (e.deltaMode === 2) delta *= 400; // pages → px
+			const normalized = Math.sign(delta) * Math.min(Math.abs(delta) * 0.12, 28);
+			tl.scrollTo({ scrollTop: Math.max(0, currentScrollTop + normalized) });
+			// Force a full canvas repaint so hidden-track clip paths and visibility
+			// masks are applied at the new scroll position.
+			tl.requestRenderAll();
+		};
+
+		el.addEventListener("wheel", handleWheel, { capture: true, passive: false });
+
+		return () => el.removeEventListener("wheel", handleWheel, { capture: true });
+	}, [timeline]);
 
 	const mouseXToTimeMs = (clientX: number): number | null => {
 		const rect = containerRectRef.current;
@@ -139,11 +184,20 @@ const Timeline = ({ stateManager }: { stateManager: StateManager }) => {
 	};
 
 	const onRulerScroll = (newScrollLeft: number) => {
-		canvasRef.current?.scrollTo({ scrollLeft: newScrollLeft });
-		if (horizontalScrollbarVpRef.current) {
-			horizontalScrollbarVpRef.current.scrollLeft = newScrollLeft;
-		}
-		setScrollLeft(newScrollLeft);
+		scrollTo(newScrollLeft);
+	};
+
+	const onFlexRowMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+		const rect = containerRectRef.current;
+		if (!rect) return;
+		onEdgeMouseMove(e.clientX - rect.left, rect.width);
+	};
+
+	const onFlexRowMouseLeave = () => {
+		cancelAnimationFrame(hoverRafRef.current);
+		setHoverState(null);
+		setItemTooltip(null);
+		stopEdgeScroll();
 	};
 
 	const onTracksMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -151,6 +205,7 @@ const Timeline = ({ stateManager }: { stateManager: StateManager }) => {
 		if (!rect) return;
 		const clientX = e.clientX;
 		const clientY = e.clientY;
+
 		cancelAnimationFrame(hoverRafRef.current);
 		hoverRafRef.current = requestAnimationFrame(() => {
 			const relativeX = clientX - rect.left;
@@ -196,52 +251,140 @@ const Timeline = ({ stateManager }: { stateManager: StateManager }) => {
 	};
 
 	return (
-		<div
-			ref={timelineContainerRef}
-			id="timeline-container"
-			className="relative w-full overflow-hidden bg-card"
-			style={{
-				height: `${timelineHeight}px`,
-				borderTopWidth: "1px",
-				borderTopStyle: "solid",
-				borderTopColor: "transparent",
-			}}
-			onMouseDown={onMouseDown}
-			onMouseMove={onMouseMove}
-			onMouseOut={onMouseOut}
-		>
-			<Header />
-			<Ruler onClick={onClickRuler} scrollLeft={scrollLeft} onScroll={onRulerScroll} />
-			<Playhead scrollLeft={scrollLeft} />
-			{hoverState && <HoverPlayhead left={hoverState.left} timeMs={hoverState.timeMs} />}
-			{itemTooltip && (
+		<div className="flex flex-col w-full min-w-0 overflow-hidden">
+			<div
+				ref={timelineContainerRef}
+				id="timeline-container"
+				className="relative w-full overflow-hidden bg-card"
+				style={{
+					height: `${timelineHeight}px`,
+					borderTopWidth: "1px",
+					borderTopStyle: "solid",
+					borderTopColor: "transparent",
+				}}
+				onMouseDown={onMouseDown}
+				onMouseMove={onMouseMove}
+				onMouseOut={onMouseOut}
+			>
+				<Header />
+				<Ruler onClick={onClickRuler} scrollLeft={scrollLeft} onScroll={onRulerScroll} />
+				<Playhead scrollLeft={scrollLeft} />
+				{hoverState && <HoverPlayhead left={hoverState.left} timeMs={hoverState.timeMs} />}
+				{itemTooltip && (
+					<div
+						className="pointer-events-none absolute z-50 rounded bg-popover px-2 py-1 text-xs text-popover-foreground shadow"
+						style={{ left: itemTooltip.left, top: itemTooltip.top }}
+					>
+						{itemTooltip.name}
+					</div>
+				)}
+
+				{/* Edge scroll indicators anchored to the full container width */}
 				<div
-					className="pointer-events-none absolute z-50 rounded bg-popover px-2 py-1 text-xs text-popover-foreground shadow"
-					style={{ left: itemTooltip.left, top: itemTooltip.top }}
-				>
-					{itemTooltip.name}
-				</div>
-			)}
-			<div className="flex">
-				<div style={{ width: timelineOffsetX }} className="relative flex-none" />
-				<div
-					style={{ height: canvasSize.height }}
-					className="relative flex-1"
-					onMouseMove={onTracksMouseMove}
-					onMouseLeave={() => {
-						cancelAnimationFrame(hoverRafRef.current);
-						setHoverState(null);
-						setItemTooltip(null);
+					className="pointer-events-none absolute left-0 top-0 bottom-0 z-30 flex items-center justify-start transition-opacity duration-150"
+					style={{
+						width: EDGE_ZONE_WIDTH,
+						background: "linear-gradient(to right, rgba(255,255,255,0.10) 0%, transparent 100%)",
+						opacity: edgeState.side === "left" ? (edgeState.phase === "scrolling" ? 1 : 0.6) : 0,
 					}}
-					onClick={onTracksClick}
+				>
+					<svg
+						width="18"
+						height="18"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="rgba(255,255,255,0.85)"
+						strokeWidth="2.5"
+						strokeLinecap="round"
+						strokeLinejoin="round"
+						style={{ marginLeft: 6 }}
+					>
+						<polyline points="15 18 9 12 15 6" />
+					</svg>
+				</div>
+				<div
+					className="pointer-events-none absolute right-0 top-0 bottom-0 z-30 flex items-center justify-end transition-opacity duration-150"
+					style={{
+						width: EDGE_ZONE_WIDTH,
+						background: "linear-gradient(to left, rgba(255,255,255,0.10) 0%, transparent 100%)",
+						opacity: edgeState.side === "right" ? (edgeState.phase === "scrolling" ? 1 : 0.6) : 0,
+					}}
+				>
+					<svg
+						width="18"
+						height="18"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="rgba(255,255,255,0.85)"
+						strokeWidth="2.5"
+						strokeLinecap="round"
+						strokeLinejoin="round"
+						style={{ marginRight: 6 }}
+					>
+						<polyline points="9 18 15 12 9 6" />
+					</svg>
+				</div>
+
+				<div
+					className="flex overflow-hidden"
+					style={{
+						cursor:
+							edgeState.side === "left"
+								? "w-resize"
+								: edgeState.side === "right"
+									? "e-resize"
+									: undefined,
+					}}
+					onMouseMove={onFlexRowMouseMove}
+					onMouseLeave={onFlexRowMouseLeave}
+				>
+					<div style={{ width: timelineOffsetX }} className="relative flex-none" />
+					<div
+						style={{ height: canvasSize.height + SCROLLBAR_HEIGHT }}
+						className="relative flex-1 min-w-0"
+						onMouseMove={onTracksMouseMove}
+						onClick={onTracksClick}
+					>
+						<div
+							style={{ height: canvasSize.height }}
+							ref={containerRef}
+							className="absolute top-0 w-full"
+						>
+							<canvas id="designcombo-timeline-canvas" ref={canvasElRef} />
+						</div>
+					</div>
+				</div>
+				{/* HTML horizontal scrollbar pinned to the absolute bottom of the container so it
+			    never moves when tracks are collapsed or expanded via the toggle buttons. */}
+				<div
+					ref={horizontalScrollbarVpRef}
+					className="absolute bottom-0 right-0 overflow-x-auto overflow-y-hidden"
+					style={{
+						left: timelineOffsetX,
+						height: SCROLLBAR_HEIGHT,
+						scrollbarWidth: "thin",
+						scrollbarColor: "rgba(89, 91, 94, 1) transparent",
+						direction: "ltr",
+					}}
+					onScroll={(e) => {
+						const next = e.currentTarget.scrollLeft;
+						if (next !== scrollLeftRef.current) scrollTo(next);
+					}}
 				>
 					<div
-						style={{ height: canvasSize.height }}
-						ref={containerRef}
-						className="absolute top-0 w-full"
-					>
-						<canvas id="designcombo-timeline-canvas" ref={canvasElRef} />
-					</div>
+						style={{
+							height: 1,
+							// Width must equal the canvas library's own scrollable content width:
+							// calculateTimelineWidth + spacing.left + spacing.right + extraMarginX (50).
+							// Do NOT use canvasSize.width here — that is the viewport width (a different
+							// quantity) and causes over-scroll when content is narrower than the viewport.
+							width:
+								calculateTimelineWidth(duration, scale.zoom) +
+								TIMELINE_OFFSET_CANVAS_LEFT +
+								TIMELINE_OFFSET_CANVAS_RIGHT +
+								50,
+						}}
+					/>
 				</div>
 			</div>
 		</div>

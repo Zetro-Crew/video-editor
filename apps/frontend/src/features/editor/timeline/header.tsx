@@ -5,18 +5,23 @@ import {
 	LAYER_DELETE,
 	TIMELINE_SCALE_CHANGED,
 } from "@designcombo/state";
-import type { ITimelineScaleState } from "@designcombo/types";
-import { CopyPlus, SquareSplitHorizontal, Trash, ZoomIn, ZoomOut } from "lucide-react";
+import type Timeline from "@designcombo/timeline";
+import type { IAudio, ITimelineScaleState, ITrack, ITrackItem } from "@designcombo/types";
+import { CopyPlus, SquareSplitHorizontal, Trash, Volume2, ZoomIn, ZoomOut } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Slider } from "@/components/ui/slider";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useIsMediumScreen } from "@/hooks/use-media-query";
 import { PLAYER_PAUSE, PLAYER_PLAY } from "../constants/events";
+import Speed from "../control-item/common/speed";
+import Volume from "../control-item/common/volume";
 import { useCurrentPlayerFrame } from "../hooks/use-current-frame";
 import { useTimelineOffsetX } from "../hooks/use-timeline-offset";
+import { useTrackItemEditor } from "../hooks/use-track-item-editor";
 import useUpdateAnsestors from "../hooks/use-update-ansestors";
-import { useHasSelection } from "../store/selectors";
+import { useActiveItem, useHasSelection } from "../store/selectors";
 import useCompositionStore from "../store/use-composition-store";
 import useEditorRefs from "../store/use-editor-refs";
 import useTimelineViewStore from "../store/use-timeline-view-store";
@@ -27,6 +32,147 @@ import {
 	getPreviousZoomLevel,
 	getZoomByIndex,
 } from "../utils/timeline";
+
+const VIDEO_TRACK_TYPES = new Set<string>([
+	"video",
+	"image",
+	"shape",
+	"text",
+	"caption",
+	"illustration",
+	"main",
+	"template",
+	"composition",
+]);
+// waveAudioBars and hillAudioBars are not in ITrackType but can appear at runtime.
+const AUDIO_ALL_TYPES = new Set<string>([
+	"audio",
+	"radialAudioBars",
+	"linealAudioBars",
+	"waveAudioBars",
+	"hillAudioBars",
+]);
+
+type CanvasObj = { id?: string; visible: boolean };
+type HiddenGroupState = { tracks: ITrack[]; itemIds: Set<string> };
+
+// Each track row is preceded by a 30px top-helper (bottom of the -970 helper) and separated from
+// the next by an 8px center-helper. This matches renderTracks() in @designcombo/timeline.
+const TRACKS_Y_OFFSET = 30;
+const TRACK_HELPER_SPACING = 8;
+
+const computeTracksHeight = (tracks: ITrack[], timeline: Timeline): number => {
+	if (tracks.length === 0) return TRACKS_Y_OFFSET;
+	return (
+		TRACKS_Y_OFFSET +
+		tracks.reduce((sum, t) => sum + timeline.getItemSize(t.type), 0) +
+		(tracks.length - 1) * TRACK_HELPER_SPACING
+	);
+};
+
+const applyTimelineLayout = (timeline: Timeline) => {
+	// canvas.resize() must NOT be called here. The canvas viewport height is fixed to
+	// the container's visible area; it must only change when the container is physically
+	// resized. Growing the canvas to content height (a previous approach) made internal
+	// vertical scroll impossible (viewport = content) and caused DOM overflow clipping.
+	//
+	// renderTracks() / requestRenderAll() may reset the canvas viewport (horizontal
+	// scroll position) without firing onViewportChange. Capture the current position
+	// from viewportTransform before the layout operations, then restore it one RAF
+	// frame later — after the library's own requestRenderAll() RAF has settled.
+	const vt = (timeline as unknown as { viewportTransform: number[] }).viewportTransform;
+	const scrollLeftBefore = vt ? Math.max(0, 16 - vt[4]) : 0;
+
+	timeline.renderTracks();
+	timeline.alignItemsToTrack();
+	timeline.requestRenderAll();
+
+	// Clamp vertical scroll to the new content bounds. When tracks are hidden the
+	// content shrinks; without clamping the view stays scrolled into empty space.
+	const contentHeight = computeTracksHeight(timeline.tracks, timeline);
+	const canvasHeight = (timeline as unknown as { height: number }).height;
+	const currentScrollTop = vt ? Math.max(0, -vt[5]) : 0;
+	const maxScrollTop = Math.max(0, contentHeight - canvasHeight);
+	if (currentScrollTop > maxScrollTop) {
+		timeline.scrollTo({ scrollTop: maxScrollTop });
+	}
+
+	requestAnimationFrame(() => {
+		timeline.scrollTo({ scrollLeft: scrollLeftBefore });
+	});
+};
+
+const setTrackGroupVisible = (
+	timeline: Timeline,
+	isVideoGroup: boolean,
+	visible: boolean,
+	hiddenRef: React.MutableRefObject<{ video: HiddenGroupState; audio: HiddenGroupState }>,
+) => {
+	const group = isVideoGroup ? "video" : "audio";
+	const typeSet = isVideoGroup ? VIDEO_TRACK_TYPES : AUDIO_ALL_TYPES;
+	const isAffected = (type: string) => typeSet.has(type);
+	const objects = timeline.getObjects() as unknown as CanvasObj[];
+
+	if (!visible) {
+		const affectedTracks = timeline.tracks.filter((t) => isAffected(t.type));
+		const affectedItemIds = new Set(affectedTracks.flatMap((t) => t.items));
+		hiddenRef.current[group] = { tracks: affectedTracks, itemIds: affectedItemIds };
+		timeline.tracks = timeline.tracks.filter((t) => !isAffected(t.type));
+
+		// Clear selection before hiding objects. The canvas library keeps an internal
+		// "active object" pointer that is independent of obj.visible. If an item from
+		// this group is selected when it becomes invisible, the library still draws its
+		// handles on the next renderAll, creating orphaned floating handles.
+		//
+		// Use the Zustand store as the reliable source (it mirrors canvas selection via
+		// LAYER_SELECTION events). If any selected ID belongs to this group, clear both
+		// the canvas-level selection and the Zustand state. discardActiveObject alone
+		// is not sufficient because the library may not re-dispatch selection:cleared
+		// as a LAYER_SELECTION event through the @designcombo/events subject.
+		const currentActiveIds = useCompositionStore.getState().activeIds;
+		const hasAffectedActive = currentActiveIds.some((id) => affectedItemIds.has(id));
+		if (hasAffectedActive) {
+			(timeline as unknown as { discardActiveObject: () => void }).discardActiveObject?.();
+			useCompositionStore.setState({ activeIds: [] });
+		}
+
+		for (const obj of objects) {
+			if (obj.id && affectedItemIds.has(obj.id)) obj.visible = false;
+		}
+	} else {
+		const { tracks: savedTracks, itemIds: savedItemIds } = hiddenRef.current[group];
+		hiddenRef.current[group] = { tracks: [], itemIds: new Set() };
+		// Video tracks go first (top), audio tracks go last (bottom)
+		timeline.tracks = isVideoGroup
+			? [...savedTracks, ...timeline.tracks]
+			: [...timeline.tracks, ...savedTracks];
+		for (const obj of objects) {
+			if (obj.id && savedItemIds.has(obj.id)) obj.visible = true;
+		}
+	}
+
+	applyTimelineLayout(timeline);
+};
+
+const AudioTrackControls = ({ trackItem }: { trackItem: ITrackItem & IAudio }) => {
+	const { properties, update } = useTrackItemEditor(trackItem);
+	return (
+		<div className="space-y-4">
+			<p className="text-sm font-medium text-center">סאונד</p>
+			<Volume
+				value={(properties.details as { volume?: number }).volume ?? 100}
+				onChange={(v) => update({ details: { volume: v } })}
+			/>
+			<Speed value={properties.playbackRate ?? 1} onChange={(v) => update({ playbackRate: v })} />
+		</div>
+	);
+};
+
+const TrackCheckmark = () => (
+	<svg viewBox="0 0 10 10" width="8" height="8" fill="none" stroke="currentColor" strokeWidth="1.5">
+		<polyline points="2,5 4,7 8,3" />
+	</svg>
+);
 
 const IconPlayerPlayFilled = ({ size }: { size: number }) => (
 	<svg xmlns="http://www.w3.org/2000/svg" width={size} viewBox="0 0 24 24" fill="currentColor">
@@ -78,8 +224,58 @@ const IconPlayerSkipForward = ({ size }: { size: number }) => (
 const Header = () => {
 	const [playing, setPlaying] = useState(false);
 	const { duration, fps } = useCompositionStore();
-	const { scale } = useTimelineViewStore();
-	const { playerRef } = useEditorRefs();
+	const storeTracks = useCompositionStore((s) => s.tracks);
+	const { scale, showVideoTracks, showAudioTracks, setShowVideoTracks, setShowAudioTracks } =
+		useTimelineViewStore();
+	const { playerRef, timeline } = useEditorRefs();
+	const activeItem = useActiveItem();
+	const hiddenRef = useRef<{ video: HiddenGroupState; audio: HiddenGroupState }>({
+		video: { tracks: [], itemIds: new Set() },
+		audio: { tracks: [], itemIds: new Set() },
+	});
+
+	const hasVideoTracks = storeTracks.some((t) => VIDEO_TRACK_TYPES.has(t.type));
+	const hasAudioTracks = storeTracks.some((t) => AUDIO_ALL_TYPES.has(t.type));
+	const activeAudioItem =
+		activeItem && AUDIO_ALL_TYPES.has(activeItem.type) ? (activeItem as ITrackItem & IAudio) : null;
+
+	const prevHasVideoRef = useRef(hasVideoTracks);
+	const prevHasAudioRef = useRef(hasAudioTracks);
+
+	// When new content of a hidden type appears, auto-reveal it and clear stale hiddenRef data.
+	useEffect(() => {
+		const prev = prevHasVideoRef.current;
+		prevHasVideoRef.current = hasVideoTracks;
+		if (!prev && hasVideoTracks && !showVideoTracks && timeline) {
+			setShowVideoTracks(true);
+			hiddenRef.current.video = { tracks: [], itemIds: new Set() };
+			applyTimelineLayout(timeline);
+		}
+	}, [hasVideoTracks]);
+
+	useEffect(() => {
+		const prev = prevHasAudioRef.current;
+		prevHasAudioRef.current = hasAudioTracks;
+		if (!prev && hasAudioTracks && !showAudioTracks && timeline) {
+			setShowAudioTracks(true);
+			hiddenRef.current.audio = { tracks: [], itemIds: new Set() };
+			applyTimelineLayout(timeline);
+		}
+	}, [hasAudioTracks]);
+
+	const handleToggleVideo = () => {
+		if (!hasVideoTracks) return;
+		const next = !showVideoTracks;
+		setShowVideoTracks(next);
+		if (timeline) setTrackGroupVisible(timeline, true, next, hiddenRef);
+	};
+
+	const handleToggleAudio = () => {
+		if (!hasAudioTracks) return;
+		const next = !showAudioTracks;
+		setShowAudioTracks(next);
+		if (timeline) setTrackGroupVisible(timeline, false, next, hiddenRef);
+	};
 	const hasSelection = useHasSelection();
 	const isLargeScreen = useIsMediumScreen();
 	useUpdateAnsestors({ playing, playerRef });
@@ -139,148 +335,211 @@ const Header = () => {
 			id="timeline-header"
 			style={{
 				position: "relative",
-				height: "56px",
+				height: "40px",
 				flex: "none",
 			}}
 		>
 			<div
 				style={{
-					position: "absolute",
-					height: 56,
+					position: "relative",
+					height: 40,
 					width: "100%",
-					display: "flex",
+					display: "grid",
+					gridTemplateColumns: "minmax(0, 1fr) auto minmax(0, 1fr)",
 					alignItems: "center",
 				}}
 			>
-				<div
-					style={{
-						height: 44,
-						width: "100%",
-						display: "grid",
-						gridTemplateColumns: isLargeScreen ? "1fr 260px 1fr" : "1fr 1fr 1fr",
-						alignItems: "center",
-					}}
-				>
-					<div className="flex px-2">
-						<Tooltip>
-							<TooltipTrigger asChild>
-								<Button
-									disabled={!hasSelection}
-									onClick={doActiveDelete}
-									variant={"ghost"}
-									size={isLargeScreen ? "default" : "icon"}
-									className="flex items-center gap-1.5 px-3"
-								>
-									<Trash size={18} aria-hidden="true" />
-									<span className="hidden md:block text-sm font-medium">מחק</span>
-								</Button>
-							</TooltipTrigger>
-							<TooltipContent side="top">מחק שכבה</TooltipContent>
-						</Tooltip>
-
-						<Tooltip>
-							<TooltipTrigger asChild>
-								<Button
-									disabled={!hasSelection}
-									onClick={doActiveSplit}
-									variant={"ghost"}
-									size={isLargeScreen ? "default" : "icon"}
-									className="flex items-center gap-1.5 px-3"
-								>
-									<SquareSplitHorizontal size={18} aria-hidden="true" />
-									<span className="hidden md:block text-sm font-medium">פצל</span>
-								</Button>
-							</TooltipTrigger>
-							<TooltipContent side="top">פצל בנקודת הסמן</TooltipContent>
-						</Tooltip>
-						<Tooltip>
-							<TooltipTrigger asChild>
-								<Button
-									disabled={!hasSelection}
-									onClick={() => {
-										dispatch(LAYER_CLONE);
-									}}
-									variant={"ghost"}
-									size={isLargeScreen ? "default" : "icon"}
-									className="flex items-center gap-1.5 px-3"
-								>
-									<CopyPlus size={18} aria-hidden="true" />
-									<span className="hidden md:block text-sm font-medium">שכפל</span>
-								</Button>
-							</TooltipTrigger>
-							<TooltipContent side="top">שכפל שכבה</TooltipContent>
-						</Tooltip>
-					</div>
-					<div className="flex flex-col items-center justify-center gap-0.5">
-						<div className="flex items-center justify-center tabular-nums">
-							<div className="text-xs text-muted-foreground hidden md:block">
-								{timeToString({ time: duration })}
-							</div>
-							<span className="px-1 text-xs text-muted-foreground">|</span>
-							<div
-								className="text-xs font-medium text-foreground"
-								data-current-time={currentFrame / fps}
-								id="video-current-time"
-							>
-								{frameToTimeString({ frame: currentFrame }, { fps })}
-							</div>
-						</div>
-						<div>
-							<Tooltip>
-								<TooltipTrigger asChild>
-									<Button
-										className="hidden md:inline-flex"
-										onClick={doActiveSplit}
-										variant={"ghost"}
-										size={"icon"}
-										aria-label="קפוץ לסוף"
-									>
-										<IconPlayerSkipForward size={18} aria-hidden="true" />
-									</Button>
-								</TooltipTrigger>
-								<TooltipContent side="top">קפוץ לסוף</TooltipContent>
-							</Tooltip>
-							<Tooltip>
-								<TooltipTrigger asChild>
-									<Button
-										data-easter-egg="play-btn"
-										onClick={() => {
-											if (playing) {
-												return handlePause();
-											}
-											handlePlay();
-										}}
-										variant={"ghost"}
-										size={"icon"}
-										aria-label={playing ? "השהה" : "נגן"}
-									>
-										{playing ? (
-											<IconPlayerPauseFilled size={18} aria-hidden="true" />
-										) : (
-											<IconPlayerPlayFilled size={18} aria-hidden="true" />
-										)}
-									</Button>
-								</TooltipTrigger>
-								<TooltipContent side="top">נגן / השהה</TooltipContent>
-							</Tooltip>
-							<Tooltip>
-								<TooltipTrigger asChild>
-									<Button
-										className="hidden md:inline-flex"
-										onClick={doActiveDelete}
-										variant={"ghost"}
-										size={"icon"}
-										aria-label="קפוץ להתחלה"
-									>
-										<IconPlayerSkipBack size={18} aria-hidden="true" />
-									</Button>
-								</TooltipTrigger>
-								<TooltipContent side="top">קפוץ להתחלה</TooltipContent>
-							</Tooltip>
-						</div>
-					</div>
-
+				{/* col-1 → visual RIGHT in RTL.
+				    RTL flex order (first DOM = rightmost visual):
+				      1. ZoomControl  ← absolute right edge
+				      2. Divider (explicit element, hidden on mobile)
+				      3. וידאו toggle
+				      4. שמע toggle  ← leftmost of this group (nearest to center) */}
+				<div className="flex items-center min-w-0 overflow-hidden">
 					<ZoomControl scale={scale} onChangeTimelineScale={changeScale} duration={duration} />
+					{/* Vertical divider between zoom control and toggles */}
+					<div aria-hidden="true" className="hidden md:block self-stretch w-px bg-border/60 mx-2" />
+					<Tooltip>
+						<TooltipTrigger asChild>
+							<button
+								type="button"
+								onClick={handleToggleVideo}
+								aria-label="הצג/הסתר רצועות וידאו"
+								disabled={!hasVideoTracks}
+								className={`hidden md:flex items-center gap-1 rounded px-1.5 py-0.5 text-xs transition-colors ${!hasVideoTracks ? "opacity-30 cursor-not-allowed" : showVideoTracks ? "text-foreground" : "text-muted-foreground/40"}`}
+							>
+								<span
+									className={`size-3 rounded-sm border flex items-center justify-center ${!hasVideoTracks ? "border-muted-foreground/30" : showVideoTracks ? "border-foreground bg-foreground/20" : "border-muted-foreground/40"}`}
+								>
+									{hasVideoTracks && showVideoTracks && <TrackCheckmark />}
+								</span>
+								<span>וידאו</span>
+							</button>
+						</TooltipTrigger>
+						<TooltipContent side="top">הצג/הסתר רצועות וידאו</TooltipContent>
+					</Tooltip>
+					<Tooltip>
+						<TooltipTrigger asChild>
+							<button
+								type="button"
+								onClick={handleToggleAudio}
+								aria-label="הצג/הסתר רצועות שמע"
+								disabled={!hasAudioTracks}
+								className={`hidden md:flex items-center gap-1 rounded px-1.5 py-0.5 text-xs transition-colors ${!hasAudioTracks ? "opacity-30 cursor-not-allowed" : showAudioTracks ? "text-foreground" : "text-muted-foreground/40"}`}
+							>
+								<span
+									className={`size-3 rounded-sm border flex items-center justify-center ${!hasAudioTracks ? "border-muted-foreground/30" : showAudioTracks ? "border-foreground bg-foreground/20" : "border-muted-foreground/40"}`}
+								>
+									{hasAudioTracks && showAudioTracks && <TrackCheckmark />}
+								</span>
+								<span>שמע</span>
+							</button>
+						</TooltipTrigger>
+						<TooltipContent side="top">הצג/הסתר רצועות שמע</TooltipContent>
+					</Tooltip>
+				</div>
+
+				{/* CENTER: time display + player buttons in one row */}
+				<div className="flex items-center justify-center gap-1 pointer-events-auto">
+					<div className="hidden md:flex items-center tabular-nums gap-1 text-xs text-muted-foreground">
+						<span>{timeToString({ time: duration })}</span>
+						<span className="px-0.5">|</span>
+						<span
+							className="font-medium text-foreground"
+							data-current-time={currentFrame / fps}
+							id="video-current-time"
+						>
+							{frameToTimeString({ frame: currentFrame }, { fps })}
+						</span>
+					</div>
+					<Tooltip>
+						<TooltipTrigger asChild>
+							<Button
+								className="hidden md:inline-flex"
+								onClick={() => playerRef?.current?.seekTo(Math.round((duration * fps) / 1000))}
+								variant={"ghost"}
+								size={"icon"}
+								aria-label="קפוץ לסוף"
+							>
+								<IconPlayerSkipForward size={18} aria-hidden="true" />
+							</Button>
+						</TooltipTrigger>
+						<TooltipContent side="top">קפוץ לסוף</TooltipContent>
+					</Tooltip>
+					<Tooltip>
+						<TooltipTrigger asChild>
+							<Button
+								data-easter-egg="play-btn"
+								onClick={() => (playing ? handlePause() : handlePlay())}
+								variant={"ghost"}
+								size={"icon"}
+								aria-label={playing ? "השהה" : "נגן"}
+							>
+								{playing ? (
+									<IconPlayerPauseFilled size={18} aria-hidden="true" />
+								) : (
+									<IconPlayerPlayFilled size={18} aria-hidden="true" />
+								)}
+							</Button>
+						</TooltipTrigger>
+						<TooltipContent side="top">נגן / השהה</TooltipContent>
+					</Tooltip>
+					<Tooltip>
+						<TooltipTrigger asChild>
+							<Button
+								className="hidden md:inline-flex"
+								onClick={() => playerRef?.current?.seekTo(0)}
+								variant={"ghost"}
+								size={"icon"}
+								aria-label="קפוץ להתחלה"
+							>
+								<IconPlayerSkipBack size={18} aria-hidden="true" />
+							</Button>
+						</TooltipTrigger>
+						<TooltipContent side="top">קפוץ להתחלה</TooltipContent>
+					</Tooltip>
+				</div>
+
+				{/* col-3 → visual LEFT in RTL.
+				    A flex-1 spacer is the FIRST DOM child. In RTL flex, first = rightmost visual,
+				    so the spacer grows to fill the gap between buttons and the center column.
+				    Buttons land at the physical-left edge.
+				    RTL flex order of buttons (first = rightmost):
+				      1. שמע  ← rightmost of group (nearest to center)
+				      2. שכפל
+				      3. פצל
+				      4. מחק   ← absolute left edge */}
+				<div className="flex items-center min-w-0 overflow-hidden">
+					{/* grow spacer: fills the right side (toward center) so buttons pin left */}
+					<div aria-hidden="true" className="flex-1" />
+					{activeAudioItem && (
+						<Popover>
+							<Tooltip>
+								<TooltipTrigger asChild>
+									<PopoverTrigger asChild>
+										<Button
+											variant={"ghost"}
+											size={isLargeScreen ? "default" : "icon"}
+											className="flex items-center gap-1.5 px-3"
+											aria-label="הגדרות שמע ומהירות"
+										>
+											<Volume2 size={18} aria-hidden="true" />
+											<span className="hidden lg:block text-sm font-medium">שמע</span>
+										</Button>
+									</PopoverTrigger>
+								</TooltipTrigger>
+								<TooltipContent side="top">עוצמת קול ומהירות</TooltipContent>
+							</Tooltip>
+							<PopoverContent side="top" className="w-64 p-4">
+								<AudioTrackControls trackItem={activeAudioItem} />
+							</PopoverContent>
+						</Popover>
+					)}
+					<Tooltip>
+						<TooltipTrigger asChild>
+							<Button
+								disabled={!hasSelection}
+								onClick={() => dispatch(LAYER_CLONE)}
+								variant={"ghost"}
+								size={isLargeScreen ? "default" : "icon"}
+								className="flex items-center gap-1.5 px-3"
+							>
+								<CopyPlus size={18} aria-hidden="true" />
+								<span className="hidden lg:block text-sm font-medium">שכפל</span>
+							</Button>
+						</TooltipTrigger>
+						<TooltipContent side="top">שכפל שכבה</TooltipContent>
+					</Tooltip>
+					<Tooltip>
+						<TooltipTrigger asChild>
+							<Button
+								disabled={!hasSelection}
+								onClick={doActiveSplit}
+								variant={"ghost"}
+								size={isLargeScreen ? "default" : "icon"}
+								className="flex items-center gap-1.5 px-3"
+							>
+								<SquareSplitHorizontal size={18} aria-hidden="true" />
+								<span className="hidden lg:block text-sm font-medium">פצל</span>
+							</Button>
+						</TooltipTrigger>
+						<TooltipContent side="top">פצל בנקודת הסמן</TooltipContent>
+					</Tooltip>
+					<Tooltip>
+						<TooltipTrigger asChild>
+							<Button
+								disabled={!hasSelection}
+								onClick={doActiveDelete}
+								variant={"ghost"}
+								size={isLargeScreen ? "default" : "icon"}
+								className="flex items-center gap-1.5 px-3"
+							>
+								<Trash size={18} aria-hidden="true" />
+								<span className="hidden lg:block text-sm font-medium">מחק</span>
+							</Button>
+						</TooltipTrigger>
+						<TooltipContent side="top">מחק שכבה</TooltipContent>
+					</Tooltip>
 				</div>
 			</div>
 		</div>
@@ -334,8 +593,8 @@ const ZoomControl = ({
 	};
 
 	return (
-		<div className="flex items-center justify-end">
-			<div className="flex lg:border-l pl-4 pr-2">
+		<div className="flex items-center justify-start min-w-0" dir="ltr">
+			<div className="flex ps-4 pe-2">
 				<Tooltip>
 					<TooltipTrigger asChild>
 						<Button
@@ -350,17 +609,17 @@ const ZoomControl = ({
 					<TooltipContent side="top">הקטן תצוגה</TooltipContent>
 				</Tooltip>
 				<Slider
-					className="w-28 hidden md:flex"
+					className="w-28 hidden md:flex [&_[data-slot='slider-range']]:bg-red-400 [&_[data-slot='slider-thumb']]:border-red-400"
 					value={[localValue]}
 					min={0}
 					max={12}
 					step={1}
 					onValueChange={(e) => {
-						setLocalValue(e[0]); // Update local state
+						setLocalValue(e[0]);
 					}}
 					onValueCommit={() => {
 						const zoom = getZoomByIndex(localValue);
-						onChangeTimelineScale(zoom); // Propagate value to parent when user commits change
+						onChangeTimelineScale(zoom);
 					}}
 				/>
 				<Tooltip>

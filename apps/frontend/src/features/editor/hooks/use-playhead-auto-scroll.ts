@@ -6,20 +6,26 @@ interface UsePlayheadAutoScrollProps {
 	currentFrame: number;
 	fps: number;
 	scale: ITimelineScaleState;
-	scrollLeft: number;
+	scrollLeftRef: RefObject<number>;
 	canvasElRef: RefObject<HTMLCanvasElement | null>;
 	horizontalScrollbarVpRef: RefObject<HTMLDivElement | null>;
+	onScroll: (newScrollLeft: number) => void;
 }
 
 const usePlayheadAutoScroll = ({
 	currentFrame,
 	fps,
 	scale,
-	scrollLeft,
+	scrollLeftRef,
 	canvasElRef,
 	horizontalScrollbarVpRef,
+	onScroll,
 }: UsePlayheadAutoScrollProps) => {
 	const canvasBoundingXRef = useRef(0);
+	// Stable ref so the effect callback always reads the latest scrollTo without
+	// being listed as a reactive dep (which would cause unnecessary re-runs).
+	const onScrollRef = useRef(onScroll);
+	onScrollRef.current = onScroll;
 
 	useEffect(() => {
 		const el = canvasElRef.current;
@@ -38,7 +44,9 @@ const usePlayheadAutoScroll = ({
 		if (!horizontalScrollbar) return;
 
 		const position = timeMsToUnits((currentFrame / fps) * 1000, scale.zoom);
-		const playheadPos = position - scrollLeft + 40;
+		// scrollLeftRef.current is updated synchronously inside the canonical scrollTo()
+		// — no React render cycle lag, so this reads the exact current canvas position.
+		const playheadPos = position - scrollLeftRef.current + 40;
 
 		if (playheadPos < canvasBoundingXRef.current) return;
 
@@ -49,10 +57,10 @@ const usePlayheadAutoScroll = ({
 		const scaleScroll = availableScroll / scrollDivWidth;
 
 		if (scaleScroll < 0) return;
-		horizontalScrollbar.scrollTo({
-			left: scaleScroll > 1 ? currentPosScroll + scrollDivWidth : totalScrollWidth - scrollDivWidth,
-		});
-	}, [currentFrame, fps, scale, scrollLeft, horizontalScrollbarVpRef]);
+		const newLeft =
+			scaleScroll > 1 ? currentPosScroll + scrollDivWidth : totalScrollWidth - scrollDivWidth;
+		onScrollRef.current(newLeft);
+	}, [currentFrame, fps, scale, scrollLeftRef, horizontalScrollbarVpRef]);
 };
 
 export default usePlayheadAutoScroll;

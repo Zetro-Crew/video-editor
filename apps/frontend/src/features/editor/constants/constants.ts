@@ -11,3 +11,6 @@ export const SMALL_FONT_SIZE = 12;
 // Dynamic timeline offset values
 export const TIMELINE_OFFSET_X_SMALL = 8;
 export const TIMELINE_OFFSET_X_LARGE = 40;
+
+// Sentinel for "append as a new track at the end". The state manager clamps any index >= tracks.length.
+export const TRACK_APPEND_INDEX = 99999;

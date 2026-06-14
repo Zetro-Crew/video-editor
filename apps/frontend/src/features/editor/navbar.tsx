@@ -4,7 +4,7 @@ import { HISTORY_REDO, HISTORY_UNDO } from "@designcombo/state";
 import { generateId } from "@designcombo/timeline";
 import type { IDesign } from "@designcombo/types";
 import { debounce } from "lodash-es";
-import { Keyboard } from "lucide-react";
+import { Frame, Keyboard } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Icons } from "@/components/shared/icons";
@@ -18,10 +18,62 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import useCompositionStore from "@/features/editor/store/use-composition-store";
 import { useIsLargeScreen, useIsSmallScreen } from "@/hooks/use-media-query";
 import DownloadProgressModal from "./download-progress-modal";
+import { clearProject } from "./external-preview/payload-intake";
 import { useDownloadState } from "./store/use-download-state";
 
 const MIN_CANVAS_SIZE = 64;
 const MAX_CANVAS_SIZE = 4096;
+
+const ProjectActionsBar = ({ stateManager }: { stateManager: StateManager }) => {
+	const { actions } = useDownloadState();
+	const { size } = useCompositionStore();
+
+	const handleExport = () => {
+		const data: IDesign = {
+			id: generateId(),
+			...stateManager.toJSON(),
+			size,
+		};
+
+		const invalidCount = Object.values(
+			(data.trackItemsMap as Record<string, unknown>) ?? {},
+		).filter(
+			(item) =>
+				!Number.isFinite((item as { display?: { from?: number; to?: number } }).display?.from) ||
+				!Number.isFinite((item as { display?: { from?: number; to?: number } }).display?.to),
+		).length;
+
+		if (invalidCount > 0) {
+			toast.error(
+				`${invalidCount} פריט${invalidCount > 1 ? "ים" : ""} עם תזמון שגוי — הסר והוסף מחדש לפני הייצוא.`,
+			);
+			return;
+		}
+
+		actions.setPayload(data);
+		actions.setDisplayProgressModal(true);
+	};
+
+	return (
+		<>
+			<div aria-hidden="true" className="self-stretch w-px bg-border/60 mx-1" />
+			<button
+				type="button"
+				onClick={() => clearProject(stateManager)}
+				className="rounded-full border border-border px-4 py-1.5 text-xs font-medium text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors"
+			>
+				איפוס סרטון
+			</button>
+			<button
+				type="button"
+				onClick={handleExport}
+				className="rounded-full bg-primary px-4 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
+			>
+				הפקת סרטון
+			</button>
+		</>
+	);
+};
 
 export default function Navbar({
 	stateManager,
@@ -182,7 +234,7 @@ export default function Navbar({
 						onCanvasHeightChange={setCanvasHeight}
 						onCanvasWidthChange={setCanvasWidth}
 					/>
-					<DownloadPopover stateManager={stateManager} />
+					<ProjectActionsBar stateManager={stateManager} />
 				</div>
 			</div>
 		</div>
@@ -207,8 +259,13 @@ const CanvasSizePopover = ({
 			<Tooltip>
 				<TooltipTrigger asChild>
 					<PopoverTrigger asChild>
-						<Button className="h-8 rounded-full border border-border" variant="outline">
-							קנבס
+						<Button
+							className="h-8 w-8 rounded-full border border-border"
+							variant="outline"
+							size="icon"
+							aria-label="קנבס"
+						>
+							<Frame size={16} aria-hidden="true" />
 						</Button>
 					</PopoverTrigger>
 				</TooltipTrigger>
@@ -255,47 +312,5 @@ const CanvasSizePopover = ({
 				</Tooltip>
 			</PopoverContent>
 		</Popover>
-	);
-};
-
-const DownloadPopover = ({ stateManager }: { stateManager: StateManager }) => {
-	const { actions } = useDownloadState();
-	const { size } = useCompositionStore();
-
-	const handleOpen = () => {
-		const data: IDesign = {
-			id: generateId(),
-			...stateManager.toJSON(),
-			size,
-		};
-
-		const invalidCount = Object.values((data.trackItemsMap as Record<string, any>) ?? {}).filter(
-			(item) => !Number.isFinite(item.display?.from) || !Number.isFinite(item.display?.to),
-		).length;
-
-		if (invalidCount > 0) {
-			toast.error(
-				`${invalidCount} item${invalidCount > 1 ? "s have" : " has"} invalid timing. Remove and re-add them before exporting.`,
-			);
-			return;
-		}
-
-		actions.setPayload(data);
-		actions.setDisplayProgressModal(true);
-	};
-
-	return (
-		<Tooltip>
-			<TooltipTrigger asChild>
-				<Button
-					onClick={handleOpen}
-					className="flex h-8 w-20 gap-1 border border-border rounded-full shrink-0"
-					size="sm"
-				>
-					<span>שמור</span>
-				</Button>
-			</TooltipTrigger>
-			<TooltipContent side="bottom">שמור פרויקט</TooltipContent>
-		</Tooltip>
 	);
 };

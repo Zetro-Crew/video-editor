@@ -1,6 +1,7 @@
 import { dispatch } from "@designcombo/events";
 import { ADD_AUDIO, ADD_IMAGE, ADD_VIDEO } from "@designcombo/state";
 import { generateId } from "@designcombo/timeline";
+import { TRACK_APPEND_INDEX } from "../constants/constants";
 
 export function getUploadAssetUrl(upload: any) {
 	return upload?.metadata?.uploadedUrl || upload?.url || "";
@@ -80,7 +81,7 @@ export async function autoAddUploadedMedia(upload: any) {
 				details: { src },
 				metadata: {},
 			},
-			options: {},
+			options: { trackIndex: TRACK_APPEND_INDEX, isNewTrack: true },
 		});
 	}
 }
