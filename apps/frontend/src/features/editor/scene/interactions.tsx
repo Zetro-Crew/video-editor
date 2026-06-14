@@ -180,10 +180,36 @@ export function SceneInteractions({
 				const target = e.inputEvent.target as HTMLDivElement;
 				dragStartEnd = false;
 
-				if (targets.includes(target)) {
-					e.stop();
-				}
+				// Moveable's own handles (resize / rotate) take priority — let them work normally.
 				if (target && moveableRef?.current?.moveable.isMoveableElement(target)) {
+					e.stop();
+					return;
+				}
+
+				// If the pointer lands inside any currently-active target's bounding rect,
+				// skip Selection's z-index hit-test and force Moveable to drag the active
+				// object. This prevents a higher-stacked overlapping element from stealing
+				// the drag away from the already-selected item.
+				if (targets.length > 0) {
+					const { clientX, clientY } = e.inputEvent as MouseEvent;
+					const hitActive = targets.some((t) => {
+						const r = t.getBoundingClientRect();
+						return clientX >= r.left && clientX <= r.right && clientY >= r.top && clientY <= r.bottom;
+					});
+					if (hitActive) {
+						e.stop();
+						clearTimeout(selectEndTimerRef.current);
+						selectEndTimerRef.current = setTimeout(() => {
+							if (!dragStartEnd) {
+								moveableRef.current?.moveable.dragStart(e.inputEvent);
+							}
+						});
+						return;
+					}
+				}
+
+				// Fallback: original identity check for the exact DOM node.
+				if (targets.includes(target)) {
 					e.stop();
 				}
 			})
