@@ -57,7 +57,7 @@ const ProjectActionsBar = ({ stateManager }: { stateManager: StateManager }) => 
 	return (
 		<>
 			<div aria-hidden="true" className="self-stretch w-px bg-border/60 mx-1" />
-						<button
+			<button
 				type="button"
 				onClick={() => clearProject(stateManager)}
 				className="rounded-full border border-border px-4 py-1.5 text-xs font-medium text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors"
