@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { buildCoreMock, type CoreMockHandle } from "../index.ts";
 
 const FIXTURE_START = 1_778_412_270_000;
-const FIXTURE_END = FIXTURE_START + 30_000;
+const FIXTURE_END = FIXTURE_START + 600_000;
 
 interface RegisteredToken {
 	token: string;

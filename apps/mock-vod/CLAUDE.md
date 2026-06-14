@@ -15,13 +15,13 @@ Production runs in an air-gapped network — the real VOD service is unreachable
 | POST | `/__internal/register-token` | core-mock posts `{ token, recordingId, ttlMs }` after issuing a `vod-token` so this mock recognises it |
 | GET | `/__internal/fixture-window` | Returns `{ startMs, endMs, recordingId }` — used by core-mock to clip ranges and by the server to log the active window on boot |
 | GET | `/vod/:recordingId/manifest.mpd` | Byte-faithful MPD fixture (matches real-prod shape: nested `<BaseURL>`, image AdaptationSet, non-numeric Representation id) |
-| GET | `/vod/:recordingId/media/*` | DASH segments (`v4_init.mp4`, `segment_v4_2362.m4s`, `segment_v4_2363.m4s`) |
+| GET | `/vod/:recordingId/media/*` | DASH segments (`v4_init.mp4` + 40 segments `segment_v4_2362.m4s` … `segment_v4_2401.m4s`, 15s each → 600s total) |
 
 Manifest + segment routes require `vod-token` header — 401 on missing/unknown/expired.
 
 ## Footgun
 
-Default `TOKEN_TTL_MS=600_000` (10 min). Preview playlists bake the token into segment URLs — pause playback past the TTL and segments 401. Real VOD has the same constraint; mock surfaces it locally.
+Default `TOKEN_TTL_MS=600_000` (10 min). Preview playlists bake the token into segment URLs — pause playback past the TTL and segments 401. Real VOD has the same constraint; mock surfaces it locally. Note the fixture itself is also 10 min long — tokens expire right as the asset ends, so anything that scrubs across the whole window from a single `/play` call will hit the boundary.
 
 ## Commands
 

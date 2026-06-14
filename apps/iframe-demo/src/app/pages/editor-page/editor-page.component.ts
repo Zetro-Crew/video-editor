@@ -55,7 +55,7 @@ export class EditorPageComponent implements OnInit, OnDestroy {
 	private readonly route = inject(ActivatedRoute);
 	readonly channelId = signal(DEMO_CHANNEL_ID);
 	readonly startTimeMs = signal(DEMO_SEGMENT_START);
-	readonly endTimeMs = signal(DEMO_SEGMENT_START + 30000);
+	readonly endTimeMs = signal(DEMO_SEGMENT_START + 600000);
 	readonly name = signal("");
 	readonly lastResponse = signal<EditorResponse | null>(null);
 	readonly outgoingPayload = signal<object | null>(null);

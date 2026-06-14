@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <MPD xmlns="urn:mpeg:dash:schema:mpd:2011"
-	mediaPresentationDuration="PT30.0S" minBufferTime="PT1.0S"
+	mediaPresentationDuration="PT600.0S" minBufferTime="PT1.0S"
 	type="static" profiles="urn:mpeg:dash:profile:full:2011"
 	minimumUpdatePeriod="PT1000S">
-	<Period id="P0" duration="PT30.0S">
+	<Period id="P0" duration="PT600.0S">
 		<AdaptationSet segmentAlignment="true" bitstreamSwitching="false" contentType="video">
 			<SegmentTemplate timescale="1000000" duration="15000000"
 				media="segment_$RepresentationID$_$Number$.m4s"
@@ -12,13 +12,6 @@
 			<Representation id="v4" codecs="avc1.64001f" mimeType="video/mp4"
 				width="1280" height="720" frameRate="25" sar="1:1"
 				startWithSAP="1" bandwidth="149850"/>
-		</AdaptationSet>
-		<AdaptationSet contentType="image" mimeType="image/jpg">
-			<SegmentTemplate timescale="1000" duration="75000"
-				media="$Number$.tile" startNumber="472" presentationTimeOffset="0"/>
-			<Representation height="90" width="2400" id="t1">
-				<EssentialProperty schemeIdUri="http://dashif.org/guidelines/thumbnail_tile" value="15x1"/>
-			</Representation>
 		</AdaptationSet>
 		<BaseURL>./</BaseURL>
 	</Period>
