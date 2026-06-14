@@ -5,7 +5,8 @@ metadata:
   namespace: # TODO: your-ocp-namespace
 spec:
   selector:
-    app: video-editor-server
+    app: ztube
+    service: video-editor-server
   ports:
     - port: 8080
       targetPort: 8080

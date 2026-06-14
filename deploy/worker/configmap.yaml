@@ -5,7 +5,7 @@ metadata:
   namespace: # TODO: your-ocp-namespace
 data:
   # Probe + metrics port (readiness/liveness/metrics). Matches deployment.containerPort.
-  WORKER_PROBE_PORT: "8081"
+  WORKER_PROBE_PORT: "8080"
   # AMQP prefetch and in-process render concurrency. Broker is the only backpressure.
   WORKER_CONCURRENCY: "1"
 

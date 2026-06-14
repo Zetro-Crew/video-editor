@@ -155,13 +155,13 @@ const DVD_STYLE = `
 const BARBIE_STYLE = `
 @font-face {
   font-family: 'Comic Neue';
-  src: url('/easter-eggs/comic-neue-400.woff2') format('woff2');
+  src: url('${import.meta.env.BASE_URL}easter-eggs/comic-neue-400.woff2') format('woff2');
   font-weight: 400;
   font-style: normal;
 }
 @font-face {
   font-family: 'Comic Neue';
-  src: url('/easter-eggs/comic-neue-700.woff2') format('woff2');
+  src: url('${import.meta.env.BASE_URL}easter-eggs/comic-neue-700.woff2') format('woff2');
   font-weight: 700;
   font-style: normal;
 }
@@ -548,7 +548,7 @@ export default function useEasterEggs(): void {
 			document.body.appendChild(canvas);
 			startSparkles(canvas);
 
-			const audio = new Audio("/easter-eggs/barbie-song.mp3");
+			const audio = new Audio(`${import.meta.env.BASE_URL}easter-eggs/barbie-song.mp3`);
 			audio.loop = true;
 			audio.volume = 0.4;
 			barbieAudio = audio;
@@ -573,7 +573,7 @@ export default function useEasterEggs(): void {
 			injectStyle("__sid_style", SID_STYLE);
 			const img = document.createElement("img");
 			img.id = "__sid_el";
-			img.src = "/easter-eggs/sid.webp";
+			img.src = `${import.meta.env.BASE_URL}easter-eggs/sid.webp`;
 			img.alt = "";
 			img.addEventListener(
 				"animationend",
@@ -919,7 +919,7 @@ export default function useEasterEggs(): void {
 		function launchGummyBears(): void {
 			removeEl("__gummy-q");
 
-			const audio = new Audio("/easter-eggs/gummy-bear-song.mp3");
+			const audio = new Audio(`${import.meta.env.BASE_URL}easter-eggs/gummy-bear-song.mp3`);
 			audio.loop = true;
 			audio.volume = 0.5;
 			gummyAudio = audio;
@@ -938,7 +938,7 @@ export default function useEasterEggs(): void {
 				const rotationSpeed = (Math.random() - 0.5) * 6;
 
 				const img = document.createElement("img");
-				img.src = "/easter-eggs/gummy-bear.webp";
+				img.src = `${import.meta.env.BASE_URL}easter-eggs/gummy-bear.webp`;
 				img.alt = "";
 				img.draggable = false;
 				img.className = "__gummy-bear";

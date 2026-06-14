@@ -57,6 +57,18 @@ src/
         └── domain/             # Domain logic/policies
 ```
 
+### HTTP error handling
+
+HTTP controllers must `throw new HttpError(...)` (from `@ztube/observability/fastify`) for all 4xx/5xx paths. Do not call `reply.status(4xx|5xx).send(...)` directly — it bypasses the observability `onError` hook and the structured error log line.
+
+Response shape is `{ error: string }`. No `code` or `details` field in the body. Frontend branches on HTTP status, not an error-code field. (This is a tightening: the previous `setErrorHandler` validation branch also emitted `details: error.validation` in the body — that field is now log-only.)
+
+`details` is log-only — it appears as `err.details` in logs via Pino's `stdSerializers.err`, never serialized into the response.
+
+Domain/infra error types (`UploadTooLargeError`, `PublishExhaustedError`, `InvalidJobIdError`, etc.) stay HTTP-agnostic; translate to `HttpError` at the controller boundary.
+
+`createFastifyInstance()` registers the `setErrorHandler` that maps `HttpError → reply.status(err.statusCode).send({ error: err.expose ? err.message : "Internal error" })`. By default `expose=true` for 4xx and `false` for 5xx — so 5xx bodies do not leak internal `error.message`. Override `expose` when a 5xx message is intentionally public (e.g. `"render queue unavailable"`).
+
 ## Features & Routes
 
 Plus `GET /health` — returns `{ status: "ok" }`, registered directly in `Server.start()` (used by k8s liveness probe).
@@ -193,6 +205,7 @@ All validated by Zod in `src/config/env.ts` — that file is the source of truth
 | `CORE_BASE_URL` | required | Core service base URL. **Includes the `/private` prefix** — real Core groups auth-required endpoints there, so the adapter appends `/channels/:id/play` to it. Dev: `http://localhost:8002/private` |
 | `MOCK_VOD_BASE_URL` | optional | Boot-only — used to log the active mock-vod fixture window when `CORE_BASE_URL` is localhost. Defaults to `http://localhost:5050` if unset |
 | `SERVER_BASE_URL` | required | Public server URL (used in signed segment URLs) |
+| `SERVER_PUBLIC_PATH_PREFIX` | `""` | Ingress path prefix prepended to public-facing URLs the server emits (segment-proxy URLs in HLS playlists). Empty in local dev; set to e.g. `/api/video_editor/server` in environments fronted by a path-stripping reverse proxy |
 | `PREVIEW_SIGNING_SECRET` | required | HMAC-SHA256 secret used to sign segment-proxy URLs. Min 32 chars. Without this, `/editor/segment` would be an SSRF vector |
 | `MAX_PREVIEW_DURATION_MS` | `3600000` | Max preview window length (1h) |
 | `PREVIEW_JOB_TTL_SECONDS` | `86400` | Preview-job retention TTL (24h) |
@@ -246,7 +259,9 @@ pnpm test   # vitest run
 
 - `amqplib` v2 — AMQP client (used for both events and commands)
 - `fastify` v5 — HTTP framework
+- `@fastify/cors` — CORS plugin (registered in `bootstrap/server.ts`)
 - `@ffmpeg-installer/ffmpeg` + `ffprobe-static` — bundled FFmpeg/ffprobe binaries; server invokes FFmpeg via raw `spawn`
 - `@aws-sdk/*` — S3 interactions (MinIO in production)
+- `fast-xml-parser` — MPD XML parsing (`src/features/preview/application/services/mpd-to-hls.service.ts`)
 - `zod` — Env schema validation
 - `sharp` — Image processing (SVG→PNG for overlays)

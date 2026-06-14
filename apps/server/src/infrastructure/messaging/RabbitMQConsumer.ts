@@ -1,6 +1,7 @@
 import { Logger } from "@ztube/observability";
 import type { Channel, ChannelModel, ConsumeMessage, RecoveringChannelModel } from "amqplib";
 import { connect } from "amqplib";
+import type { ConnectionSSLOptions } from "../../bootstrap/container.ts";
 
 type ConsumerHandler = (msg: ConsumeMessage, channel: AckLike) => Promise<void>;
 
@@ -23,7 +24,7 @@ export interface RabbitMQConsumerOptions {
 	assertTopology?: TopologyAsserter;
 	initialConnectTimeoutMs?: number;
 	recoveryMaxDelayMs?: number;
-	socketOptions?: { cert: Buffer; key: Buffer; ca: Buffer };
+	socketOptions?: ConnectionSSLOptions;
 }
 
 interface AmqpErrorFields {

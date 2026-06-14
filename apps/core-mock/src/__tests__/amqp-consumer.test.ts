@@ -13,20 +13,27 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { type ExportConsumerHandle, startExportConsumer } from "../amqp-consumer.ts";
 import { ExportResultStore } from "../export-result-store.ts";
 
+let amqpUrl: string;
+let stopContainer: () => Promise<void>;
+
+beforeAll(async () => {
+	const container = await new RabbitMQContainer("rabbitmq:3-management").start();
+	amqpUrl = container.getAmqpUrl();
+	stopContainer = async () => {
+		await container.stop();
+	};
+}, 60_000);
+
+afterAll(async () => {
+	await stopContainer?.();
+});
+
 describe("core-mock export consumer — drains all export.* keys", { timeout: 60_000 }, () => {
-	let amqpUrl: string;
-	let stopContainer: () => Promise<void>;
 	let publisherConn: ChannelModel;
 	let channel: ConfirmChannel;
 	let consumer: ExportConsumerHandle;
 
 	beforeAll(async () => {
-		const container = await new RabbitMQContainer("rabbitmq:3-management").start();
-		amqpUrl = container.getAmqpUrl();
-		stopContainer = async () => {
-			await container.stop();
-		};
-
 		consumer = await startExportConsumer(amqpUrl, new ExportResultStore());
 
 		publisherConn = await connect(amqpUrl);
@@ -38,7 +45,6 @@ describe("core-mock export consumer — drains all export.* keys", { timeout: 60
 		await channel?.close();
 		await publisherConn?.close();
 		await consumer?.stop();
-		await stopContainer?.();
 	});
 
 	function publishWithReturnCapture(

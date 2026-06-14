@@ -4,7 +4,8 @@ metadata:
   name: video-editor-frontend
   namespace: # TODO: your-ocp-namespace
   labels:
-    app: video-editor-frontend
+      app: ztube
+      service: video-editor-frontend
 spec:
   replicas: 2
   revisionHistoryLimit: 10
@@ -16,11 +17,13 @@ spec:
       maxSurge: 50%
   selector:
     matchLabels:
-      app: video-editor-frontend
+      app: ztube
+      service: video-editor-frontend
   template:
     metadata:
       labels:
-        app: video-editor-frontend
+        app: ztube
+        service: video-editor-frontend
     spec:
       imagePullSecrets:
         - name: internal-registry-secret
@@ -31,7 +34,7 @@ spec:
               podAffinityTerm:
                 labelSelector:
                   matchLabels:
-                    app: video-editor-frontend
+                    service: video-editor-frontend
                 topologyKey: kubernetes.io/hostname
       containers:
         - name: frontend

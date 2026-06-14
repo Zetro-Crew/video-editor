@@ -17,6 +17,7 @@ import {
 import { Logger } from "@ztube/observability";
 import type { ChannelModel, ConfirmChannel, RecoveringChannelModel } from "amqplib";
 import { connect } from "amqplib";
+import type { ConnectionSSLOptions } from "../../bootstrap/container.ts";
 import type { MonitorFactory } from "./MonitorFactory.ts";
 import { COMMANDS_EXCHANGE } from "./schemas/commands.ts";
 import { assertRenderTopology } from "./topology.ts";
@@ -132,7 +133,7 @@ export interface RabbitMQPublisherOptions {
 	renderRequestTtlMs?: number;
 	renderQueueMaxLength?: number;
 	renderDeliveryLimit?: number;
-	socketOptions?: { cert: Buffer; key: Buffer; ca: Buffer };
+	socketOptions?: ConnectionSSLOptions;
 }
 
 export class RabbitMQPublisher implements ExportEventPublisherPort {
@@ -145,7 +146,7 @@ export class RabbitMQPublisher implements ExportEventPublisherPort {
 	private readonly renderRequestTtlMs?: number;
 	private readonly renderQueueMaxLength: number;
 	private readonly renderDeliveryLimit: number;
-	private readonly socketOptions?: { cert: Buffer; key: Buffer; ca: Buffer };
+	private readonly socketOptions?: ConnectionSSLOptions;
 	private model: RecoveringChannelModel | null = null;
 	private channel: ConfirmChannel | null = null;
 	private channelReady: Deferred<ConfirmChannel> | null = null;

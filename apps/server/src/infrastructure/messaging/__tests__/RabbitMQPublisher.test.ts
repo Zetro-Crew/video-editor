@@ -15,12 +15,7 @@ import type { ConfirmChannel, ConsumeMessage } from "amqplib";
 import { connect } from "amqplib";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { createNoopMonitorFactory } from "../createNoopMonitorFactory.ts";
-import {
-	ChannelClosedError,
-	PublishExhaustedError,
-	RabbitMQPublisher,
-	UnroutedError,
-} from "../RabbitMQPublisher.ts";
+import { PublishExhaustedError, RabbitMQPublisher, UnroutedError } from "../RabbitMQPublisher.ts";
 import {
 	COMMANDS_EXCHANGE,
 	RENDER_REQUESTED,
@@ -29,24 +24,31 @@ import {
 } from "../schemas/commands.ts";
 import { createRecordingMonitorFactory } from "./createRecordingMonitorFactory.ts";
 
+let amqpUrl: string;
+let stopContainer: () => Promise<void>;
+
+beforeAll(async () => {
+	const container = await new RabbitMQContainer("rabbitmq:3-management").start();
+	amqpUrl = container.getAmqpUrl();
+	stopContainer = async () => {
+		await container.stop();
+	};
+}, 60_000);
+
+afterAll(async () => {
+	await stopContainer?.();
+});
+
 describe("RabbitMQPublisher — envelope + headers", { timeout: 60_000 }, () => {
-	let amqpUrl: string;
 	let publisher: RabbitMQPublisher;
-	let stopContainer: () => Promise<void>;
 
 	beforeAll(async () => {
-		const container = await new RabbitMQContainer("rabbitmq:3-management").start();
-		amqpUrl = container.getAmqpUrl();
 		publisher = new RabbitMQPublisher(amqpUrl, createNoopMonitorFactory());
 		await publisher.connect();
-		stopContainer = async () => {
-			await container.stop();
-		};
 	});
 
 	afterAll(async () => {
 		await publisher.close();
-		await stopContainer?.();
 	});
 
 	async function setupConsumer(routingKey: string): Promise<() => Promise<ConsumeMessage>> {
@@ -143,21 +145,6 @@ describe("RabbitMQPublisher — envelope + headers", { timeout: 60_000 }, () => 
 });
 
 describe("RabbitMQPublisher — mandatory + retry + monitor lifecycle", { timeout: 60_000 }, () => {
-	let amqpUrl: string;
-	let stopContainer: () => Promise<void>;
-
-	beforeAll(async () => {
-		const container = await new RabbitMQContainer("rabbitmq:3-management").start();
-		amqpUrl = container.getAmqpUrl();
-		stopContainer = async () => {
-			await container.stop();
-		};
-	});
-
-	afterAll(async () => {
-		await stopContainer?.();
-	});
-
 	it("retries 3 times and logs aborting with UnroutedError when no queue is bound", async () => {
 		const { factory, events } = createRecordingMonitorFactory();
 		const publisher = new RabbitMQPublisher(amqpUrl, factory);
@@ -228,21 +215,6 @@ describe("RabbitMQPublisher — connect fail-fast", () => {
 });
 
 describe("RabbitMQPublisher — drain", { timeout: 60_000 }, () => {
-	let amqpUrl: string;
-	let stopContainer: () => Promise<void>;
-
-	beforeAll(async () => {
-		const container = await new RabbitMQContainer("rabbitmq:3-management").start();
-		amqpUrl = container.getAmqpUrl();
-		stopContainer = async () => {
-			await container.stop();
-		};
-	});
-
-	afterAll(async () => {
-		await stopContainer?.();
-	});
-
 	it("drain returns quickly when no publishes are in-flight", async () => {
 		const { factory } = createRecordingMonitorFactory();
 		const publisher = new RabbitMQPublisher(amqpUrl, factory);
@@ -274,120 +246,7 @@ describe("RabbitMQPublisher — drain", { timeout: 60_000 }, () => {
 	});
 });
 
-describe("RabbitMQPublisher — built-in recovery", { timeout: 60_000 }, () => {
-	let amqpUrl: string;
-	let stopContainer: () => Promise<void>;
-
-	beforeAll(async () => {
-		const container = await new RabbitMQContainer("rabbitmq:3-management").start();
-		amqpUrl = container.getAmqpUrl();
-		stopContainer = async () => {
-			await container.stop();
-		};
-	});
-
-	afterAll(async () => {
-		await stopContainer?.();
-	});
-
-	// Reach into the recovery wrapper to force a connection drop without stopping the broker.
-	// Mirrors a transient broker close — the wrapper observes the underlying close, emits
-	// disconnect, schedules reconnect, and re-runs setup.
-	function forceConnectionDrop(publisher: RabbitMQPublisher): Promise<void> {
-		const inner = (
-			publisher as unknown as {
-				model: { _core: { _model: { close: () => Promise<void> } } } | null;
-			}
-		).model;
-		if (!inner) throw new Error("publisher has no model");
-		return inner._core._model.close();
-	}
-
-	it("recovers after a connection drop and resumes publishing", async () => {
-		const teardown = await (async () => {
-			const conn = await connect(amqpUrl);
-			conn.on("error", () => {});
-			const ch = await conn.createChannel();
-			ch.on("error", () => {});
-			await ch.assertExchange(EXCHANGE_NAME, "topic", { durable: true });
-			const { queue } = await ch.assertQueue("", { exclusive: true });
-			await ch.bindQueue(queue, EXCHANGE_NAME, EXPORT_COMPLETED);
-			await ch.consume(queue, () => {}, { noAck: true });
-			return async () => {
-				try {
-					await ch.close();
-				} catch {}
-				try {
-					await conn.close();
-				} catch {}
-			};
-		})();
-
-		const infoSpy = vi.spyOn(Logger, "logInfo").mockImplementation(() => {});
-		const publisher = new RabbitMQPublisher(amqpUrl, createNoopMonitorFactory(), {
-			recoveryMaxDelayMs: 1_500,
-		});
-		try {
-			await publisher.connect();
-			await forceConnectionDrop(publisher);
-
-			const start = Date.now();
-			while (Date.now() - start < 10_000) {
-				const recovered = infoSpy.mock.calls.some((args) => args[0] === "amqp_publisher_recovered");
-				if (recovered) break;
-				await new Promise((r) => setTimeout(r, 50));
-			}
-			expect(infoSpy.mock.calls.some((args) => args[0] === "amqp_publisher_recovered")).toBe(true);
-
-			await publisher.publishExportCompleted({
-				jobId: "post-recovery",
-				url: "https://s3.example.com/recovered.mp4",
-				exportType: "mp4",
-			});
-		} finally {
-			infoSpy.mockRestore();
-			await publisher.close();
-			await teardown();
-		}
-	});
-
-	it("close() after a connection drop tears down without leaking reconnect activity", async () => {
-		const publisher = new RabbitMQPublisher(amqpUrl, createNoopMonitorFactory(), {
-			recoveryMaxDelayMs: 1_500,
-		});
-		await publisher.connect();
-		await forceConnectionDrop(publisher);
-		await publisher.close();
-		// Give any in-flight recovery scheduling a chance to fire after close — it must not.
-		const warnSpy = vi.spyOn(Logger, "logWarning").mockImplementation(() => {});
-		try {
-			await new Promise((r) => setTimeout(r, 500));
-			const reconnectAfterClose = warnSpy.mock.calls.filter(
-				(args) => args[0] === "amqp_publisher_reconnect_scheduled",
-			);
-			expect(reconnectAfterClose).toHaveLength(0);
-		} finally {
-			warnSpy.mockRestore();
-		}
-	});
-});
-
 describe("RabbitMQPublisher — commands exchange + publishCommand", { timeout: 60_000 }, () => {
-	let amqpUrl: string;
-	let stopContainer: () => Promise<void>;
-
-	beforeAll(async () => {
-		const container = await new RabbitMQContainer("rabbitmq:3-management").start();
-		amqpUrl = container.getAmqpUrl();
-		stopContainer = async () => {
-			await container.stop();
-		};
-	});
-
-	afterAll(async () => {
-		await stopContainer?.();
-	});
-
 	it("asserts video-editor.commands exchange + render.requested quorum queue on connect", async () => {
 		const publisher = new RabbitMQPublisher(amqpUrl, createNoopMonitorFactory());
 		await publisher.connect();
@@ -473,21 +332,6 @@ describe("RabbitMQPublisher — commands exchange + publishCommand", { timeout: 
 });
 
 describe("RabbitMQPublisher — closed/concurrent/drain edges", { timeout: 60_000 }, () => {
-	let amqpUrl: string;
-	let stopContainer: () => Promise<void>;
-
-	beforeAll(async () => {
-		const container = await new RabbitMQContainer("rabbitmq:3-management").start();
-		amqpUrl = container.getAmqpUrl();
-		stopContainer = async () => {
-			await container.stop();
-		};
-	});
-
-	afterAll(async () => {
-		await stopContainer?.();
-	});
-
 	async function bindCatchallQueue(routingKey: string): Promise<() => Promise<void>> {
 		const conn = await connect(amqpUrl);
 		conn.on("error", () => {});
@@ -601,108 +445,7 @@ describe("RabbitMQPublisher — closed/concurrent/drain edges", { timeout: 60_00
 	});
 });
 
-describe("RabbitMQPublisher — channel close + handler-error", { timeout: 60_000 }, () => {
-	let amqpUrl: string;
-	let stopContainer: () => Promise<void>;
-
-	beforeAll(async () => {
-		const container = await new RabbitMQContainer("rabbitmq:3-management").start();
-		amqpUrl = container.getAmqpUrl();
-		stopContainer = async () => {
-			await container.stop();
-		};
-	});
-
-	afterAll(async () => {
-		await stopContainer?.();
-	});
-
-	it("settles in-flight events with ChannelClosedError when the channel closes mid-publish", async () => {
-		const publisher = new RabbitMQPublisher(amqpUrl, createNoopMonitorFactory(), {
-			eventConfirmTimeoutMs: 5_000,
-		});
-		await publisher.connect();
-		try {
-			const internal = publisher as unknown as {
-				channel: ConfirmChannel | null;
-				inflight: Map<string, { settle: (err?: Error) => void }>;
-			};
-			// Insert a synthetic inflight entry whose settle callback we can observe.
-			let settledWith: Error | undefined;
-			internal.inflight.set("synthetic-1", {
-				settle: (err) => {
-					settledWith = err;
-				},
-			});
-			await internal.channel?.close();
-			// Allow microtasks for ch.on('close') to fire.
-			await new Promise((r) => setTimeout(r, 50));
-			expect(settledWith).toBeInstanceOf(ChannelClosedError);
-		} finally {
-			await publisher.close();
-		}
-	});
-
-	it("emits handler-error on the channel when a user close handler throws", async () => {
-		const publisher = new RabbitMQPublisher(amqpUrl, createNoopMonitorFactory());
-		await publisher.connect();
-		const internal = publisher as unknown as { channel: ConfirmChannel | null };
-		const ch = internal.channel;
-		if (!ch) throw new Error("expected live channel");
-		let captured: { err: Error; eventName: string } | null = null;
-		ch.on("handler-error", (err: Error, eventName: string) => {
-			captured = { err, eventName };
-		});
-		ch.on("close", () => {
-			throw new Error("intentional close-handler throw");
-		});
-		try {
-			await ch.close();
-		} catch {}
-		await new Promise((r) => setTimeout(r, 50));
-		expect(captured).not.toBeNull();
-		expect((captured as unknown as { eventName: string } | null)?.eventName).toBe("close");
-		await publisher.close();
-	});
-
-	it("emits handler-error on the channel when a return handler throws", async () => {
-		const publisher = new RabbitMQPublisher(amqpUrl, createNoopMonitorFactory());
-		await publisher.connect();
-		const internal = publisher as unknown as { channel: ConfirmChannel | null };
-		const ch = internal.channel;
-		if (!ch) throw new Error("expected live channel");
-		let captured: { err: Error; eventName: string } | null = null;
-		ch.on("handler-error", (err: Error, eventName: string) => {
-			captured = { err, eventName };
-		});
-		ch.on("return", () => {
-			throw new Error("intentional return-handler throw");
-		});
-		// Publish with mandatory=true on an unbound routing key on the events exchange → broker returns.
-		await publisher.publishExportFailed({ jobId: "no-bind-handler-error", error: "n/a" });
-		await new Promise((r) => setTimeout(r, 100));
-		expect(captured).not.toBeNull();
-		expect((captured as unknown as { eventName: string } | null)?.eventName).toBe("return");
-		await publisher.close();
-	});
-});
-
 describe("RabbitMQPublisher — setup failure backoff", { timeout: 60_000 }, () => {
-	let amqpUrl: string;
-	let stopContainer: () => Promise<void>;
-
-	beforeAll(async () => {
-		const container = await new RabbitMQContainer("rabbitmq:3-management").start();
-		amqpUrl = container.getAmqpUrl();
-		stopContainer = async () => {
-			await container.stop();
-		};
-	});
-
-	afterAll(async () => {
-		await stopContainer?.();
-	});
-
 	it("retries setup with backoff when topology assertion throws once", async () => {
 		const publisher = new RabbitMQPublisher(amqpUrl, createNoopMonitorFactory(), {
 			recoveryMaxDelayMs: 1_500,

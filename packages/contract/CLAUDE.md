@@ -4,7 +4,7 @@
 >
 > **Keep this file updated:** Update whenever message types, schemas, exports, or routing keys change.
 
-Published as `@video-editor/contract`. Three subpath patterns — no root barrel, no separate `mocks` exports.
+Published as `@video-editor/contract`. Four subpath buckets — no root barrel, no separate `mocks` exports.
 
 | Subpath | Purpose | Audience |
 |---|---|---|
@@ -23,8 +23,7 @@ Published as `@video-editor/contract`. Three subpath patterns — no root barrel
 pnpm build        # tsc -p tsconfig.json (required before test)
 pnpm test         # pnpm build && node --test dist/**/*.test.js
 pnpm type-check   # tsc -p tsconfig.json --noEmit
-pnpm lint         # biome check .
-pnpm format       # biome format . --write
+pnpm lint         # biome check . --write
 ```
 
 ## Source Structure
@@ -58,7 +57,6 @@ src/
     ├── upload/{schemas,index}.ts
     ├── edit-video/{schemas,index}.ts
     ├── render/{design-payload.schema,index}.ts
-    ├── editor-export/{types,index}.ts
     └── shared/{overlay-type,time-range,video-metadata,index}.ts
 ```
 

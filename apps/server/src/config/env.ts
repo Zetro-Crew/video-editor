@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0"; // Required for amqps with self-signed certs. Should be safe since we control the certs and only use amqps for RabbitMQ connections.
+
 function boolEnv(defaultValue: boolean) {
 	return z.preprocess((val) => {
 		if (typeof val === "boolean") return val;
@@ -60,6 +62,10 @@ const apiEnvSchema = commonEnvSchema.extend({
 	CORE_BASE_URL: z.url(),
 	MOCK_VOD_BASE_URL: z.url().optional(),
 	SERVER_BASE_URL: z.string(),
+	// Optional ingress path prefix (e.g. "/api/video_editor/server") prepended to
+	// public-facing URLs the server emits (segment-proxy URLs in HLS playlists).
+	// Empty in local dev; set in environments fronted by a path-stripping reverse proxy.
+	SERVER_PUBLIC_PATH_PREFIX: z.string().default(""),
 	MAX_PREVIEW_DURATION_MS: z.coerce.number().default(3600000),
 	PREVIEW_JOB_TTL_SECONDS: z.coerce.number().default(86400),
 	S3_PREVIEW_PREFIX: z.string().default("preview"),

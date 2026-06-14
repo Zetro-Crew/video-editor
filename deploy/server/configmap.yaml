@@ -9,7 +9,7 @@ data:
   HOST: "0.0.0.0"
 
   # Core service (in-cluster). Adapter appends /channels/:id/play to this.
-  CORE_BASE_URL: "http://core:8080"
+  CORE_BASE_URL: "http://core:8080/private"
 
   # Public frontend Route URL — server uses it to build signed /editor/segment
   # URLs that the browser fetches and nginx proxies back to the server.
@@ -62,3 +62,9 @@ data:
   # If broker confirm does not arrive within this window the publish is retried,
   # and after 3 attempts the controller returns 503.
   COMMAND_PUBLISH_CONFIRM_TIMEOUT_MS: "10000"
+
+  # OTEL
+  OTEL_EXPORTER_OTLP_ENDPOINT: "http://open-telemetry-collector:4317"
+  SERVICE_NAME: "video-editor-server"
+  SERVICE_VERSION: "1.0.0"
+  LOG_LEVEL: "info" 

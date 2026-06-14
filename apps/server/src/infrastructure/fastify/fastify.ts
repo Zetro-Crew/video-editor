@@ -1,4 +1,5 @@
 import { Logger } from "@ztube/observability";
+import { HttpError } from "@ztube/observability/fastify";
 import Fastify, {
 	type FastifyInstance,
 	type FastifyRequest,
@@ -38,22 +39,30 @@ export type TypedFastify = FastifyInstance<
 	ZodTypeProvider
 >;
 
-export const createFastifyInstance = (): TypedFastify => {
+interface CreateFastifyOptions {
+	loggerInstance?: PinoLogger;
+}
+
+export const createFastifyInstance = (opts: CreateFastifyOptions = {}): TypedFastify => {
 	const app = Fastify({
-		loggerInstance: Logger.getInstance().child({ module: "Fastify" }),
+		loggerInstance: opts.loggerInstance ?? Logger.getInstance().child({ module: "Fastify" }),
+		disableRequestLogging: true, // we handle logging ourselves in the plugin
 	}).withTypeProvider<ZodTypeProvider>();
 	app.setValidatorCompiler(validatorCompiler);
 	app.setSerializerCompiler(serializerCompiler);
 
 	app.setErrorHandler((error: Error & { validation?: unknown }, _request, reply) => {
-		if ("validation" in error && error.validation) {
-			return reply.status(HttpStatus.BAD_REQUEST).send({
-				error: "Invalid payload",
-				details: error.validation,
+		if (error instanceof HttpError) {
+			return reply.status(error.statusCode).send({
+				error: error.expose ? error.message : "Internal error",
 			});
 		}
 
-		return reply.status(HttpStatus.INTERNAL_SERVER_ERROR).send({ error: error.message });
+		if ("validation" in error && error.validation) {
+			return reply.status(HttpStatus.BAD_REQUEST).send({ error: error.message });
+		}
+
+		return reply.status(HttpStatus.INTERNAL_SERVER_ERROR).send({ error: "Internal error" });
 	});
 
 	// pino child logger is structurally compatible at runtime but fails Fastify's contravariant route overloads

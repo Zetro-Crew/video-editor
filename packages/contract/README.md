@@ -96,7 +96,8 @@ import { getSignedUrlRequestSchema } from "@video-editor/contract/internal/uploa
 import { OverlayType, type TimeRange } from "@video-editor/contract/internal/shared";
 ```
 
-External consumers must not import `/internal/*`. See `docs/adr/0004-server-http-schemas-in-shared-contract-package.md`.
+> [!WARNING]
+> External consumers must not import `/internal/*`. See `docs/adr/0004-server-http-schemas-in-shared-contract-package.md`.
 
 ## Source Structure
 
@@ -129,7 +130,6 @@ src/
     ├── upload/{schemas,index}.ts
     ├── edit-video/{schemas,index}.ts
     ├── render/{design-payload.schema,index}.ts
-    ├── editor-export/{types,index}.ts
     └── shared/{overlay-type,time-range,video-metadata,index}.ts
 ```
 
@@ -139,8 +139,7 @@ src/
 pnpm build        # tsc -p tsconfig.json (required before test)
 pnpm test         # pnpm build && node --test dist/**/*.test.js
 pnpm type-check   # tsc -p tsconfig.json --noEmit
-pnpm lint         # biome check .
-pnpm format       # biome format . --write
+pnpm lint         # biome check . --write
 ```
 
 ## Dependencies

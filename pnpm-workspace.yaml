@@ -1,10 +1,12 @@
 packages:
   - "apps/**"
   - "packages/**"
+overrides:
+  '@ztube/observability': 'link:../observability-sdk'
 patchedDependencies:
   '@designcombo/frames@0.0.3': patches/@designcombo__frames@0.0.3.patch
 catalog:
-  '@biomejs/biome': 2.4.15
+  '@biomejs/biome': 2.3.10
   '@types/node': ^25.9.1
   fastify: ^5.1.0
   typescript: ^6.0.3

@@ -8,6 +8,10 @@ A full-stack, browser-based video editor built on [Remotion](https://www.remotio
 
 > **Deployment target:** Closed, air-gapped network environments. All infrastructure (MinIO, RabbitMQ, FFmpeg) is self-hosted. No public internet access is required or expected at runtime.
 
+## Documentation
+
+The `wiki/` folder mirrors the GitLab project wiki for closed-network deployments. It is hand-maintained in Hebrew; copy its contents into your `<project>.wiki.git` repo after each refresh.
+
 ## Architecture
 
 | App / Package | Description | Port |
@@ -18,7 +22,6 @@ A full-stack, browser-based video editor built on [Remotion](https://www.remotio
 | `apps/core-mock` | Dev-only Fastify mock of the upstream Core service | 8002 |
 | `apps/mock-vod` | Dev-only Fastify mock of the upstream VOD service | 5050 |
 | `packages/contract` | `@video-editor/contract` — Zod schemas/types. Subpaths: `/iframe/from-parent`, `/iframe/to-parent`, `/events`, `/internal/*` | — |
-| `packages/observability` | `@ztube/observability` — OpenTelemetry tracing, metrics, structured logging | — |
 
 ## Prerequisites
 

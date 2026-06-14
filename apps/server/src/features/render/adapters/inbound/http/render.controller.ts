@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { savedMediaPayloadSchema } from "@video-editor/contract/events";
 import type { RenderRequest } from "@video-editor/contract/internal/edit-video";
 import { designPayloadSchema } from "@video-editor/contract/internal/render";
+import { HttpError } from "@ztube/observability/fastify";
 import type { FastifyPluginAsync, FastifyReply, FastifyRequest } from "fastify";
 import type { z } from "zod";
 import { PublishExhaustedError } from "../../../../../infrastructure/messaging/RabbitMQPublisher.ts";
@@ -50,9 +51,11 @@ export const renderController: FastifyPluginAsync<RenderControllerOptions> = asy
 			const issue = parseResult.error.issues[0];
 			const path = issue?.path.join(".") ?? "";
 			const message = issue?.message ?? "Invalid design payload";
-			return reply
-				.status(HttpStatus.BAD_REQUEST)
-				.send({ error: path ? `${path}: ${message}` : message });
+			throw new HttpError({
+				statusCode: HttpStatus.BAD_REQUEST,
+				message: path ? `${path}: ${message}` : message,
+				details: parseResult.error.issues[0],
+			});
 		}
 
 		const jobId = randomUUID();
@@ -69,9 +72,11 @@ export const renderController: FastifyPluginAsync<RenderControllerOptions> = asy
 				const issue = saveMetadataParse.error.issues[0];
 				const path = issue?.path.join(".") ?? "";
 				const message = issue?.message ?? "Invalid saveMetadata";
-				return reply
-					.status(HttpStatus.BAD_REQUEST)
-					.send({ error: path ? `saveMetadata.${path}: ${message}` : message });
+				throw new HttpError({
+					statusCode: HttpStatus.BAD_REQUEST,
+					message: path ? `saveMetadata.${path}: ${message}` : message,
+					details: saveMetadataParse.error.issues[0],
+				});
 			}
 			saveMetadata = saveMetadataParse.data;
 		}
@@ -95,10 +100,13 @@ export const renderController: FastifyPluginAsync<RenderControllerOptions> = asy
 			});
 		} catch (err) {
 			if (err instanceof PublishExhaustedError) {
-				req.log.error({ jobId, err }, "[render] enqueue failed — broker unavailable");
-				return reply
-					.status(HttpStatus.SERVICE_UNAVAILABLE)
-					.send({ error: "render queue unavailable" });
+				throw new HttpError({
+					statusCode: HttpStatus.SERVICE_UNAVAILABLE,
+					message: "render queue unavailable",
+					expose: true,
+					cause: err,
+					details: { jobId },
+				});
 			}
 			throw err;
 		}

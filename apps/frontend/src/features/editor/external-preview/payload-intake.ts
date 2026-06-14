@@ -73,6 +73,7 @@ export const buildFallbackTrackItem = (
 	metadata: ExternalMetadata,
 	src: string,
 	sourceOffsetMs: number,
+	dimensions?: { width: number; height: number },
 ): ITrackItem => {
 	if (payload.kind === "audio-range") {
 		return {
@@ -116,6 +117,7 @@ export const buildFallbackTrackItem = (
 		duration: payload.durationMs,
 		details: {
 			src,
+			...(dimensions ?? {}),
 		},
 		metadata: {
 			previewUrl: payload.posterSrc || "",
@@ -263,7 +265,18 @@ export const addPreviewItemToEditor = async (
 			insertAtMs,
 			payload,
 			metadata,
-			buildFallbackTrackItem(itemId, insertAtMs, payload, metadata, hlsSrc, resolvedSourceOffsetMs),
+			buildFallbackTrackItem(
+				itemId,
+				insertAtMs,
+				payload,
+				metadata,
+				hlsSrc,
+				resolvedSourceOffsetMs,
+				{
+					width: videoWidth,
+					height: videoHeight,
+				},
+			),
 			resolvedSourceOffsetMs,
 		);
 		return itemId;

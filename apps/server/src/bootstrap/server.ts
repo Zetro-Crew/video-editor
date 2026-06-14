@@ -19,7 +19,9 @@ export class Server {
 	}
 
 	async start(): Promise<void> {
-		this.app.get("/health", async () => ({ status: "ok" }));
+		this.app.get("/health", { config: { logHttp: false } }, async () => ({
+			status: "ok",
+		}));
 
 		await this.app.register(cors, { origin: true });
 		await this.app.register(fastifyLoggingPlugin, {

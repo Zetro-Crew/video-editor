@@ -3,7 +3,7 @@ const DEFAULT_FRAMERATE = 60;
 export const FRAME_INTERVAL = 1000 / DEFAULT_FRAMERATE;
 export const TIMELINE_OFFSET_CANVAS_LEFT = 16;
 export const TIMELINE_OFFSET_CANVAS_RIGHT = 80;
-export const SECONDARY_FONT_URL = "/fonts/Geist-SemiBold.ttf";
+export const SECONDARY_FONT_URL = `${import.meta.env.BASE_URL}fonts/Geist-SemiBold.ttf`;
 export const SECONDARY_FONT = "geist-regular";
 
 export const SMALL_FONT_SIZE = 12;

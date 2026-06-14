@@ -3,8 +3,13 @@ kind: Deployment
 metadata:
   name: video-editor-server
   namespace: # TODO: your-ocp-namespace
+  annotations:
+    collectord.io/index: #TODO
+    collectord.io/output: 'splunk::ztube'
+
   labels:
-    app: video-editor-server
+    app: ztube
+    service: video-editor-server
 spec:
   replicas: 2
   revisionHistoryLimit: 10
@@ -16,11 +21,13 @@ spec:
       maxSurge: 50%
   selector:
     matchLabels:
-      app: video-editor-server
+      app: ztube
+      service: video-editor-server
   template:
     metadata:
       labels:
-        app: video-editor-server
+        app: ztube
+        service: video-editor-server
     spec:
       # Long-running renders (TRANSCODE_TIMEOUT_MS=2h) cannot finish within k8s
       # grace; this just gives in-flight HTTP requests + LB endpoint removal
@@ -35,7 +42,7 @@ spec:
               podAffinityTerm:
                 labelSelector:
                   matchLabels:
-                    app: video-editor-server
+                    service: video-editor-server
                 topologyKey: kubernetes.io/hostname
       topologySpreadConstraints:
         - maxSkew: 1
@@ -43,7 +50,7 @@ spec:
           whenUnsatisfiable: ScheduleAnyway
           labelSelector:
             matchLabels:
-              app: video-editor-server
+              service: video-editor-server
       volumes:
         - name: rabbit-values
           secret:
@@ -62,7 +69,7 @@ spec:
                 path: bundle.pem
             defaultMode: 0400
       containers:
-        - name: server
+        - name: video-editor-server
           image: # TODO: your-registry.internal/video-editor-server:latest
           ports:
             - containerPort: 8080

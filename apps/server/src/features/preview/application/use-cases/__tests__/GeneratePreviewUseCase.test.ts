@@ -27,6 +27,7 @@ const SEG_START = 1_778_412_270_000;
 function makeConfig(): ApiEnvConfig {
 	return {
 		SERVER_BASE_URL: "http://server.local",
+		SERVER_PUBLIC_PATH_PREFIX: "",
 		MAX_PREVIEW_DURATION_MS: 3_600_000,
 		PREVIEW_JOB_TTL_SECONDS: 86400,
 		S3_PREVIEW_PREFIX: "preview",
