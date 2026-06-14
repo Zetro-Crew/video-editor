@@ -1,9 +1,12 @@
 import { dispatch } from "@designcombo/events";
 import type StateManager from "@designcombo/state";
 import { HISTORY_REDO, HISTORY_UNDO } from "@designcombo/state";
+import { generateId } from "@designcombo/timeline";
+import type { IDesign } from "@designcombo/types";
 import { debounce } from "lodash-es";
 import { Frame, Keyboard } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
+import { toast } from "sonner";
 import { Icons } from "@/components/shared/icons";
 
 import AutosizeInput from "@/components/ui/autosize-input";
@@ -15,9 +18,62 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import useCompositionStore from "@/features/editor/store/use-composition-store";
 import { useIsLargeScreen, useIsSmallScreen } from "@/hooks/use-media-query";
 import DownloadProgressModal from "./download-progress-modal";
+import { clearProject } from "./external-preview/payload-intake";
+import { useDownloadState } from "./store/use-download-state";
 
 const MIN_CANVAS_SIZE = 64;
 const MAX_CANVAS_SIZE = 4096;
+
+const ProjectActionsBar = ({ stateManager }: { stateManager: StateManager }) => {
+	const { actions } = useDownloadState();
+	const { size } = useCompositionStore();
+
+	const handleExport = () => {
+		const data: IDesign = {
+			id: generateId(),
+			...stateManager.toJSON(),
+			size,
+		};
+
+		const invalidCount = Object.values(
+			(data.trackItemsMap as Record<string, unknown>) ?? {},
+		).filter(
+			(item) =>
+				!Number.isFinite((item as { display?: { from?: number; to?: number } }).display?.from) ||
+				!Number.isFinite((item as { display?: { from?: number; to?: number } }).display?.to),
+		).length;
+
+		if (invalidCount > 0) {
+			toast.error(
+				`${invalidCount} פריט${invalidCount > 1 ? "ים" : ""} עם תזמון שגוי — הסר והוסף מחדש לפני הייצוא.`,
+			);
+			return;
+		}
+
+		actions.setPayload(data);
+		actions.setDisplayProgressModal(true);
+	};
+
+	return (
+		<>
+			<div aria-hidden="true" className="self-stretch w-px bg-border/60 mx-1" />
+						<button
+				type="button"
+				onClick={() => clearProject(stateManager)}
+				className="rounded-full border border-border px-4 py-1.5 text-xs font-medium text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors"
+			>
+				איפוס סרטון
+			</button>
+			<button
+				type="button"
+				onClick={handleExport}
+				className="rounded-full bg-primary px-4 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
+			>
+				הפקת סרטון
+			</button>
+		</>
+	);
+};
 
 export default function Navbar({
 	stateManager,
@@ -178,6 +234,7 @@ export default function Navbar({
 						onCanvasHeightChange={setCanvasHeight}
 						onCanvasWidthChange={setCanvasWidth}
 					/>
+					<ProjectActionsBar stateManager={stateManager} />
 				</div>
 			</div>
 		</div>

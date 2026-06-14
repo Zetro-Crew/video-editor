@@ -1,12 +1,9 @@
 import type StateManager from "@designcombo/state";
-import { calculateTimelineWidth, generateId, unitsToTimeMs } from "@designcombo/timeline";
-import type { IDesign } from "@designcombo/types";
+import { calculateTimelineWidth, unitsToTimeMs } from "@designcombo/timeline";
 import { useTheme } from "next-themes";
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
-import { toast } from "sonner";
 import { TIMELINE_OFFSET_CANVAS_LEFT, TIMELINE_OFFSET_CANVAS_RIGHT } from "../constants/constants";
-import { clearProject } from "../external-preview/payload-intake";
 import useCanvasTimeline from "../hooks/use-canvas-timeline";
 import { useCurrentPlayerFrame } from "../hooks/use-current-frame";
 import usePlayheadAutoScroll from "../hooks/use-playhead-auto-scroll";
@@ -15,7 +12,6 @@ import { useStateManagerEvents } from "../hooks/use-state-manager-events";
 import { EDGE_ZONE_WIDTH, useTimelineEdgeScroll } from "../hooks/use-timeline-edge-scroll";
 import { useTimelineOffsetX } from "../hooks/use-timeline-offset";
 import useCompositionStore from "../store/use-composition-store";
-import { useDownloadState } from "../store/use-download-state";
 import useEditorRefs from "../store/use-editor-refs";
 import useTimelineViewStore from "../store/use-timeline-view-store";
 import Header from "./header";
@@ -38,56 +34,6 @@ import Playhead from "./playhead";
 import Ruler from "./ruler";
 
 const SCROLLBAR_HEIGHT = 12; // px — height of the HTML horizontal scrollbar track
-
-const TimelineBottomBar = ({ stateManager }: { stateManager: StateManager }) => {
-	const { actions } = useDownloadState();
-	const { size } = useCompositionStore();
-
-	const handleExport = () => {
-		const data: IDesign = {
-			id: generateId(),
-			...stateManager.toJSON(),
-			size,
-		};
-
-		const invalidCount = Object.values(
-			(data.trackItemsMap as Record<string, unknown>) ?? {},
-		).filter(
-			(item) =>
-				!Number.isFinite((item as { display?: { from?: number; to?: number } }).display?.from) ||
-				!Number.isFinite((item as { display?: { from?: number; to?: number } }).display?.to),
-		).length;
-
-		if (invalidCount > 0) {
-			toast.error(
-				`${invalidCount} פריט${invalidCount > 1 ? "ים" : ""} עם תזמון שגוי — הסר והוסף מחדש לפני הייצוא.`,
-			);
-			return;
-		}
-
-		actions.setPayload(data);
-		actions.setDisplayProgressModal(true);
-	};
-
-	return (
-		<div className="flex items-center justify-end gap-2 px-3 py-2 bg-card">
-			<button
-				type="button"
-				onClick={() => clearProject(stateManager)}
-				className="rounded-full border border-border px-4 py-1.5 text-xs font-medium text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors"
-			>
-				איפוס סרטון
-			</button>
-			<button
-				type="button"
-				onClick={handleExport}
-				className="rounded-full bg-primary px-4 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
-			>
-				הפקת סרטון
-			</button>
-		</div>
-	);
-};
 
 CanvasTimeline.registerItems({
 	Text,
@@ -405,7 +351,6 @@ const Timeline = ({ stateManager }: { stateManager: StateManager }) => {
 					/>
 				</div>
 			</div>
-			<TimelineBottomBar stateManager={stateManager} />
 		</div>
 	);
 };
