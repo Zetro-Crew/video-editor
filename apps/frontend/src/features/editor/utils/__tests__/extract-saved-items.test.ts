@@ -19,9 +19,24 @@ describe("extractSavedItems", () => {
 		expect(extractSavedItems({})).toEqual([]);
 	});
 
-	it("maps image item", () => {
+	it("maps image item (no metadata) by item id", () => {
 		const items = { img1: makeItem({ id: "img1", type: "image" }) };
 		expect(extractSavedItems(items)).toEqual([{ type: "image", id: "img1" }]);
+	});
+
+	it("maps stored-media image item using metadata.mediaId", () => {
+		const items = {
+			img1: makeItem({
+				id: "track-xyz",
+				type: "image",
+				metadata: {
+					externalKind: "stored-media",
+					storedMediaType: "Image",
+					mediaId: "img-001",
+				},
+			}),
+		};
+		expect(extractSavedItems(items)).toEqual([{ type: "image", id: "img-001" }]);
 	});
 
 	it("maps recording-range item using channelId", () => {
@@ -89,10 +104,29 @@ describe("extractSavedItems", () => {
 			v1: makeItem({
 				id: "v1",
 				type: "video",
-				metadata: { externalKind: "media", mediaId: "media-42" },
+				metadata: {
+					externalKind: "stored-media",
+					storedMediaType: "ClipVideo",
+					mediaId: "media-42",
+				},
 			}),
 		};
 		expect(extractSavedItems(items)).toEqual([{ type: "clip", id: "media-42" }]);
+	});
+
+	it("maps uploaded video by mediaId (storedMediaType=UploadedVideo)", () => {
+		const items = {
+			v1: makeItem({
+				id: "v1",
+				type: "video",
+				metadata: {
+					externalKind: "stored-media",
+					storedMediaType: "UploadedVideo",
+					mediaId: "up-7",
+				},
+			}),
+		};
+		expect(extractSavedItems(items)).toEqual([{ type: "uploaded", id: "up-7" }]);
 	});
 
 	it("maps native video clip (no externalKind) by item id", () => {
@@ -120,7 +154,7 @@ describe("extractSavedItems", () => {
 			v2: makeItem({
 				id: "v2",
 				type: "video",
-				metadata: { externalKind: "media", mediaId: "media-1" },
+				metadata: { externalKind: "stored-media", mediaId: "media-1" },
 			}),
 		};
 		const result = extractSavedItems(items);
@@ -168,7 +202,7 @@ describe("extractSavedItems", () => {
 			v_clip: makeItem({
 				id: "v_clip",
 				type: "video",
-				metadata: { externalKind: "media", mediaId: "media-9" },
+				metadata: { externalKind: "stored-media", mediaId: "media-9" },
 			}),
 		};
 		const result = extractSavedItems(items);

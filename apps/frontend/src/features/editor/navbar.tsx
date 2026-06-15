@@ -119,6 +119,15 @@ export default function Navbar({
 		setCanvasHeight(String(size.height));
 	}, [size.width, size.height]);
 
+	useEffect(() => {
+		const handleFlip = () => {
+			setTitle("RoniCut");
+			setProjectName("RoniCut");
+		};
+		window.addEventListener("__roni-cut-flip", handleFlip);
+		return () => window.removeEventListener("__roni-cut-flip", handleFlip);
+	}, [setProjectName]);
+
 	const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
 		setTitle(e.target.value);
 	};

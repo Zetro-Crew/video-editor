@@ -27,6 +27,7 @@ Per-app guidance:
 - [apps/frontend/CLAUDE.md](apps/frontend/CLAUDE.md)
 - [apps/server/CLAUDE.md](apps/server/CLAUDE.md)
 - [apps/iframe-demo/CLAUDE.md](apps/iframe-demo/CLAUDE.md)
+- [apps/core-mock/CLAUDE.md](apps/core-mock/CLAUDE.md)
 - [apps/mock-vod/CLAUDE.md](apps/mock-vod/CLAUDE.md)
 - [packages/contract/CLAUDE.md](packages/contract/CLAUDE.md)
 
@@ -117,7 +118,8 @@ Routes (API):
 | POST | `/render` | render — returns 202 `{ id }`; 503 if broker unavailable. No GET endpoint — clients track lifecycle via AMQP `export.*` events |
 | POST | `/editor/preview-source` | preview |
 | GET | `/editor/segment` | preview |
-| GET | `/editor/demo-assets/:filename` | preview |
+| GET | `/docs` | Swagger UI for the public REST API |
+| GET | `/openapi.json` | OpenAPI 3.0 spec consumed by `/docs`. `servers[0].url` = `${SERVER_BASE_URL}${SERVER_PUBLIC_PATH_PREFIX}`. `/editor/segment` and `/health` are hidden from the spec. |
 
 Worker manifests live in `deploy/worker/`. See [docs/adr/0005-render-worker-deployment.md](docs/adr/0005-render-worker-deployment.md).
 
@@ -125,17 +127,22 @@ Worker manifests live in `deploy/worker/`. See [docs/adr/0005-render-worker-depl
 
 ### Iframe Demo (`apps/iframe-demo`)
 
-Angular 21 standalone app on port 8080. Embeds `/editor/embed` in a floating, draggable/resizable iframe. Provides a control panel to send `EDITOR_ADD_PREVIEW_ITEM` and `EDITOR_CLEAR_PROJECT` messages and displays responses. Primary harness for testing the iframe integration.
+Angular 21 standalone app on port 8080. Embeds `/editor/embed` in a floating, draggable/resizable iframe. Provides a control panel to send `EDITOR_ADD_PREVIEW_ITEM` (recording-range form), `EDITOR_ADD_MEDIA { mediaId }` (id text input + preset chips backed by `apps/core-mock`), and `EDITOR_CLEAR_PROJECT`; displays responses. Primary harness for testing the iframe integration.
 
 → See [apps/iframe-demo/CLAUDE.md](apps/iframe-demo/CLAUDE.md) for full detail.
 
 ### Package: contract (`packages/contract`)
 
-Published as `@video-editor/contract`. Two sub-paths:
-- `/iframe` — Zod schemas + types for the editor↔parent postMessage protocol.
-- `/events` — versioned `Envelope<T>` + Zod schemas for AMQP events published to the `video-editor` topic exchange (`export.started`, `export.completed`, `export.failed`). External teams bind queues against this exchange and import schemas from `/events` for consumer-side validation.
+Published as `@video-editor/contract`. **No root barrel** — every caller imports a subpath so the bucket they touch is explicit. Four subpath buckets:
 
-Root export (`@video-editor/contract`) re-exports `iframe` + shared `SavedMediaItem`/`SavedMediaPayload`.
+| Subpath | Purpose |
+|---|---|
+| `/iframe/from-parent` | Parent → editor postMessage Zod schemas + types |
+| `/iframe/to-parent` | Editor → parent postMessage Zod schemas + types |
+| `/events` | Versioned `Envelope<T>` + Zod schemas for AMQP events on the `video-editor` topic exchange (`export.started`, `export.completed`, `export.failed`). External teams bind queues here and import schemas for consumer-side validation |
+| `/internal/<feature>` | Server-owner HTTP API schemas (`upload`, `edit-video`, `render`, `shared`). **`apps/server` only** — external consumers must not import. See [docs/adr/0004-server-http-schemas-in-shared-contract-package.md](docs/adr/0004-server-http-schemas-in-shared-contract-package.md) |
+
+Current major **`0.2.0`** (bumped when the from-parent union dropped `imagePayloadSchema` + `mediaPayloadSchema` for the new top-level `EDITOR_ADD_MEDIA` message — see [docs/adr/0007-stored-media-id-only-intake.md](docs/adr/0007-stored-media-id-only-intake.md)). `SavedMediaItem` / `SavedMediaPayload` live in `src/shared/saved-media.ts` and are re-exported from both `/iframe/to-parent` and `/events`.
 
 → See [packages/contract/CLAUDE.md](packages/contract/CLAUDE.md) for full detail and [packages/contract/src/events/README.md](packages/contract/src/events/README.md) for the consumer onboarding doc.
 

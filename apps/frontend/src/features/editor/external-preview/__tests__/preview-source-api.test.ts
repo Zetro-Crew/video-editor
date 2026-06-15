@@ -17,9 +17,6 @@ describe("resolvePreviewSource", () => {
 				JSON.stringify({
 					type: "hls",
 					playlistUrl: "x",
-					channelId: "ch",
-					requestedStartMs: 0,
-					requestedEndMs: 1000,
 					durationMs: 1000,
 					sourceOffsetMs: 0,
 					width: 1920,
@@ -29,7 +26,12 @@ describe("resolvePreviewSource", () => {
 			),
 		);
 
-		await resolvePreviewSource("ch", 0, 1000);
+		await resolvePreviewSource({
+			type: "channel-range",
+			channelId: "ch",
+			startTimeMs: 0,
+			endTimeMs: 1000,
+		});
 
 		expect(fetchSpy).toHaveBeenCalledTimes(1);
 		const [url, init] = fetchSpy.mock.calls[0] as [string, RequestInit];
@@ -42,10 +44,44 @@ describe("resolvePreviewSource", () => {
 		});
 	});
 
+	it("POSTs JSON to /editor/preview-source with media-id body", async () => {
+		const fetchSpy = globalThis.fetch as unknown as ReturnType<typeof vi.fn>;
+		fetchSpy.mockResolvedValueOnce(
+			new Response(
+				JSON.stringify({
+					type: "hls",
+					playlistUrl: "x",
+					durationMs: 60000,
+					sourceOffsetMs: 0,
+					width: 1280,
+					height: 1024,
+					mediaCreatedAtMs: 1_700_000_000_000,
+				}),
+				{ status: 200, headers: { "Content-Type": "application/json" } },
+			),
+		);
+
+		const result = await resolvePreviewSource({ type: "media-id", mediaId: "clip-001" });
+
+		const [, init] = fetchSpy.mock.calls[0] as [string, RequestInit];
+		expect(JSON.parse(init.body as string)).toEqual({
+			source: { type: "media-id", mediaId: "clip-001" },
+		});
+		expect(result.durationMs).toBe(60000);
+		expect(result.mediaCreatedAtMs).toBe(1_700_000_000_000);
+	});
+
 	it("throws when fetch returns non-ok response", async () => {
 		const fetchSpy = globalThis.fetch as unknown as ReturnType<typeof vi.fn>;
 		fetchSpy.mockResolvedValueOnce(new Response("nope", { status: 500 }));
 
-		await expect(resolvePreviewSource("ch", 0, 1000)).rejects.toThrow(/500/);
+		await expect(
+			resolvePreviewSource({
+				type: "channel-range",
+				channelId: "ch",
+				startTimeMs: 0,
+				endTimeMs: 1000,
+			}),
+		).rejects.toThrow(/500/);
 	});
 });

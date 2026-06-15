@@ -1,4 +1,5 @@
 import type {
+	MediaPlayResult,
 	PreviewPlayResult,
 	PreviewSourcePort,
 } from "../../../application/ports/outbound/PreviewSourcePort.ts";
@@ -7,6 +8,11 @@ interface ChannelPlayResponse {
 	url: string;
 	timeRanges: number[][];
 	token: string;
+}
+
+interface VideoPlayResponse {
+	url: string;
+	timeRanges: number[][];
 }
 
 const FETCH_TIMEOUT_MS = 10_000;
@@ -72,9 +78,57 @@ export class HttpPreviewSourceAdapter implements PreviewSourcePort {
 		};
 	}
 
-	async fetchManifest(mpdUrl: string, token: string): Promise<string> {
+	async playMedia(mediaId: string): Promise<MediaPlayResult> {
+		const playUrl = `${this.coreBaseUrl}/videos/${encodeURIComponent(mediaId)}/play`;
+		const res = await fetch(playUrl, {
+			headers: this.cookieHeader(),
+			signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+		});
+		if (res.status === 404) {
+			throw new RangeError(`Video play API returned 404 for media ${mediaId}`);
+		}
+		if (!res.ok) {
+			throw new Error(`Video play API returned ${res.status} for media ${mediaId}`);
+		}
+		const play = (await res.json()) as VideoPlayResponse;
+
+		if (!Array.isArray(play.timeRanges) || play.timeRanges.length !== 1) {
+			throw new Error(
+				`multi-range videos not supported (got ${play.timeRanges?.length ?? 0} ranges)`,
+			);
+		}
+		const [range] = play.timeRanges;
+		if (
+			!Array.isArray(range) ||
+			range.length !== 2 ||
+			typeof range[0] !== "number" ||
+			typeof range[1] !== "number" ||
+			!Number.isFinite(range[0]) ||
+			!Number.isFinite(range[1])
+		) {
+			throw new Error("Video play API returned malformed timeRanges entry");
+		}
+		if (range[1] <= range[0]) {
+			throw new Error("Video play API timeRanges[0][1] must be > timeRanges[0][0]");
+		}
+		if (typeof play.url !== "string" || !play.url) {
+			throw new Error("Video play API returned no url");
+		}
+
+		const mpdUrl = new URL(play.url, this.serverBaseUrl).toString();
+
+		return {
+			mpdUrl,
+			mediaCreatedAtMs: range[0],
+			durationMs: range[1] - range[0],
+		};
+	}
+
+	async fetchManifest(mpdUrl: string, token?: string): Promise<string> {
+		const headers: Record<string, string> = { ...this.cookieHeader() };
+		if (token) headers["vod-token"] = token;
 		const res = await fetch(mpdUrl, {
-			headers: { "vod-token": token, ...this.cookieHeader() },
+			headers,
 			signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
 		});
 		if (!res.ok) {

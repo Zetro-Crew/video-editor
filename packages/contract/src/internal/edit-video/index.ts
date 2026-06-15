@@ -4,7 +4,6 @@ export type {
 	ImageOverlay,
 	Overlay,
 	RectangleOverlay,
-	RenderRequest,
 	ShapeOverlay,
 	TextOverlay,
 	VideoOverlay,
@@ -13,7 +12,6 @@ export type {
 export {
 	audioSourceSchema,
 	circleOverlaySchema,
-	editVideoRequestSchema,
 	imageOverlaySchema,
 	overlaySchema,
 	rectangleOverlaySchema,

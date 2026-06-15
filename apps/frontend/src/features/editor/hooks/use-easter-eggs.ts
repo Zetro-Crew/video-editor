@@ -251,6 +251,21 @@ html.__barbie * {
 }
 `;
 
+const FLIP_DURATION_MS = 700;
+
+const FLIP_STYLE = `
+@keyframes __roniCutFlip {
+  0%   { transform: rotateY(0deg); }
+  100% { transform: rotateY(360deg); }
+}
+.__roni-cut-flipping {
+  animation: __roniCutFlip ${FLIP_DURATION_MS}ms ease-in-out forwards;
+  transform-style: preserve-3d;
+  backface-visibility: hidden;
+  perspective: 1000px;
+}
+`;
+
 const GUMMY_STYLE = `
 @keyframes __gummy-pop {
   0%   { transform: scale(0) rotate(-180deg); opacity: 0; }
@@ -1020,9 +1035,32 @@ export default function useEasterEggs(): void {
 
 		// ────────────────────────────────────────────────────────────────────────
 
+		let flipSwapTimer: ReturnType<typeof setTimeout> | null = null;
+
+		function triggerRoniCutFlip(target: HTMLElement): void {
+			if (target.classList.contains("__roni-cut-flipping")) return;
+			if (!document.getElementById("__flip_style")) {
+				injectStyle("__flip_style", FLIP_STYLE);
+			}
+			target.classList.add("__roni-cut-flipping");
+			if (flipSwapTimer !== null) clearTimeout(flipSwapTimer);
+			flipSwapTimer = setTimeout(() => {
+				flipSwapTimer = null;
+				window.dispatchEvent(new CustomEvent("__roni-cut-flip"));
+			}, FLIP_DURATION_MS / 2);
+			target.addEventListener(
+				"animationend",
+				() => {
+					target.classList.remove("__roni-cut-flipping");
+				},
+				{ once: true },
+			);
+		}
+
 		function onDocClick(e: MouseEvent): void {
 			const target = e.target as HTMLElement;
-			if (!target.closest("[data-roni-cut]")) return;
+			const wrapper = target.closest("[data-roni-cut]") as HTMLElement | null;
+			if (!wrapper) return;
 			const now = Date.now();
 			sidClickTimestamps.push(now);
 			if (sidClickTimestamps.length > SID_CLICK_COUNT) sidClickTimestamps.shift();
@@ -1032,6 +1070,7 @@ export default function useEasterEggs(): void {
 			) {
 				sidClickTimestamps.length = 0;
 				showSid();
+				triggerRoniCutFlip(wrapper);
 			}
 		}
 
@@ -1122,6 +1161,8 @@ export default function useEasterEggs(): void {
 			removeEl("__barbie_sparkles");
 			closeGummy();
 			if (gummyLongPressTimer !== null) clearTimeout(gummyLongPressTimer);
+			if (flipSwapTimer !== null) clearTimeout(flipSwapTimer);
+			removeEl("__flip_style");
 		};
 	}, []);
 }

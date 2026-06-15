@@ -13,6 +13,9 @@ The real Core service is unreachable from a dev box (closed network). This mock 
 | GET | `/private/users/me` | Returns a hard-coded user identity |
 | GET | `/private/media/clip/managed-virtual-channels` | Returns a hard-coded channel list |
 | GET | `/private/channels/:channelId/play?start&end` | Mints a `vod-token`, registers it with `apps/mock-vod` over `POST /__internal/register-token`, and returns `{ url, timeRanges, token }` with `url` pointing at mock-vod |
+| GET | `/private/storage/:id/image` | Serves a bundled jpg fixture for known ids (`img-001`/`img-002`/`img-003`/`screenshot-001`), 404 otherwise. Bytes live on disk under `fixtures/images/`; loader in `src/fixtures/images.ts`. |
+| GET | `/private/storage/:id/clip` | Serves a 15s 1280×720 H.264/AAC fragmented mp4 (`testsrc2` + DEMO CLIP overlay + 440 Hz tone) for id `demo-clip-001`, 404 otherwise. Bytes live at `fixtures/clip/demo-clip-001.mp4`; loader in `src/fixtures/clip.ts`. |
+| GET | `/private/storage/:id/mpd` and segment paths | Per-id on-disk DASH bundle under `fixtures/dash/<id>/` (manifest + multi-representation init + segments). Two distinct fixtures: `demo-clip-001` (`testsrc2` + 440 Hz) and `uploaded-001` (`smptehdbars` + 880 Hz). Loader in `src/fixtures/dash.ts`. |
 
 ## Cross-service trust
 

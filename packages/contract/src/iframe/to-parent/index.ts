@@ -8,6 +8,7 @@ export {
 	createPreviewItemAddedMessage,
 	createPreviewItemRejectedMessage,
 	createProjectClearedMessage,
+	type PreviewItemCorrelation,
 } from "./helpers.js";
 export type {
 	EditorMediaSavedMessage,

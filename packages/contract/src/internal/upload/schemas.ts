@@ -1,8 +1,5 @@
 import { z } from "zod";
-
-const errorResponseSchema = z.object({
-	error: z.string(),
-});
+import { errorResponseSchema } from "../shared/error-response.js";
 
 export const getSignedUrlBodySchema = z.object({
 	filename: z.string().min(1),
@@ -24,6 +21,7 @@ export const getSignedUrlRequestSchema = {
 	response: {
 		200: getSignedUrlResponseSchema,
 		400: errorResponseSchema,
+		413: errorResponseSchema,
 		500: errorResponseSchema,
 	},
 };

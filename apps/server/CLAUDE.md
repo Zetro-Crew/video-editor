@@ -71,7 +71,13 @@ Domain/infra error types (`UploadTooLargeError`, `PublishExhaustedError`, `Inval
 
 ## Features & Routes
 
-Plus `GET /health` — returns `{ status: "ok" }`, registered directly in `Server.start()` (used by k8s liveness probe).
+Plus `GET /health` — returns `{ status: "ok" }`, registered directly in `Server.start()` (used by k8s liveness probe). Hidden from OpenAPI via `schema: { hide: true }`.
+
+### docs (OpenAPI)
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/docs` | Swagger UI for the public REST API. `@fastify/swagger-ui` + `@fastify/swagger` registered in `Server.start()`, transformed by `fastify-type-provider-zod`'s `jsonSchemaTransform`. |
+| GET | `/openapi.json` | OpenAPI 3.0 spec served via `app.swagger()`. `servers[0].url` = `${SERVER_BASE_URL}${SERVER_PUBLIC_PATH_PREFIX}` so "Try it out" works both locally (`http://localhost:4001`) and behind the OpenShift route. `/editor/segment` and `/health` declare `schema: { hide: true }` so they validate but do not appear in the UI. |
 
 ### upload
 | Method | Path | Description |
@@ -94,10 +100,10 @@ FFmpeg source processors (HLS, DASH, image, audio): `src/infrastructure/ffmpeg/s
 ### preview
 | Method | Path | Description |
 |--------|------|-------------|
-| POST | `/editor/preview-source` | Generate preview from MPD/HLS source. Calls Core's `/private/channels/:id/play`, fetches the MPD from the returned URL with `vod-token`, builds an HLS playlist, stores it, returns the signed playlist URL |
-| GET | `/editor/segment` | Proxy HLS segment — injects `vod-token` header into the upstream fetch (browsers cannot do it for HLS) |
+| POST | `/editor/preview-source` | Generate preview from a discriminated source (`GeneratePreviewSource` in `src/features/preview/application/use-cases/GeneratePreviewUseCase.ts`): `channel-range` → calls Core `/private/channels/:id/play`, fetches MPD with `vod-token`; `media-id` → calls Core `/private/videos/:id/play` (no `vod-token` minted — Core serves segments under the session `ztube-token` cookie), fetches MPD under cookie auth only. Both branches assemble an HLS playlist, store it, return the signed playlist URL |
+| GET | `/editor/segment` | Proxy HLS segment. URL carries a `srcKind` query (`channel-range` \| `media-id`) baked into the HMAC payload (`${url}\n${token}\n${srcKind}`) so the proxy knows whether to attach `vod-token` upstream — `media-id` segments are forwarded with cookies only |
 
-Controller: `src/features/preview/adapters/inbound/http/preview.controller.ts`. Outbound adapter: `src/features/preview/adapters/outbound/http/HttpPreviewSourceAdapter.ts`. Same adapter is used against real Core/VOD and against `apps/core-mock`/`apps/mock-vod`. No demo branches.
+Controller: `src/features/preview/adapters/inbound/http/preview.controller.ts`. Outbound adapter: `src/features/preview/adapters/outbound/http/HttpPreviewSourceAdapter.ts` (`play()` for channel-range, `playMedia()` for media-id). Signing: `src/features/preview/application/services/url-signing.ts`. Same adapter is used against real Core/VOD and against `apps/core-mock`/`apps/mock-vod`. No demo branches.
 
 ## Worker
 
@@ -135,7 +141,7 @@ Shutdown: SIGTERM cancels consumers, waits up to 540s for in-flight to settle, d
 - `application/ports/outbound/StoragePort.ts` — storage interface (`exists()` used by the worker for idempotency)
 - `utils/` — file, font, time utilities
 
-HTTP route schemas + their value types (`OverlayType`, `TimeRange`, `VideoMetadata`, `DesignPayload`, `RenderRequest`, upload schemas, editor-export body types) live in `@video-editor/contract/internal/<feature>`. See [ADR 0004](../../docs/adr/0004-server-http-schemas-in-shared-contract-package.md).
+HTTP route schemas + their value types (`OverlayType`, `TimeRange`, `VideoMetadata`, `DesignPayload`, upload schemas, editor-export body types) live in `@video-editor/contract/internal/<feature>`. See [ADR 0004](../../docs/adr/0004-server-http-schemas-in-shared-contract-package.md).
 
 ## Environment Variables
 

@@ -10,33 +10,55 @@ import {
 
 describe("createPreviewItemAddedMessage", () => {
 	it("builds message with itemId and requestId", () => {
-		assert.deepEqual(createPreviewItemAddedMessage("id", "req"), {
+		assert.deepEqual(createPreviewItemAddedMessage("id", { requestId: "req" }), {
 			type: "EDITOR_PREVIEW_ITEM_ADDED",
 			itemId: "id",
 			requestId: "req",
+			mediaId: undefined,
 		});
 	});
 
-	it("requestId is undefined when omitted", () => {
+	it("builds message with itemId and mediaId echo", () => {
+		assert.deepEqual(createPreviewItemAddedMessage("id", { mediaId: "media-1" }), {
+			type: "EDITOR_PREVIEW_ITEM_ADDED",
+			itemId: "id",
+			requestId: undefined,
+			mediaId: "media-1",
+		});
+	});
+
+	it("correlation fields undefined when omitted", () => {
 		const msg = createPreviewItemAddedMessage("id");
 		assert.equal(msg.requestId, undefined);
+		assert.equal(msg.mediaId, undefined);
 	});
 });
 
 describe("createPreviewItemRejectedMessage", () => {
 	it("builds message with reason and requestId", () => {
-		assert.deepEqual(createPreviewItemRejectedMessage("nope", "req"), {
+		assert.deepEqual(createPreviewItemRejectedMessage("nope", { requestId: "req" }), {
 			type: "EDITOR_PREVIEW_ITEM_REJECTED",
 			reason: "nope",
 			requestId: "req",
+			mediaId: undefined,
 		});
 	});
 
-	it("requestId is undefined when omitted", () => {
+	it("builds message with reason and mediaId echo", () => {
+		assert.deepEqual(createPreviewItemRejectedMessage("nope", { mediaId: "bogus" }), {
+			type: "EDITOR_PREVIEW_ITEM_REJECTED",
+			reason: "nope",
+			requestId: undefined,
+			mediaId: "bogus",
+		});
+	});
+
+	it("correlation fields undefined when omitted", () => {
 		assert.deepEqual(createPreviewItemRejectedMessage("reason"), {
 			type: "EDITOR_PREVIEW_ITEM_REJECTED",
 			reason: "reason",
 			requestId: undefined,
+			mediaId: undefined,
 		});
 	});
 });

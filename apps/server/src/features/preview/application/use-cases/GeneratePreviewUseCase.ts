@@ -3,30 +3,45 @@ import type { StoragePort } from "../../../../shared/application/ports/outbound/
 import type { PreviewSourcePort } from "../ports/outbound/PreviewSourcePort.ts";
 import { generateHlsPlaylist } from "../services/mpd-to-hls.service.ts";
 import { storePreviewPlaylist } from "../services/preview-job.service.ts";
-import { signUrl } from "../services/url-signing.ts";
+import { type SrcKind, signUrl } from "../services/url-signing.ts";
+
+export type GeneratePreviewSource =
+	| {
+			type: "channel-range";
+			channelId: string;
+			startTimeMs: number;
+			endTimeMs: number;
+	  }
+	| {
+			type: "media-id";
+			mediaId: string;
+	  };
 
 export interface GeneratePreviewInput {
-	channelId: string;
-	startTimeMs: number;
-	endTimeMs: number;
+	source: GeneratePreviewSource;
 	previewSource: PreviewSourcePort;
 }
 
 export interface GeneratePreviewOutput {
 	playlistUrl: string;
-	channelId: string;
-	requestedStartMs: number;
-	requestedEndMs: number;
 	durationMs: number;
 	sourceOffsetMs: number;
 	width: number;
 	height: number;
+	mediaCreatedAtMs?: number;
 }
 
-function buildProxyUrl(secret: string, proxyBase: string, token: string, target: string): string {
+function buildProxyUrl(
+	secret: string,
+	proxyBase: string,
+	token: string,
+	target: string,
+	srcKind: SrcKind,
+): string {
 	const encoded = Buffer.from(target, "utf8").toString("base64url");
-	const sig = signUrl(secret, target, token);
-	return `${proxyBase}?url=${encoded}&token=${encodeURIComponent(token)}&sig=${sig}`;
+	const sig = signUrl(secret, target, token, srcKind);
+	const tokenParam = token ? `&token=${encodeURIComponent(token)}` : "";
+	return `${proxyBase}?url=${encoded}&kind=${srcKind}${tokenParam}&sig=${sig}`;
 }
 
 function rewritePlaylistToProxy(
@@ -34,16 +49,17 @@ function rewritePlaylistToProxy(
 	token: string,
 	proxyBase: string,
 	secret: string,
+	srcKind: SrcKind,
 ): string {
 	return playlist
 		.split("\n")
 		.map((line) => {
 			if (line.startsWith("http://") || line.startsWith("https://")) {
-				return buildProxyUrl(secret, proxyBase, token, line);
+				return buildProxyUrl(secret, proxyBase, token, line, srcKind);
 			}
 			const mapMatch = line.match(/^#EXT-X-MAP:URI="(https?:\/\/[^"]+)"$/);
 			if (mapMatch) {
-				const proxied = buildProxyUrl(secret, proxyBase, token, mapMatch[1]);
+				const proxied = buildProxyUrl(secret, proxyBase, token, mapMatch[1], srcKind);
 				return `#EXT-X-MAP:URI="${proxied}"`;
 			}
 			return line;
@@ -61,15 +77,62 @@ export class GeneratePreviewUseCase {
 	}
 
 	async execute(input: GeneratePreviewInput): Promise<GeneratePreviewOutput> {
-		const { channelId, startTimeMs, endTimeMs, previewSource } = input;
+		const { source, previewSource } = input;
 
-		const { mpdUrl, token, segmentStartTimeMs } = await previewSource.play(
-			channelId,
-			startTimeMs,
-			endTimeMs,
-		);
-		const mpdXml = await previewSource.fetchManifest(mpdUrl, token);
+		const proxyBase = `${this.config.SERVER_BASE_URL}${this.config.SERVER_PUBLIC_PATH_PREFIX}/editor/segment`;
 
+		if (source.type === "channel-range") {
+			const { mpdUrl, token, segmentStartTimeMs } = await previewSource.play(
+				source.channelId,
+				source.startTimeMs,
+				source.endTimeMs,
+			);
+			const mpdXml = await previewSource.fetchManifest(mpdUrl, token);
+
+			const {
+				playlist: rawPlaylist,
+				sourceOffsetMs,
+				width,
+				height,
+			} = generateHlsPlaylist({
+				mpdXml,
+				mpdUrl,
+				segmentStartTimeMs,
+				requestedStartMs: source.startTimeMs,
+				requestedEndMs: source.endTimeMs,
+				maxDurationMs: this.config.MAX_PREVIEW_DURATION_MS,
+			});
+
+			const playlist = rewritePlaylistToProxy(
+				rawPlaylist,
+				token,
+				proxyBase,
+				this.config.PREVIEW_SIGNING_SECRET,
+				"channel-range",
+			);
+
+			const { playlistUrl } = await storePreviewPlaylist(
+				playlist,
+				this.config.S3_PREVIEW_PREFIX,
+				this.storage,
+				this.config.PREVIEW_JOB_TTL_SECONDS,
+			);
+
+			return {
+				playlistUrl,
+				durationMs: source.endTimeMs - source.startTimeMs,
+				sourceOffsetMs,
+				width,
+				height,
+			};
+		}
+
+		// source.type === "media-id"
+		const { mpdUrl, mediaCreatedAtMs, durationMs } = await previewSource.playMedia(source.mediaId);
+		const mpdXml = await previewSource.fetchManifest(mpdUrl);
+
+		const requestedStartMs = mediaCreatedAtMs;
+		const requestedEndMs = mediaCreatedAtMs + durationMs;
 		const {
 			playlist: rawPlaylist,
 			sourceOffsetMs,
@@ -78,17 +141,22 @@ export class GeneratePreviewUseCase {
 		} = generateHlsPlaylist({
 			mpdXml,
 			mpdUrl,
-			segmentStartTimeMs,
-			requestedStartMs: startTimeMs,
-			requestedEndMs: endTimeMs,
+			segmentStartTimeMs: mediaCreatedAtMs,
+			requestedStartMs,
+			requestedEndMs,
 			maxDurationMs: this.config.MAX_PREVIEW_DURATION_MS,
 		});
 
+		if (width <= 0 || height <= 0) {
+			throw new RangeError("playlist missing video dimensions");
+		}
+
 		const playlist = rewritePlaylistToProxy(
 			rawPlaylist,
-			token,
-			`${this.config.SERVER_BASE_URL}${this.config.SERVER_PUBLIC_PATH_PREFIX}/editor/segment`,
+			"",
+			proxyBase,
 			this.config.PREVIEW_SIGNING_SECRET,
+			"media-id",
 		);
 
 		const { playlistUrl } = await storePreviewPlaylist(
@@ -100,13 +168,11 @@ export class GeneratePreviewUseCase {
 
 		return {
 			playlistUrl,
-			channelId,
-			requestedStartMs: startTimeMs,
-			requestedEndMs: endTimeMs,
-			durationMs: endTimeMs - startTimeMs,
+			durationMs,
 			sourceOffsetMs,
 			width,
 			height,
+			mediaCreatedAtMs,
 		};
 	}
 }

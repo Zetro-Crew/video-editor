@@ -145,32 +145,6 @@ export const audioSourceSchema = z.object({
 	solo: z.boolean().optional(),
 });
 
-const cutSchema = z.object({
-	start: z.number().min(0),
-	end: z.number().positive(),
-});
-
-export const editVideoRequestSchema = z.object({
-	sources: z.array(sourceSchema).min(1),
-	sourceUrl: z.url().optional(),
-	trimEnd: z.number().positive(),
-	cuts: z.array(cutSchema).default([]),
-	overlays: z.array(overlaySchema).default([]),
-	audioSources: z.array(audioSourceSchema).default([]),
-	audioMixMode: z.union([z.literal("mix"), z.literal("replace")]).default("mix"),
-	format: z.union([z.literal("mp4"), z.literal("webp"), z.literal("dash")]).default("mp4"),
-	frameTimeMs: z.number().optional(),
-	jobId: z.string(),
-	cropRegion: z
-		.object({
-			x: z.number().min(0),
-			y: z.number().min(0),
-			width: z.number().min(2),
-			height: z.number().min(2),
-		})
-		.optional(),
-});
-
 export type TextOverlay = z.infer<typeof textOverlaySchema>;
 export type ImageOverlay = z.infer<typeof imageOverlaySchema>;
 export type VideoOverlay = z.infer<typeof videoOverlaySchema>;
@@ -180,4 +154,3 @@ export type ShapeOverlay = z.infer<typeof shapeOverlaySchema>;
 export type Overlay = z.infer<typeof overlaySchema>;
 export type VideoSource = z.infer<typeof sourceSchema>;
 export type AudioSource = z.infer<typeof audioSourceSchema>;
-export type RenderRequest = z.infer<typeof editVideoRequestSchema>;

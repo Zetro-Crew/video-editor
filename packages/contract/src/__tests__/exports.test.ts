@@ -7,6 +7,7 @@ describe("package.json subpath exports", () => {
 		"@video-editor/contract/iframe/to-parent",
 		"@video-editor/contract/events",
 		"@video-editor/contract/internal/edit-video",
+		"@video-editor/contract/internal/preview",
 		"@video-editor/contract/internal/render",
 		"@video-editor/contract/internal/upload",
 		"@video-editor/contract/internal/shared",

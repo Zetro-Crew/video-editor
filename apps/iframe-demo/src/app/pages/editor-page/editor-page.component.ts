@@ -19,6 +19,7 @@ import { ActivatedRoute } from "@angular/router";
 import { filter } from "rxjs";
 import { environment } from "../../../environments/environment";
 import {
+	EDITOR_ADD_MEDIA,
 	EDITOR_ADD_PREVIEW_ITEM,
 	EDITOR_CLEAR_PROJECT,
 	EDITOR_READY,
@@ -26,7 +27,7 @@ import {
 	type PreviewItemPayload,
 	type RecordingRangePayload,
 } from "../../message-types";
-import { EditorBridgeService } from "../../services/editor-bridge.service";
+import { type BridgeQueueItem, EditorBridgeService } from "../../services/editor-bridge.service";
 
 const MIN_W = 320;
 const MIN_H = 200;
@@ -38,6 +39,15 @@ type ResizeDir = "n" | "s" | "e" | "w" | "ne" | "nw" | "se" | "sw";
 
 const DEMO_CHANNEL_ID = "demo-recording";
 const DEMO_SEGMENT_START = 1778412270000;
+
+const PRESET_IDS: ReadonlyArray<{ id: string; label: string }> = [
+	{ id: "img-001", label: "img-001 · אדום" },
+	{ id: "img-002", label: "img-002 · ירוק" },
+	{ id: "img-003", label: "img-003 · כחול" },
+	{ id: "demo-clip-001", label: "demo-clip-001 · קליפ" },
+	{ id: "uploaded-001", label: "uploaded-001 · סרטון" },
+	{ id: "screenshot-001", label: "screenshot-001 · צילום" },
+];
 
 @Component({
 	selector: "app-editor-page",
@@ -59,6 +69,12 @@ export class EditorPageComponent implements OnInit, OnDestroy {
 	readonly name = signal("");
 	readonly lastResponse = signal<EditorResponse | null>(null);
 	readonly outgoingPayload = signal<object | null>(null);
+
+	readonly mediaId = signal("img-001");
+	readonly mediaError = signal<string | null>(null);
+	readonly presetIds = PRESET_IDS;
+
+	readonly activeTab = signal<"recording" | "media" | "output">("media");
 
 	readonly editorUrl: Signal<SafeResourceUrl>;
 	readonly editorOrigin = new URL(environment.editorUrl).origin;
@@ -100,7 +116,7 @@ export class EditorPageComponent implements OnInit, OnDestroy {
 			)
 			.subscribe((items) => {
 				this.bridge.drainQueue();
-				for (const item of items) this.postItem(item);
+				for (const item of items) this.postBridgeItem(item);
 			});
 	}
 
@@ -192,6 +208,22 @@ export class EditorPageComponent implements OnInit, OnDestroy {
 		this.postToEditor(msg);
 	}
 
+	addMediaFromForm(): void {
+		const id = this.mediaId().trim();
+		if (!id) {
+			this.mediaError.set("יש להזין מזהה מדיה");
+			return;
+		}
+		this.mediaError.set(null);
+		this.sendAddMedia(id);
+	}
+
+	addPresetMedia(id: string): void {
+		this.mediaError.set(null);
+		this.mediaId.set(id);
+		this.sendAddMedia(id);
+	}
+
 	readonly HANDLE = HANDLE;
 	readonly PANEL_W = PANEL_W;
 	readonly corners: ResizeDir[] = ["nw", "ne", "sw", "se"];
@@ -257,7 +289,13 @@ export class EditorPageComponent implements OnInit, OnDestroy {
 		return JSON.stringify(v, null, 2);
 	}
 
-	private postItem(item: PreviewItemPayload): void {
+	private sendAddMedia(mediaId: string): void {
+		const msg = { type: EDITOR_ADD_MEDIA, mediaId };
+		this.outgoingPayload.set(msg);
+		this.postToEditor(msg);
+	}
+
+	private postPreviewItem(item: PreviewItemPayload): void {
 		const msg = {
 			type: EDITOR_ADD_PREVIEW_ITEM,
 			requestId: crypto.randomUUID(),
@@ -265,6 +303,14 @@ export class EditorPageComponent implements OnInit, OnDestroy {
 		};
 		this.outgoingPayload.set(msg);
 		this.postToEditor(msg);
+	}
+
+	private postBridgeItem(item: BridgeQueueItem): void {
+		if ("kind" in item && item.kind === "stored-media") {
+			this.sendAddMedia(item.mediaId);
+			return;
+		}
+		this.postPreviewItem(item as PreviewItemPayload);
 	}
 
 	private postToEditor(payload: object): void {
@@ -284,7 +330,7 @@ export class EditorPageComponent implements OnInit, OnDestroy {
 		if (data.type === EDITOR_READY) {
 			this.editorReady.set(true);
 			const pending = this.bridge.drainQueue();
-			for (const item of pending) this.postItem(item);
+			for (const item of pending) this.postBridgeItem(item);
 			return;
 		}
 

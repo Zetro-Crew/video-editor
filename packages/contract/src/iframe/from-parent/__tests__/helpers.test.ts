@@ -3,10 +3,9 @@ import { describe, it } from "node:test";
 import { z } from "zod";
 import { isParentToEditorMessage, parseParentToEditorMessage } from "../helpers.js";
 import {
+	mockAddMediaMessage,
 	mockAudioRangeMessage,
 	mockClearProjectMessage,
-	mockMediaHlsMessage,
-	mockMediaMp4Message,
 	mockRecordingRangeHlsMessage,
 	mockRecordingRangeNoPlaybackMessage,
 } from "../mocks.js";
@@ -16,9 +15,8 @@ describe("isParentToEditorMessage", () => {
 		for (const m of [
 			mockRecordingRangeHlsMessage,
 			mockRecordingRangeNoPlaybackMessage,
-			mockMediaMp4Message,
-			mockMediaHlsMessage,
 			mockAudioRangeMessage,
+			mockAddMediaMessage,
 			mockClearProjectMessage,
 		]) {
 			assert.equal(isParentToEditorMessage(m), true);

@@ -27,12 +27,15 @@ There is no root `@video-editor/contract` export. Every caller imports a subpath
 Parent page                       Editor iframe (at /editor/embed)
 ─────────────────────────────────────────────────────────────────
                                   ──EDITOR_READY──────────────────▶
-◀── EDITOR_ADD_PREVIEW_ITEM ──────
+◀── EDITOR_ADD_PREVIEW_ITEM ──────                     (requestId)
+◀── EDITOR_ADD_MEDIA ─────────────                     (mediaId)
          ─────────────── EDITOR_PREVIEW_ITEM_ADDED / EDITOR_PREVIEW_ITEM_REJECTED ──▶
 ◀── EDITOR_CLEAR_PROJECT ─────────
          ─────────────────────────────────── EDITOR_PROJECT_CLEARED ──▶
          ────────────────────────────────────── EDITOR_MEDIA_SAVED ──▶
 ```
+
+Two correlation patterns coexist on the response stream: `EDITOR_ADD_PREVIEW_ITEM` / `EDITOR_CLEAR_PROJECT` replies echo the inbound `requestId` (optional, response cache de-duplicates by it); `EDITOR_ADD_MEDIA` replies echo `mediaId` with no de-duplication (two adds with the same id are processed twice). See [`docs/adr/0007-stored-media-id-only-intake.md`](../../docs/adr/0007-stored-media-id-only-intake.md) for the rationale.
 
 ### Validate incoming messages (parent → editor)
 
@@ -57,15 +60,18 @@ import {
 window.parent.postMessage(createPreviewItemAddedMessage(itemId), targetOrigin);
 ```
 
-### `PreviewItemPayload` (inbound)
+### `PreviewItemPayload` (inbound — `EDITOR_ADD_PREVIEW_ITEM`)
 
 Discriminated union on `kind`:
 
 | `kind` | Description |
 |---|---|
 | `recording-range` | A recording segment with a time range |
-| `media` | A generic media asset |
 | `audio-range` | An audio segment with a time range |
+
+### `EDITOR_ADD_MEDIA` (inbound — separate message type)
+
+`{ mediaId: string }`. Stored-media id-only intake: the editor resolves type by calling Core `GET /private/media/{id}/watch`, then routes images/screenshots to `ADD_IMAGE` directly and clips/uploaded videos through the editor backend's `media-id` preview source. Replies echo `mediaId` instead of `requestId`. See [`docs/adr/0007-stored-media-id-only-intake.md`](../../docs/adr/0007-stored-media-id-only-intake.md).
 
 ## Events
 

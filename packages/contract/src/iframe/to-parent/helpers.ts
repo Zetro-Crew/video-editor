@@ -6,21 +6,25 @@ import type {
 	EditorProjectClearedMessage,
 } from "./schemas.js";
 
+export type PreviewItemCorrelation = { requestId?: string; mediaId?: string };
+
 export const createPreviewItemAddedMessage = (
 	itemId: string,
-	requestId?: string,
+	correlation: PreviewItemCorrelation = {},
 ): EditorPreviewItemAddedMessage => ({
 	type: "EDITOR_PREVIEW_ITEM_ADDED",
-	requestId,
+	requestId: correlation.requestId,
+	mediaId: correlation.mediaId,
 	itemId,
 });
 
 export const createPreviewItemRejectedMessage = (
 	reason: string,
-	requestId?: string,
+	correlation: PreviewItemCorrelation = {},
 ): EditorPreviewItemRejectedMessage => ({
 	type: "EDITOR_PREVIEW_ITEM_REJECTED",
-	requestId,
+	requestId: correlation.requestId,
+	mediaId: correlation.mediaId,
 	reason,
 });
 

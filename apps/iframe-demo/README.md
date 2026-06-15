@@ -35,9 +35,12 @@ cd apps/iframe-demo && pnpm dev  # port 8080
 
 The demo page (`/`) loads the editor in a floating, draggable and resizable iframe pointed at `http://localhost:3000/editor/embed`. A control panel lets you:
 
-- **Add a preview item** — sends `EDITOR_ADD_PREVIEW_ITEM` (recording-range) to the editor
+- **Send recording-range** — channel id + start/end time → sends `EDITOR_ADD_PREVIEW_ITEM`
+- **Send media** — id text input with preset chips (`img-001`, `img-002`, `img-003`, `demo-clip-001`, `uploaded-001`, `screenshot-001` — all backed by `apps/core-mock`) → sends `EDITOR_ADD_MEDIA { mediaId }`
 - **Clear the project** — sends `EDITOR_CLEAR_PROJECT` to reset all tracks
 - **Inspect messages** — displays the outgoing payload and last response from the editor
+
+Note: `EDITOR_ADD_MEDIA` responses correlate by echoed `mediaId`, not `requestId`.
 
 ## Key Files
 

@@ -9,7 +9,8 @@ export function extractSavedItems(trackItemsMap: Record<string, ITrackItem>): Sa
 	// Images — one entry per item, no timeranges
 	for (const item of items) {
 		if (item.type === "image") {
-			result.push({ type: "image", id: item.id });
+			const meta = item.metadata as ExternalMetadata | undefined;
+			result.push({ type: "image", id: meta?.mediaId || item.id });
 		}
 	}
 
@@ -33,9 +34,10 @@ export function extractSavedItems(trackItemsMap: Record<string, ITrackItem>): Sa
 		result.push({ type: "audio", id, from: range.from, to: range.to });
 	}
 
-	// Video — split into recording-range vs clip
+	// Video — split into recording-range vs clip vs uploaded
 	const recordingGroups = new Map<string, { from: number; to: number }>();
 	const clipGroups = new Map<string, true>();
+	const uploadedGroups = new Map<string, true>();
 	for (const item of items) {
 		if (item.type !== "video") continue;
 		const meta = item.metadata as ExternalMetadata | undefined;
@@ -50,6 +52,8 @@ export function extractSavedItems(trackItemsMap: Record<string, ITrackItem>): Sa
 			} else {
 				recordingGroups.set(key, { from, to });
 			}
+		} else if (meta?.storedMediaType === "UploadedVideo") {
+			uploadedGroups.set(meta.mediaId || item.id, true);
 		} else {
 			const key = meta?.mediaId || item.id;
 			clipGroups.set(key, true);
@@ -60,6 +64,9 @@ export function extractSavedItems(trackItemsMap: Record<string, ITrackItem>): Sa
 	}
 	for (const id of clipGroups.keys()) {
 		result.push({ type: "clip", id });
+	}
+	for (const id of uploadedGroups.keys()) {
+		result.push({ type: "uploaded", id });
 	}
 
 	return result;

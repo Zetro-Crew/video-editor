@@ -1,5 +1,5 @@
 import type { IRadialAudioBars } from "@designcombo/types";
-import { Audio, useCurrentFrame } from "remotion";
+import { Html5Audio, useCurrentFrame } from "remotion";
 import type { SequenceItemOptions } from "../../base-sequence";
 import { audioDataManager } from "../../lib/audio-data";
 import { RadialBarsVisualization } from "./radial-bars-visualization";
@@ -32,7 +32,7 @@ export const RadialBars = ({
 			/>
 			{details.reproduceAudio &&
 				details.srcs.map((src, index) => {
-					return <Audio key={index} playbackRate={playbackRate} src={src} />;
+					return <Html5Audio key={index} playbackRate={playbackRate} src={src} />;
 				})}
 		</>
 	);

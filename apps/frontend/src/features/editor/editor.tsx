@@ -257,7 +257,7 @@ const SceneContainer = memo(({ sceneRef, stateManager, trackItem }: SceneContain
 });
 
 const Editor = ({ tempId, id }: { tempId?: string; id?: string }) => {
-	const [projectName, setProjectName] = useState<string>("RoniCut");
+	const [projectName, setProjectName] = useState<string>("Ztube Editor");
 	const sceneRef = useRef<SceneRef>(null);
 	const { timeline, playerRef } = useEditorRefs(
 		useShallow((s) => ({ timeline: s.timeline, playerRef: s.playerRef })),
@@ -329,9 +329,9 @@ const Editor = ({ tempId, id }: { tempId?: string; id?: string }) => {
 	}, []);
 
 	useEffect(() => {
-		document.title = projectName ? `${projectName} | RoniCut` : "RoniCut";
+		document.title = projectName || "Ztube Editor";
 		return () => {
-			document.title = "RoniCut";
+			document.title = "Ztube Editor";
 		};
 	}, [projectName]);
 

@@ -148,6 +148,103 @@ describe("HttpPreviewSourceAdapter.play", () => {
 	});
 });
 
+describe("HttpPreviewSourceAdapter.playMedia", () => {
+	let fetchSpy: FetchSpy;
+	beforeEach(() => {
+		fetchSpy = vi.fn();
+		vi.stubGlobal("fetch", fetchSpy);
+	});
+	afterEach(() => {
+		vi.unstubAllGlobals();
+	});
+
+	it("hits {coreBaseUrl}/videos/:id/play and maps timeRanges to mediaCreatedAtMs + durationMs", async () => {
+		const createdAt = 1_700_000_000_000;
+		const durationMs = 60_000;
+		fetchSpy.mockResolvedValueOnce(
+			jsonResponse({
+				url: "http://core/storage/clip-001/mpd",
+				timeRanges: [[createdAt, createdAt + durationMs]],
+			}),
+		);
+		const adapter = new HttpPreviewSourceAdapter({
+			coreBaseUrl: CORE,
+			serverBaseUrl: SERVER,
+		});
+		const out = await adapter.playMedia("clip-001");
+
+		expect(fetchSpy).toHaveBeenCalledTimes(1);
+		expect(fetchSpy.mock.calls[0][0]).toBe("https://core.example.com/private/videos/clip-001/play");
+		expect(out).toEqual({
+			mpdUrl: "http://core/storage/clip-001/mpd",
+			mediaCreatedAtMs: createdAt,
+			durationMs,
+		});
+	});
+
+	it("sends Cookie header (ztube-token) and no vod-token on /videos/:id/play", async () => {
+		fetchSpy.mockResolvedValueOnce(
+			jsonResponse({
+				url: "/storage/clip-001/mpd",
+				timeRanges: [[1, 2]],
+			}),
+		);
+		const adapter = new HttpPreviewSourceAdapter({
+			coreBaseUrl: CORE,
+			serverBaseUrl: SERVER,
+			authCookie: "abc",
+		});
+		await adapter.playMedia("clip-001");
+		const callOpts = fetchSpy.mock.calls[0][1] as { headers: Record<string, string> };
+		expect(callOpts.headers).toEqual({ Cookie: "ztube-token=abc" });
+		expect(callOpts.headers["vod-token"]).toBeUndefined();
+	});
+
+	it("throws RangeError on 404 (unknown media)", async () => {
+		fetchSpy.mockResolvedValueOnce(jsonResponse({}, 404));
+		const adapter = new HttpPreviewSourceAdapter({
+			coreBaseUrl: CORE,
+			serverBaseUrl: SERVER,
+		});
+		await expect(adapter.playMedia("bogus")).rejects.toBeInstanceOf(RangeError);
+	});
+
+	it("throws on non-2xx", async () => {
+		fetchSpy.mockResolvedValueOnce(jsonResponse({}, 500));
+		const adapter = new HttpPreviewSourceAdapter({
+			coreBaseUrl: CORE,
+			serverBaseUrl: SERVER,
+		});
+		await expect(adapter.playMedia("x")).rejects.toThrow(/500/);
+	});
+
+	it("throws on multi-range response", async () => {
+		fetchSpy.mockResolvedValueOnce(
+			jsonResponse({
+				url: "/x",
+				timeRanges: [
+					[0, 1],
+					[2, 3],
+				],
+			}),
+		);
+		const adapter = new HttpPreviewSourceAdapter({
+			coreBaseUrl: CORE,
+			serverBaseUrl: SERVER,
+		});
+		await expect(adapter.playMedia("x")).rejects.toThrow(/multi-range/);
+	});
+
+	it("throws when endMs <= startMs in timeRanges", async () => {
+		fetchSpy.mockResolvedValueOnce(jsonResponse({ url: "/x", timeRanges: [[1000, 1000]] }));
+		const adapter = new HttpPreviewSourceAdapter({
+			coreBaseUrl: CORE,
+			serverBaseUrl: SERVER,
+		});
+		await expect(adapter.playMedia("x")).rejects.toThrow(/timeRanges/);
+	});
+});
+
 describe("HttpPreviewSourceAdapter.fetchManifest", () => {
 	let fetchSpy: FetchSpy;
 	beforeEach(() => {
@@ -169,6 +266,19 @@ describe("HttpPreviewSourceAdapter.fetchManifest", () => {
 		expect(fetchSpy.mock.calls[0][0]).toBe("https://vod/x.mpd");
 		const opts = fetchSpy.mock.calls[0][1] as { headers: Record<string, string> };
 		expect(opts.headers).toEqual({ "vod-token": "tok" });
+	});
+
+	it("omits vod-token header when token is undefined (media-id source path)", async () => {
+		fetchSpy.mockResolvedValueOnce(textResponse("<MPD/>"));
+		const adapter = new HttpPreviewSourceAdapter({
+			coreBaseUrl: CORE,
+			serverBaseUrl: SERVER,
+			authCookie: "abc",
+		});
+		await adapter.fetchManifest("https://core/storage/clip-001/mpd");
+		const opts = fetchSpy.mock.calls[0][1] as { headers: Record<string, string> };
+		expect(opts.headers).toEqual({ Cookie: "ztube-token=abc" });
+		expect(opts.headers["vod-token"]).toBeUndefined();
 	});
 
 	it("forwards Core ztube-token cookie to VOD origin (shared auth boundary in prod)", async () => {

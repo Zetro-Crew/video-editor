@@ -18,21 +18,12 @@ export const hlsPlaybackSchema = z.strictObject({
 	src: safeSrc,
 });
 
-export const mediaPlaybackSchema = z.strictObject({
-	kind: z.union([z.literal("mp4"), z.literal("hls")]),
-	src: safeSrc,
-});
-
 export const audioPlaybackSchema = z.strictObject({
 	kind: z.union([z.literal("audio"), z.literal("hls")]),
 	src: safeSrc,
 });
 
-export const playbackSchema = z.union([
-	hlsPlaybackSchema,
-	mediaPlaybackSchema,
-	audioPlaybackSchema,
-]);
+export const playbackSchema = z.union([hlsPlaybackSchema, audioPlaybackSchema]);
 
 export const recordingRangePayloadSchema = z
 	.strictObject({
@@ -65,20 +56,6 @@ export const recordingRangePayloadSchema = z
 		}
 	})
 	.refine((p) => p.durationMs <= MAX_PREVIEW_DURATION_MS, {
-		message: "durationMs exceeds the maximum supported preview duration",
-		path: ["durationMs"],
-	});
-
-export const mediaPayloadSchema = z
-	.strictObject({
-		kind: z.literal("media"),
-		mediaId: nonEmptyString,
-		durationMs: positiveNumber.optional(),
-		playback: mediaPlaybackSchema,
-		posterSrc: nonEmptyString.optional(),
-		name: z.string().optional(),
-	})
-	.refine((p) => (p.durationMs ?? 0) <= MAX_PREVIEW_DURATION_MS, {
 		message: "durationMs exceeds the maximum supported preview duration",
 		path: ["durationMs"],
 	});
@@ -130,7 +107,6 @@ export const audioRangePayloadSchema = z
 
 export const previewItemPayloadSchema = z.union([
 	recordingRangePayloadSchema,
-	mediaPayloadSchema,
 	audioRangePayloadSchema,
 ]);
 
@@ -145,19 +121,24 @@ export const editorClearProjectMessageSchema = z.strictObject({
 	requestId: requestIdSchema,
 });
 
+export const editorAddMediaMessageSchema = z.strictObject({
+	type: z.literal("EDITOR_ADD_MEDIA"),
+	mediaId: nonEmptyString,
+});
+
 export const parentToEditorMessageSchema = z.union([
 	editorAddPreviewItemMessageSchema,
 	editorClearProjectMessageSchema,
+	editorAddMediaMessageSchema,
 ]);
 
 export type HlsPlayback = z.infer<typeof hlsPlaybackSchema>;
-export type MediaPlayback = z.infer<typeof mediaPlaybackSchema>;
 export type AudioPlayback = z.infer<typeof audioPlaybackSchema>;
 export type Playback = z.infer<typeof playbackSchema>;
 export type RecordingRangePayload = z.infer<typeof recordingRangePayloadSchema>;
-export type MediaPayload = z.infer<typeof mediaPayloadSchema>;
 export type AudioRangePayload = z.infer<typeof audioRangePayloadSchema>;
 export type PreviewItemPayload = z.infer<typeof previewItemPayloadSchema>;
 export type EditorAddPreviewItemMessage = z.infer<typeof editorAddPreviewItemMessageSchema>;
 export type EditorClearProjectMessage = z.infer<typeof editorClearProjectMessageSchema>;
+export type EditorAddMediaMessage = z.infer<typeof editorAddMediaMessageSchema>;
 export type ParentToEditorMessage = z.infer<typeof parentToEditorMessageSchema>;

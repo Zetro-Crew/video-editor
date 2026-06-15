@@ -37,9 +37,11 @@ pnpm type-check   # tsc -p tsconfig.json --noEmit
 
 Editor iframe is loaded at `editorUrl` from `environment.ts`. The demo app:
 
-1. Sends `EDITOR_ADD_PREVIEW_ITEM` (`recording-range` kind) to the editor
+1. Right panel has two send forms:
+   - `recording-range` — channel id + start/end time → sends `EDITOR_ADD_PREVIEW_ITEM`
+   - `media` — single text input bound to `mediaId` → sends `EDITOR_ADD_MEDIA { mediaId }`. Preset chips for `img-001`, `img-002`, `img-003`, `demo-clip-001`, `uploaded-001`, `screenshot-001` (all served by `apps/core-mock`).
 2. Sends `EDITOR_CLEAR_PROJECT` to reset the editor
-3. Displays outgoing payload and last response
+3. Displays outgoing payload and last response. Response panel matches `EDITOR_ADD_MEDIA` replies by echoed `mediaId` (not `requestId`).
 
 Auth (`ztube-token`) is **not** forwarded via postMessage. The cookie is HttpOnly and travels server-side: the iframe's fetch to its same-origin server attaches it automatically.
 

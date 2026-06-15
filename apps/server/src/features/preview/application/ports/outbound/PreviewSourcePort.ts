@@ -7,7 +7,14 @@ export interface PreviewPlayResult {
 	token: string;
 }
 
+export interface MediaPlayResult {
+	mpdUrl: string;
+	mediaCreatedAtMs: number;
+	durationMs: number;
+}
+
 export interface PreviewSourcePort {
 	play(channelId: string, startTimeMs: number, endTimeMs: number): Promise<PreviewPlayResult>;
-	fetchManifest(mpdUrl: string, token: string): Promise<string>;
+	playMedia(mediaId: string): Promise<MediaPlayResult>;
+	fetchManifest(mpdUrl: string, token?: string): Promise<string>;
 }

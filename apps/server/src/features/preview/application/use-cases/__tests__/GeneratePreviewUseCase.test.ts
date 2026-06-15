@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { ApiEnvConfig } from "../../../../../config/env.ts";
 import { InMemoryStorageAdapter } from "../../../../../infrastructure/storage/__tests__/InMemoryStorageAdapter.ts";
 import type {
+	MediaPlayResult,
 	PreviewPlayResult,
 	PreviewSourcePort,
 } from "../../ports/outbound/PreviewSourcePort.ts";
@@ -35,14 +36,19 @@ function makeConfig(): ApiEnvConfig {
 	} as unknown as ApiEnvConfig;
 }
 
-function makePreviewSource(): PreviewSourcePort & {
+type SpyableSource = PreviewSourcePort & {
 	playCalls: Array<{ channelId: string; start: number; end: number }>;
-	fetchCalls: Array<{ mpdUrl: string; token: string }>;
-} {
-	const playCalls: Array<{ channelId: string; start: number; end: number }> = [];
-	const fetchCalls: Array<{ mpdUrl: string; token: string }> = [];
+	playMediaCalls: string[];
+	fetchCalls: Array<{ mpdUrl: string; token: string | undefined }>;
+};
+
+function makePreviewSource(): SpyableSource {
+	const playCalls: SpyableSource["playCalls"] = [];
+	const playMediaCalls: string[] = [];
+	const fetchCalls: SpyableSource["fetchCalls"] = [];
 	return {
 		playCalls,
+		playMediaCalls,
 		fetchCalls,
 		async play(channelId, start, end): Promise<PreviewPlayResult> {
 			playCalls.push({ channelId, start, end });
@@ -52,6 +58,14 @@ function makePreviewSource(): PreviewSourcePort & {
 				segmentStartTimeMs: SEG_START,
 			};
 		},
+		async playMedia(mediaId): Promise<MediaPlayResult> {
+			playMediaCalls.push(mediaId);
+			return {
+				mpdUrl: "http://core.example/private/storage/clip-001/mpd",
+				mediaCreatedAtMs: SEG_START,
+				durationMs: 15_000,
+			};
+		},
 		async fetchManifest(mpdUrl, token) {
 			fetchCalls.push({ mpdUrl, token });
 			return FIXTURE_MPD;
@@ -59,16 +73,19 @@ function makePreviewSource(): PreviewSourcePort & {
 	};
 }
 
-describe("GeneratePreviewUseCase", () => {
+describe("GeneratePreviewUseCase channel-range", () => {
 	it("orchestrates play → fetchManifest → mpd-to-hls → proxy-rewrite → store", async () => {
 		const storage = new InMemoryStorageAdapter();
 		const previewSource = makePreviewSource();
 		const uc = new GeneratePreviewUseCase(storage, makeConfig());
 
 		const out = await uc.execute({
-			channelId: "ch-001",
-			startTimeMs: SEG_START,
-			endTimeMs: SEG_START + 15_000,
+			source: {
+				type: "channel-range",
+				channelId: "ch-001",
+				startTimeMs: SEG_START,
+				endTimeMs: SEG_START + 15_000,
+			},
 			previewSource,
 		});
 
@@ -89,9 +106,38 @@ describe("GeneratePreviewUseCase", () => {
 		const playlist = stored[0][1].body.toString("utf8");
 		expect(playlist).toContain("http://server.local/editor/segment?url=");
 		expect(playlist).toContain("token=vod-token-xyz");
-		// Original segment URL base64url-encoded
+		expect(playlist).toContain("kind=channel-range");
 		const expectedDecoded = "http://mock-vod/vod/demo-recording/media/segment_v4_2362.m4s";
 		const expectedEncoded = Buffer.from(expectedDecoded, "utf8").toString("base64url");
 		expect(playlist).toContain(expectedEncoded);
+	});
+});
+
+describe("GeneratePreviewUseCase media-id", () => {
+	it("orchestrates playMedia → fetchManifest (no token) → mpd-to-hls → proxy-rewrite (kind=media-id, no token) → store", async () => {
+		const storage = new InMemoryStorageAdapter();
+		const previewSource = makePreviewSource();
+		const uc = new GeneratePreviewUseCase(storage, makeConfig());
+
+		const out = await uc.execute({
+			source: { type: "media-id", mediaId: "clip-001" },
+			previewSource,
+		});
+
+		expect(previewSource.playMediaCalls).toEqual(["clip-001"]);
+		expect(previewSource.fetchCalls).toEqual([
+			{ mpdUrl: "http://core.example/private/storage/clip-001/mpd", token: undefined },
+		]);
+
+		expect(out.durationMs).toBe(15_000);
+		expect(out.sourceOffsetMs).toBe(0);
+		expect(out.mediaCreatedAtMs).toBe(SEG_START);
+		expect(out.playlistUrl).toMatch(/^internal:\/\/preview\//);
+
+		const stored = Array.from(storage.objects.entries());
+		const playlist = stored[0][1].body.toString("utf8");
+		expect(playlist).toContain("http://server.local/editor/segment?url=");
+		expect(playlist).toContain("kind=media-id");
+		expect(playlist).not.toContain("token=");
 	});
 });

@@ -1,5 +1,5 @@
 import type { IAudio } from "@designcombo/types";
-import { Audio as RemotionAudio } from "remotion";
+import { Html5Audio as RemotionAudio } from "remotion";
 import { BaseSequence, type SequenceItemOptions } from "../base-sequence";
 
 export default function Audio({ item, options }: { item: IAudio; options: SequenceItemOptions }) {

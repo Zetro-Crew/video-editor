@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
+import { createPreviewItemAddedMessage, createPreviewItemRejectedMessage } from "../helpers.js";
 import { mockMediaSavedMessage } from "../mocks.js";
 import { editorToParentMessageSchema } from "../schemas.js";
 
@@ -94,5 +95,48 @@ describe("to-parent — editorMediaSavedMessageSchema", () => {
 
 	it("keeps the exported mock schema-valid", () => {
 		assert.equal(editorToParentMessageSchema.safeParse(mockMediaSavedMessage).success, true);
+	});
+});
+
+describe("to-parent — preview-item correlation (mediaId echo)", () => {
+	it("accepts EDITOR_PREVIEW_ITEM_ADDED with mediaId echo and no requestId", () => {
+		const msg = createPreviewItemAddedMessage("item-xyz", { mediaId: "img-001" });
+		const result = editorToParentMessageSchema.safeParse(msg);
+		assert.equal(result.success, true);
+		if (result.success && result.data.type === "EDITOR_PREVIEW_ITEM_ADDED") {
+			assert.equal(result.data.mediaId, "img-001");
+			assert.equal(result.data.requestId, undefined);
+		}
+	});
+
+	it("accepts EDITOR_PREVIEW_ITEM_ADDED with requestId and no mediaId", () => {
+		const msg = createPreviewItemAddedMessage("item-xyz", { requestId: "req-1" });
+		const result = editorToParentMessageSchema.safeParse(msg);
+		assert.equal(result.success, true);
+	});
+
+	it("accepts EDITOR_PREVIEW_ITEM_ADDED with neither correlation field", () => {
+		const msg = createPreviewItemAddedMessage("item-xyz");
+		const result = editorToParentMessageSchema.safeParse(msg);
+		assert.equal(result.success, true);
+	});
+
+	it("accepts EDITOR_PREVIEW_ITEM_REJECTED with mediaId echo", () => {
+		const msg = createPreviewItemRejectedMessage("media not found", { mediaId: "bogus" });
+		const result = editorToParentMessageSchema.safeParse(msg);
+		assert.equal(result.success, true);
+		if (result.success && result.data.type === "EDITOR_PREVIEW_ITEM_REJECTED") {
+			assert.equal(result.data.mediaId, "bogus");
+			assert.equal(result.data.reason, "media not found");
+		}
+	});
+
+	it("rejects EDITOR_PREVIEW_ITEM_ADDED with empty mediaId", () => {
+		const result = editorToParentMessageSchema.safeParse({
+			type: "EDITOR_PREVIEW_ITEM_ADDED",
+			itemId: "item-xyz",
+			mediaId: "  ",
+		});
+		assert.equal(result.success, false);
 	});
 });

@@ -119,11 +119,85 @@ describe("preview.controller E2E (fetch-stubbed)", () => {
 			.split("\n")
 			.find((l) => l.startsWith(`${SERVER_BASE}/editor/segment?url=`));
 		if (!segmentLine) throw new Error("segment line not found");
+		expect(segmentLine).toContain("&kind=channel-range");
+		expect(segmentLine).toContain("&token=");
 
 		const proxyPath = segmentLine.replace(SERVER_BASE, "");
 		const segRes = await server.inject({ method: "GET", url: proxyPath });
 		expect(segRes.statusCode).toBe(200);
 		expect(segRes.rawPayload.length).toBe(SEGMENT_BYTES.length);
+	});
+
+	it("media-id source: builds HLS via /videos/:id/play, signs without vod-token, proxy omits vod-token upstream", async () => {
+		const mediaCreatedAtMs = 1_700_000_000_000;
+		const durationMs = 15_000;
+		const mpdUrl = "http://core.example/private/storage/clip-001/mpd";
+		const upstreamSegHeaders: Record<string, string>[] = [];
+
+		fetchSpy.mockImplementation(async (input: string | URL | Request, init?: RequestInit) => {
+			const url = typeof input === "string" ? input : input.toString();
+			if (url === `${CORE_BASE}/videos/clip-001/play`) {
+				return new Response(
+					JSON.stringify({
+						url: mpdUrl,
+						timeRanges: [[mediaCreatedAtMs, mediaCreatedAtMs + durationMs]],
+					}),
+					{ status: 200, headers: { "content-type": "application/json" } },
+				);
+			}
+			if (url === mpdUrl) {
+				return new Response(FIXTURE_MPD, { status: 200 });
+			}
+			upstreamSegHeaders.push((init?.headers ?? {}) as Record<string, string>);
+			return new Response(SEGMENT_BYTES, {
+				status: 200,
+				headers: { "content-type": "video/mp4" },
+			});
+		});
+
+		const res = await server.inject({
+			method: "POST",
+			url: "/editor/preview-source",
+			payload: {
+				source: { type: "media-id", mediaId: "clip-001" },
+			},
+		});
+		expect(res.statusCode).toBe(200);
+		const body = JSON.parse(res.body) as {
+			type: string;
+			playlistUrl: string;
+			durationMs: number;
+			sourceOffsetMs: number;
+		};
+		expect(body.type).toBe("hls");
+		expect(body.durationMs).toBe(durationMs);
+		expect(body.sourceOffsetMs).toBe(0);
+
+		const key = body.playlistUrl.replace("internal://", "");
+		const playlist = storage.readText(key);
+		if (!playlist) throw new Error("playlist not stored");
+		const segmentLine = playlist
+			.split("\n")
+			.find((l) => l.startsWith(`${SERVER_BASE}/editor/segment?url=`));
+		if (!segmentLine) throw new Error("segment line not found");
+		expect(segmentLine).toContain("&kind=media-id");
+		expect(segmentLine).not.toContain("&token=");
+
+		const proxyPath = segmentLine.replace(SERVER_BASE, "");
+		const segRes = await server.inject({ method: "GET", url: proxyPath });
+		expect(segRes.statusCode).toBe(200);
+		expect(upstreamSegHeaders.length).toBe(1);
+		expect(upstreamSegHeaders[0]["vod-token"]).toBeUndefined();
+	});
+
+	it("media-id 404 from core → 400", async () => {
+		fetchSpy.mockImplementation(async () => new Response("{}", { status: 404 }));
+		const res = await server.inject({
+			method: "POST",
+			url: "/editor/preview-source",
+			payload: { source: { type: "media-id", mediaId: "bogus" } },
+		});
+		expect(res.statusCode).toBe(400);
 	});
 
 	it("range outside fixture window → 400 (adapter throws RangeError on core 404)", async () => {

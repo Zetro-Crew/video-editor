@@ -33,107 +33,186 @@
   <!-- Right panel -->
   <aside class="panel">
     <header class="panel-header">
-      <h1 class="panel-title">הדגמת מסגרת</h1>
-      <p class="panel-desc">
-        שלח הודעות postMessage לעורך המוטמע.
-        פריטים שנוספו מדף המדיה נשלחים אוטומטית עם ההגעה.
-      </p>
+      <div class="panel-header-row">
+        <h1 class="panel-title">הדגמת מסגרת</h1>
+        <div class="frame-mode" role="group" aria-label="מצב מסגרת">
+          <button
+            type="button"
+            class="icon-btn"
+            [class.active]="!fullMode()"
+            (click)="fullMode.set(false)"
+            [attr.aria-pressed]="!fullMode()"
+            aria-label="מצב חלון"
+            title="חלון ניתן לשינוי גודל"
+          >▢</button>
+          <button
+            type="button"
+            class="icon-btn"
+            [class.active]="fullMode()"
+            (click)="fullMode.set(true)"
+            [attr.aria-pressed]="fullMode()"
+            aria-label="מסך מלא"
+            title="מסך מלא"
+          >▣</button>
+        </div>
+      </div>
+      <button type="button" class="btn-danger-text" (click)="clearProject()">נקה פרויקט</button>
     </header>
 
-    <!-- Recording range form -->
-    <form class="form-section" (submit)="$event.preventDefault(); addRecordingRange()">
-      <fieldset>
-        <legend class="section-title">טווח הקלטה</legend>
+    <nav class="tab-bar" role="tablist" aria-label="סוג פריט">
+      <button
+        type="button"
+        role="tab"
+        class="tab"
+        [class.active]="activeTab() === 'recording'"
+        [attr.aria-selected]="activeTab() === 'recording'"
+        (click)="activeTab.set('recording')"
+      >הקלטה</button>
+      <button
+        type="button"
+        role="tab"
+        class="tab"
+        [class.active]="activeTab() === 'media'"
+        [attr.aria-selected]="activeTab() === 'media'"
+        (click)="activeTab.set('media')"
+      >מדיה</button>
+      <button
+        type="button"
+        role="tab"
+        class="tab"
+        [class.active]="activeTab() === 'output'"
+        [attr.aria-selected]="activeTab() === 'output'"
+        (click)="activeTab.set('output')"
+      >פלט</button>
+    </nav>
 
-        <div class="field">
-          <label for="name">שם</label>
-          <input
-            id="name"
-            type="text"
-            autocomplete="off"
-            [value]="name()"
-            (input)="name.set($any($event.target).value)"
-          />
-        </div>
+    <div class="tab-panel">
+      @switch (activeTab()) {
+        @case ('recording') {
+          <form class="form-section" (submit)="$event.preventDefault(); addRecordingRange()">
+            <div class="field">
+              <label for="name">שם</label>
+              <input
+                id="name"
+                type="text"
+                autocomplete="off"
+                placeholder="לדוגמה: הקלטת חדר ישיבות…"
+                [value]="name()"
+                (input)="name.set($any($event.target).value)"
+              />
+            </div>
 
-        <div class="field">
-          <label for="channelId">מזהה ערוץ</label>
-          <input
-            id="channelId"
-            type="text"
-            inputmode="numeric"
-            autocomplete="off"
-            [value]="channelId()"
-            (input)="channelId.set($any($event.target).value)"
-          />
-        </div>
+            <div class="field">
+              <label for="channelId">מזהה ערוץ</label>
+              <input
+                id="channelId"
+                type="text"
+                inputmode="numeric"
+                autocomplete="off"
+                spellcheck="false"
+                [value]="channelId()"
+                (input)="channelId.set($any($event.target).value)"
+              />
+            </div>
 
-        <div class="field">
-          <label for="startTimeMs">זמן התחלה (ms)</label>
-          <input
-            id="startTimeMs"
-            type="number"
-            min="0"
-            autocomplete="off"
-            [value]="startTimeMs()"
-            (input)="startTimeMs.set(+$any($event.target).value)"
-          />
-        </div>
+            <div class="field-row">
+              <div class="field">
+                <label for="startTimeMs">התחלה (ms)</label>
+                <input
+                  id="startTimeMs"
+                  type="number"
+                  min="0"
+                  inputmode="numeric"
+                  autocomplete="off"
+                  spellcheck="false"
+                  [value]="startTimeMs()"
+                  (input)="startTimeMs.set(+$any($event.target).value)"
+                />
+              </div>
 
-        <div class="field">
-          <label for="endTimeMs">זמן סיום (ms)</label>
-          <input
-            id="endTimeMs"
-            type="number"
-            min="0"
-            autocomplete="off"
-            [value]="endTimeMs()"
-            (input)="endTimeMs.set(+$any($event.target).value)"
-          />
-        </div>
-      </fieldset>
+              <div class="field">
+                <label for="endTimeMs">סיום (ms)</label>
+                <input
+                  id="endTimeMs"
+                  type="number"
+                  min="0"
+                  inputmode="numeric"
+                  autocomplete="off"
+                  spellcheck="false"
+                  [value]="endTimeMs()"
+                  (input)="endTimeMs.set(+$any($event.target).value)"
+                />
+              </div>
+            </div>
 
-      <div class="actions">
-        <button type="submit" class="btn-primary">הוסף הקלטה</button>
-        <button type="button" class="btn-secondary" (click)="clearProject()">נקה פרויקט</button>
-      </div>
-    </form>
-
-    <div class="mode-toggle">
-      <span class="section-title">מצב מסגרת</span>
-      <div class="toggle-row" role="group" aria-label="מצב מסגרת">
-        <button
-          type="button"
-          class="btn-mode"
-          [class.active]="!fullMode()"
-          (click)="fullMode.set(false)"
-        >ניתן לשינוי גודל</button>
-        <button
-          type="button"
-          class="btn-mode"
-          [class.active]="fullMode()"
-          (click)="fullMode.set(true)"
-        >מסך מלא</button>
-      </div>
-    </div>
-
-    <div class="json-section">
-      <span class="section-title">תגובה / שליחה</span>
-      <pre class="json-display">{{ stringify({ outgoing: outgoingPayload(), lastResponse: lastResponse() }) }}</pre>
-    </div>
-
-    @if (exportResult()) {
-      <div class="export-result-section">
-        <span class="section-title">תוצאת ייצוא</span>
-        @if (exportResult()!.exportType === 'mp4') {
-          <video [src]="exportResult()!.url" controls class="result-media">
-            <track kind="captions" />
-          </video>
-        } @else {
-          <img [src]="exportResult()!.url" alt="תצוגה מקדימה" class="result-media" />
+            <div class="actions">
+              <button type="submit" class="btn-primary">הוסף הקלטה</button>
+            </div>
+          </form>
         }
-        <a [href]="exportResult()!.url" download class="btn-secondary result-download">הורד</a>
-      </div>
-    }
+
+        @case ('media') {
+          <form class="form-section" (submit)="$event.preventDefault(); addMediaFromForm()">
+            <div class="field">
+              <label for="mediaId">מזהה מדיה</label>
+              <input
+                id="mediaId"
+                type="text"
+                autocomplete="off"
+                spellcheck="false"
+                placeholder="img-001 / demo-clip-001 / …"
+                [value]="mediaId()"
+                (input)="mediaId.set($any($event.target).value)"
+              />
+            </div>
+
+            @if (mediaError()) {
+              <p class="form-error" role="alert">{{ mediaError() }}</p>
+            }
+
+            <div class="actions">
+              <button type="submit" class="btn-primary">הוסף מדיה</button>
+            </div>
+
+            <div class="quick-picks">
+              <span class="section-title">דמו מהיר</span>
+              <div class="actions">
+                @for (preset of presetIds; track preset.id) {
+                  <button
+                    type="button"
+                    class="chip"
+                    (click)="addPresetMedia(preset.id)"
+                    [attr.aria-label]="'הוסף מדיה ' + preset.id"
+                  >{{ preset.label }}</button>
+                }
+              </div>
+            </div>
+          </form>
+        }
+
+        @case ('output') {
+          <div class="form-section output-section">
+            <div class="json-section">
+              <span class="section-title">הודעה אחרונה</span>
+              <pre class="json-display" aria-live="polite">{{ stringify({ outgoing: outgoingPayload(), lastResponse: lastResponse() }) }}</pre>
+            </div>
+
+            @if (exportResult()) {
+              <div class="export-result-section">
+                <span class="section-title">תוצאת ייצוא</span>
+                @if (exportResult()!.exportType === 'mp4') {
+                  <video [src]="exportResult()!.url" controls class="result-media" width="320" height="180">
+                    <track kind="captions" />
+                  </video>
+                } @else {
+                  <img [src]="exportResult()!.url" alt="תצוגה מקדימה של תוצאת הייצוא" class="result-media" width="320" height="180" />
+                }
+                <a [href]="exportResult()!.url" download class="btn-secondary result-download">הורד</a>
+              </div>
+            }
+          </div>
+        }
+      }
+    </div>
   </aside>
 </div>

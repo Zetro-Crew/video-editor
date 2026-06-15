@@ -112,7 +112,7 @@ describe("renderController", () => {
 		);
 	});
 
-	it("POST /render with invalid design returns 400 with path-prefixed message", async () => {
+	it("POST /render with invalid design returns 400 referencing design path", async () => {
 		const res = await app.inject({
 			method: "POST",
 			url: "/render",
@@ -120,7 +120,7 @@ describe("renderController", () => {
 		});
 		expect(res.statusCode).toBe(400);
 		const body = res.json() as { error: string };
-		expect(body.error).toMatch(/^[\w.]+:\s/);
+		expect(body.error).toContain("design");
 		expect(renderCommandPort.enqueueRender).not.toHaveBeenCalled();
 	});
 

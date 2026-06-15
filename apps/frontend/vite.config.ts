@@ -29,7 +29,7 @@ export default defineConfig(({ mode }) => {
 					target: process.env.VITE_API_URL || "http://localhost:4001",
 					changeOrigin: true,
 				},
-				"^/private/(media|users|channels)": {
+				"^/private/(media|users|channels|storage|videos)": {
 					target: process.env.VITE_CORE_URL || "http://localhost:8002",
 					changeOrigin: true,
 				},

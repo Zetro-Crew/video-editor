@@ -2,20 +2,22 @@ import { Injectable, signal } from "@angular/core";
 import type {
 	AudioRangePayload,
 	EditorResponse,
-	MediaPayload,
 	PreviewItemPayload,
 	RecordingRangePayload,
 } from "../message-types";
 
+type StoredMediaRequest = { kind: "stored-media"; mediaId: string };
+export type BridgeQueueItem = PreviewItemPayload | StoredMediaRequest;
+
 @Injectable({ providedIn: "root" })
 export class EditorBridgeService {
-	private readonly queue = signal<PreviewItemPayload[]>([]);
+	private readonly queue = signal<BridgeQueueItem[]>([]);
 	readonly pendingItems = this.queue.asReadonly();
 	readonly lastResponse = signal<EditorResponse | null>(null);
 	readonly fullMode = signal<boolean>(true);
 
-	addMedia(payload: MediaPayload): void {
-		this.queue.update((q) => [...q, payload]);
+	addStoredMedia(mediaId: string): void {
+		this.queue.update((q) => [...q, { kind: "stored-media", mediaId }]);
 	}
 
 	addAudio(payload: AudioRangePayload): void {
@@ -26,7 +28,7 @@ export class EditorBridgeService {
 		this.queue.update((q) => [...q, payload]);
 	}
 
-	drainQueue(): PreviewItemPayload[] {
+	drainQueue(): BridgeQueueItem[] {
 		const items = this.queue();
 		this.queue.set([]);
 		return items;

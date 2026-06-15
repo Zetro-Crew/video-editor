@@ -34,6 +34,12 @@ Every TS type in the package is `z.infer<typeof schema>` so schemas and types ca
 
 **Broker TLS** — closed-network broker uses client mutual TLS. `QUEUE_URL` scheme drives the behavior: `amqps://` (prod) → process reads three PEM files at boot from hardcoded paths (`/bundle.pem` for the private CA, `/tmp/certificates/rabbitmq/rabbit_cert.pem` + `rabbit_key.pem` for client identity) and passes them as socket options to every `amqplib.connect()`. `amqp://` (dev) → plain connect, no file reads. URL carries no userinfo in prod — the broker authenticates clients by certificate.
 
+## Stored Media
+
+**Stored Media** — an item the parent drops into the editor by id alone via `EDITOR_ADD_MEDIA { mediaId }`. The editor calls Core `GET /private/media/{id}/watch` to resolve `{ type, name }`. `type ∈ "Image" | "ClipVideo" | "UploadedVideo" | "ScreenShotFromLive"`. Image / screenshot play directly from `${VITE_CORE_EXTENSION}/storage/{id}/image` with HttpOnly `ztube-token` cookie auth; duration defaults to 5000 ms (editor-side, not parent-controlled). Clip / uploaded video go through the editor backend's preview-source pipeline with source type `{ type: "media-id", mediaId }` → `/private/videos/{id}/play` → MPD (`/private/storage/{id}/mpd`) → HLS assembly. Same MPD-to-HLS code path as Channel Range, but Core-served (no `vod-token` — segments authenticate purely on the session cookie).
+
+Editor responses echo the `mediaId` on `EDITOR_PREVIEW_ITEM_ADDED { mediaId, itemId }` and `EDITOR_PREVIEW_ITEM_REJECTED { mediaId, reason }`. Two adds with the same `mediaId` are processed twice — there is no de-duplication. Core 404 maps to `reason: "media not found"`; 5xx / network maps to `reason: "core unavailable"`.
+
 ## Editor Composition
 
 **IDesign** — the serialized editor state: tracks, track items, canvas size, FPS. This is the payload the frontend sends to `/render`. It is the single source of truth for what the rendered output will look like.
@@ -75,6 +81,13 @@ Every TS type in the package is `z.infer<typeof schema>` so schemas and types ca
 **MPD Base** — effective base URL for resolving DASH segment templates. Per ISO/IEC 23009-1, computed as `resolve(periodBaseURL, resolve(mpdBaseURL, mpdDocumentURL))` (RFC3986). `segmentStartTimeMs` (from `/play.timeRanges[0][0]`) is the wall-clock anchor; `presentationTimeOffset` from the MPD is informational only in this HLS pipeline.
 
 **Channel Range** — a preview source type (`{ type: "channel-range", channelId, startTimeMs, endTimeMs }`) that references a time window of a live channel recording. The server resolves it by calling Core's Channel Play API, fetching the DASH MPD, and assembling an HLS Playlist. The editor always works with the resolved HLS Playlist, never directly with the Channel Range.
+
+**Video Play API** — `GET /private/videos/:id/play` on Core (for `ClipVideo` / `UploadedVideo` stored-media types). Returns `{ url, timeRanges }`:
+- `url` — absolute MPD document URL. In dev mocks + prod, points back at Core (e.g. `/private/storage/{id}/mpd`) — Core serves segments directly under the session cookie, no separate VOD origin.
+- `timeRanges[0]` — `[mediaCreatedAtMs, mediaCreatedAtMs + durationMs]`. The wall-clock anchor at media creation drives `sourceOffsetMs` downstream the same way Channel Range does.
+- **No `token` field.** Core serves segments under HttpOnly `ztube-token` cookie auth, so the editor backend omits the `vod-token` header on MPD + segment fetches for `media-id`-sourced previews. The segment-proxy signed URLs encode `kind=media-id` so the proxy knows not to attach a `vod-token`.
+
+**Media Watch API** — `GET /private/media/:id/watch` on Core. Returns `{ type, name }`. The editor calls this on every `EDITOR_ADD_MEDIA` to branch on stored-media subtype.
 
 **HLS Playlist** — a server-assembled `.m3u8` file built from a DASH MPD. Not a native recording format — the editor server synthesizes it so the browser's HLS stack can play DASH-origin content without needing MSE/DASH.js. Stored in S3 after assembly; URL is presigned.
 

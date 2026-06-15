@@ -6,6 +6,7 @@ const positiveNumber = z.number().finite().min(0);
 export const savedMediaItemSchema = z.discriminatedUnion("type", [
 	z.strictObject({ type: z.literal("image"), id: nonEmptyString }),
 	z.strictObject({ type: z.literal("clip"), id: nonEmptyString }),
+	z.strictObject({ type: z.literal("uploaded"), id: nonEmptyString }),
 	z.strictObject({
 		type: z.literal("recording"),
 		id: nonEmptyString,

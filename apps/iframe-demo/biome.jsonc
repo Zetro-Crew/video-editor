@@ -9,6 +9,11 @@
 	"files": {
 		"includes": ["!**/node_modules", "!**/dist"]
 	},
+	"html": {
+		"parser": {
+			"interpolation": true
+		}
+	},
 	"overrides": [
 		{
 			"includes": ["src/**"],

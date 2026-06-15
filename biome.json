@@ -72,6 +72,9 @@
 				"noAccumulatingSpread": "error",
 				"noBarrelFile": "error",
 				"noReExportAll": "error"
+			},
+			"nursery": {
+				"noDeprecatedImports": "error"
 			}
 		}
 	},

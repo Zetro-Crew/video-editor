@@ -5,8 +5,8 @@ const DWELL_DELAY_MS = 600; // ms the mouse must stay before scroll starts
 const BASE_SPEED = 1.5; // px/frame at edge boundary
 const MAX_SPEED = 7; // px/frame at edge tip
 
-export type EdgeScrollSide = "left" | "right" | null;
-export type EdgeScrollPhase = "dwell" | "scrolling" | null;
+type EdgeScrollSide = "left" | "right" | null;
+type EdgeScrollPhase = "dwell" | "scrolling" | null;
 
 export interface EdgeScrollState {
 	side: EdgeScrollSide;

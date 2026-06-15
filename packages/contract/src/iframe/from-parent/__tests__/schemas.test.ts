@@ -1,10 +1,9 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
+	mockAddMediaMessage,
 	mockAudioRangeMessage,
 	mockClearProjectMessage,
-	mockMediaHlsMessage,
-	mockMediaMp4Message,
 	mockRecordingRangeHlsMessage,
 	mockRecordingRangeNoPlaybackMessage,
 } from "../mocks.js";
@@ -37,18 +36,6 @@ describe("from-parent — business rules", () => {
 			payload: {
 				...baseRecordingPayload,
 				playback: { kind: "hls", src: "file:///etc/passwd" },
-			},
-		});
-		assert.equal(result.success, false);
-	});
-
-	it("rejects non-http/https src in media playback", () => {
-		const result = parentToEditorMessageSchema.safeParse({
-			type: "EDITOR_ADD_PREVIEW_ITEM",
-			payload: {
-				kind: "media",
-				mediaId: "m-1",
-				playback: { kind: "mp4", src: "javascript:alert(1)" },
 			},
 		});
 		assert.equal(result.success, false);
@@ -89,19 +76,6 @@ describe("from-parent — business rules", () => {
 		assert.equal(result.success, false);
 	});
 
-	it("rejects media durationMs exceeding 1 hour", () => {
-		const result = parentToEditorMessageSchema.safeParse({
-			type: "EDITOR_ADD_PREVIEW_ITEM",
-			payload: {
-				kind: "media",
-				mediaId: "m-1",
-				durationMs: MAX_MS + 1,
-				playback: { kind: "mp4", src: "https://example.com/v.mp4" },
-			},
-		});
-		assert.equal(result.success, false);
-	});
-
 	it("rejects audio-range with non-hls src that is not audio media", () => {
 		const result = parentToEditorMessageSchema.safeParse({
 			type: "EDITOR_ADD_PREVIEW_ITEM",
@@ -128,8 +102,6 @@ describe("from-parent — business rules", () => {
 describe("from-parent — schema invariants", () => {
 	it("parses valid add-preview-item messages", () => {
 		assert.equal(parentToEditorMessageSchema.safeParse(mockRecordingRangeHlsMessage).success, true);
-		assert.equal(parentToEditorMessageSchema.safeParse(mockMediaMp4Message).success, true);
-		assert.equal(parentToEditorMessageSchema.safeParse(mockMediaHlsMessage).success, true);
 		assert.equal(parentToEditorMessageSchema.safeParse(mockAudioRangeMessage).success, true);
 	});
 
@@ -232,9 +204,8 @@ describe("from-parent — schema invariants", () => {
 		for (const message of [
 			mockRecordingRangeHlsMessage,
 			mockRecordingRangeNoPlaybackMessage,
-			mockMediaMp4Message,
-			mockMediaHlsMessage,
 			mockAudioRangeMessage,
+			mockAddMediaMessage,
 			mockClearProjectMessage,
 		]) {
 			assert.equal(
@@ -243,5 +214,67 @@ describe("from-parent — schema invariants", () => {
 				`Mock failed schema validation: ${JSON.stringify(message)}`,
 			);
 		}
+	});
+});
+
+describe("from-parent — EDITOR_ADD_MEDIA", () => {
+	it("accepts message with non-empty mediaId", () => {
+		const result = parentToEditorMessageSchema.safeParse({
+			type: "EDITOR_ADD_MEDIA",
+			mediaId: "img-001",
+		});
+		assert.equal(result.success, true);
+	});
+
+	it("rejects message without mediaId", () => {
+		const result = parentToEditorMessageSchema.safeParse({
+			type: "EDITOR_ADD_MEDIA",
+		});
+		assert.equal(result.success, false);
+	});
+
+	it("rejects message with empty mediaId", () => {
+		const result = parentToEditorMessageSchema.safeParse({
+			type: "EDITOR_ADD_MEDIA",
+			mediaId: "   ",
+		});
+		assert.equal(result.success, false);
+	});
+
+	it("rejects extra fields (strictObject)", () => {
+		const result = parentToEditorMessageSchema.safeParse({
+			type: "EDITOR_ADD_MEDIA",
+			mediaId: "img-001",
+			requestId: "should-not-be-here",
+		});
+		assert.equal(result.success, false);
+	});
+
+	it("rejects non-string mediaId", () => {
+		const result = parentToEditorMessageSchema.safeParse({
+			type: "EDITOR_ADD_MEDIA",
+			mediaId: 42,
+		});
+		assert.equal(result.success, false);
+	});
+
+	it("removes legacy image payload kind from union", () => {
+		const result = parentToEditorMessageSchema.safeParse({
+			type: "EDITOR_ADD_PREVIEW_ITEM",
+			payload: { kind: "image", imageId: "img-001" },
+		});
+		assert.equal(result.success, false);
+	});
+
+	it("removes legacy media payload kind from union", () => {
+		const result = parentToEditorMessageSchema.safeParse({
+			type: "EDITOR_ADD_PREVIEW_ITEM",
+			payload: {
+				kind: "media",
+				mediaId: "media-1",
+				playback: { kind: "mp4", src: "https://example.com/v.mp4" },
+			},
+		});
+		assert.equal(result.success, false);
 	});
 });

@@ -2,6 +2,10 @@ import { randomBytes } from "node:crypto";
 import cors from "@fastify/cors";
 import Fastify, { type FastifyInstance } from "fastify";
 import { ExportResultStore } from "./export-result-store.ts";
+import { getDemoClipMp4 } from "./fixtures/clip.ts";
+import { getDashFixture } from "./fixtures/dash.ts";
+import { imageFixtures } from "./fixtures/images.ts";
+import { isVideoType, videoPlayRegistry, watchRegistry } from "./fixtures/media-registry.ts";
 
 const mockUser = {
 	displayName: "דניאל ריספלר",
@@ -23,6 +27,8 @@ export interface BuildCoreMockOptions {
 	mockVodBaseUrl?: string;
 	tokenTtlMs?: number;
 	logger?: boolean;
+	/** Base URL the mock advertises in /videos/:id/play responses. Defaults to "http://127.0.0.1:8002". */
+	selfBaseUrl?: string;
 }
 
 export interface CoreMockHandle {
@@ -49,6 +55,7 @@ async function probeFixtureWindow(mockVodBaseUrl: string): Promise<FixtureWindow
 export async function buildCoreMock(opts: BuildCoreMockOptions = {}): Promise<CoreMockHandle> {
 	const mockVodBaseUrl = opts.mockVodBaseUrl ?? "http://127.0.0.1:5050";
 	const tokenTtlMs = opts.tokenTtlMs ?? 600_000;
+	const selfBaseUrl = opts.selfBaseUrl ?? "http://127.0.0.1:8002";
 
 	const app = Fastify({ logger: opts.logger ?? false });
 	await app.register(cors, { origin: true, credentials: true });
@@ -59,6 +66,96 @@ export async function buildCoreMock(opts: BuildCoreMockOptions = {}): Promise<Co
 
 	app.get("/private/users/me", async () => mockUser);
 	app.get("/private/media/clip/managed-virtual-channels", async () => mockChannels);
+
+	app.get<{ Params: { id: string } }>("/private/storage/:id/image", async (req, reply) => {
+		const fixture = imageFixtures[req.params.id];
+		if (!fixture) {
+			return reply.status(404).send({ error: "Unknown image id" });
+		}
+		return reply
+			.header("Content-Type", fixture.contentType)
+			.header("Cache-Control", "public, max-age=300")
+			.send(fixture.body);
+	});
+
+	app.get<{ Params: { id: string } }>("/private/storage/:id/clip", async (req, reply) => {
+		if (req.params.id !== "demo-clip-001") {
+			return reply.status(404).send({ error: "Unknown clip id" });
+		}
+		const body = await getDemoClipMp4();
+		return reply
+			.header("Content-Type", "video/mp4")
+			.header("Cache-Control", "public, max-age=300")
+			.send(body);
+	});
+
+	app.get<{ Params: { id: string } }>("/private/media/:id/watch", async (req, reply) => {
+		const entry = watchRegistry[req.params.id];
+		if (!entry) {
+			return reply.status(404).send({ error: "Unknown media id" });
+		}
+		return entry;
+	});
+
+	app.get<{ Params: { id: string } }>("/private/videos/:id/play", async (req, reply) => {
+		const watch = watchRegistry[req.params.id];
+		if (!watch || !isVideoType(watch.type)) {
+			return reply.status(404).send({ error: "Unknown video id" });
+		}
+		const playEntry = videoPlayRegistry[req.params.id];
+		if (!playEntry) {
+			return reply.status(404).send({ error: "Unknown video id" });
+		}
+		return {
+			url: `${selfBaseUrl}/private/storage/${encodeURIComponent(req.params.id)}/mpd`,
+			timeRanges: [[playEntry.mediaCreatedAtMs, playEntry.mediaCreatedAtMs + playEntry.durationMs]],
+		};
+	});
+
+	app.get<{ Params: { id: string } }>("/private/storage/:id/mpd", async (req, reply) => {
+		const watch = watchRegistry[req.params.id];
+		if (!watch || !isVideoType(watch.type)) {
+			return reply.status(404).send({ error: "Unknown video id" });
+		}
+		const fixture = await getDashFixture(req.params.id);
+		return reply
+			.header("Content-Type", "application/dash+xml")
+			.header("Cache-Control", "no-store")
+			.send(fixture.mpd);
+	});
+
+	app.get<{ Params: { id: string; filename: string } }>(
+		"/private/storage/:id/:filename",
+		async (req, reply) => {
+			const { id, filename } = req.params;
+			const watch = watchRegistry[id];
+			if (!watch || !isVideoType(watch.type)) {
+				return reply.status(404).send({ error: "Unknown video id" });
+			}
+			const fixture = await getDashFixture(id);
+			if (/^init_v\d+\.mp4$/.test(filename)) {
+				const init = fixture.inits.get(filename);
+				if (!init) {
+					return reply.status(404).send({ error: "Unknown init segment" });
+				}
+				return reply
+					.header("Content-Type", "video/mp4")
+					.header("Cache-Control", "public, max-age=300")
+					.send(init);
+			}
+			if (/^segment_v\d+_\d+\.m4s$/.test(filename)) {
+				const seg = fixture.segments.get(filename);
+				if (!seg) {
+					return reply.status(404).send({ error: "Unknown segment" });
+				}
+				return reply
+					.header("Content-Type", "video/iso.segment")
+					.header("Cache-Control", "public, max-age=300")
+					.send(seg);
+			}
+			return reply.status(404).send({ error: "Unknown storage path" });
+		},
+	);
 
 	app.get<{
 		Params: { channelId: string };

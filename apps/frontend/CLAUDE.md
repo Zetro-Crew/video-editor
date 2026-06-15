@@ -14,7 +14,7 @@ pnpm build               # tsc + vite build (default mode)
 pnpm build:preprod       # vite build --mode preprod
 pnpm build:production    # vite build --mode production
 pnpm preview             # vite preview
-pnpm lint                # biome check --write
+pnpm lint                # biome check . --write
 pnpm type-check          # tsc --noEmit
 pnpm test                # vitest run (unit)
 pnpm test:e2e            # playwright test
@@ -86,8 +86,18 @@ There is no global scene store outside this folder.
 `useEditorPostMessage` hook (in `src/features/editor/external-preview/use-editor-post-message.ts`) listens for `window.postMessage` from parent. Uses `@video-editor/contract/iframe/from-parent` (parse incoming) and `@video-editor/contract/iframe/to-parent` (build responses) for typed schemas.
 
 Supported inbound messages:
-- `EDITOR_ADD_PREVIEW_ITEM` — adds video/audio track at end of timeline (`recording-range`, `media`, `audio-range` payloads)
+- `EDITOR_ADD_PREVIEW_ITEM` — adds a recording-range or audio-range track at end of timeline (`recording-range`, `audio-range` payloads only — image/media kinds removed; use `EDITOR_ADD_MEDIA` instead)
+- `EDITOR_ADD_MEDIA` — id-only intake: `{ mediaId }`. The editor calls Core `GET /private/media/{id}/watch` to resolve `{ type, name }` and branches:
+  - `Image` / `ScreenShotFromLive` → builds `${VITE_CORE_EXTENSION}/storage/{id}/image`, dispatches `ADD_IMAGE` with default 5000 ms duration
+  - `ClipVideo` / `UploadedVideo` → calls `resolvePreviewSource({ type: "media-id", mediaId })` → backend returns playlist URL + duration + dimensions, dispatches `ADD_VIDEO`
+  - Core 404 → `EDITOR_PREVIEW_ITEM_REJECTED { mediaId, reason: "media not found" }`
+  - 5xx / network → `EDITOR_PREVIEW_ITEM_REJECTED { mediaId, reason: "core unavailable" }`
+  - Ack is **async** (Core round-trip) — parents must not assume synchronous ack on stored media
 - `EDITOR_CLEAR_PROJECT` — wipes all tracks, resets duration
+
+Two correlation patterns coexist:
+- `EDITOR_ADD_PREVIEW_ITEM` / `EDITOR_CLEAR_PROJECT` use `requestId` (optional, response cache de-duplicates by it)
+- `EDITOR_ADD_MEDIA` echoes `mediaId` on response. No `requestId`, no de-duplication — two adds with same id are processed twice.
 
 Outbound:
 - `EDITOR_READY` — on init
@@ -108,7 +118,7 @@ Configured in `vite.config.ts`. Three proxy groups:
 |---|---|---|
 | `^/(render\|uploads\|upload\|cleanup\|edit-video)` | `http://localhost:4001` (server) | `VITE_API_URL` |
 | `^/editor/(preview-source\|segment\|demo-assets\|export)` | `http://localhost:4001` (server) | `VITE_API_URL` |
-| `^/private/(media\|users\|channels)` | `http://localhost:8002` (core-mock) | `VITE_CORE_URL` |
+| `^/private/(media\|users\|channels\|storage\|videos)` | `http://localhost:8002` (core-mock) | `VITE_CORE_URL` |
 
 Build `base` is `VITE_PUBLIC_PATH` (defaults to `/`). Build target is `chrome113`. Manual chunks split vendor bundles (framer, radix, designcombo, remotion, react).
 
@@ -161,7 +171,7 @@ All optional. None required in dev.
 |---|---|---|
 | `VITE_EDITOR_PARENT_ORIGINS` | `useEditorPostMessage` | Comma-separated allowed origins for iframe postMessage |
 | `VITE_SERVER_EXTENSION` | `src/utils/fetch-server.ts` | Path prefix for server API calls |
-| `VITE_CORE_EXTENSION` | `src/utils/fetch-core.ts` | Path prefix for core-service API calls |
+| `VITE_CORE_EXTENSION` | `src/utils/fetch-core.ts` | Path prefix for core-service API calls. Must be a leading-slash path with no trailing slash (e.g. `/private` in dev to match the vite proxy, `/api/media` in deployed envs where the gateway mounts the core `/private` root). |
 | `VITE_API_URL` | `vite.config.ts` (dev proxy) | Override for server proxy target |
 | `VITE_CORE_URL` | `vite.config.ts` (dev proxy) | Override for core-service proxy target |
 | `VITE_PUBLIC_PATH` | `vite.config.ts` (build) | Sets Vite `base` for non-root deploys |

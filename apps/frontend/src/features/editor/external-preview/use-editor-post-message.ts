@@ -5,7 +5,7 @@ import type {
 } from "@video-editor/contract/iframe/to-parent";
 import { useEffect, useMemo, useRef } from "react";
 import { handleParentMessage, type ResponseCacheEntry } from "./handle-parent-message";
-import { addPreviewItemToEditor, clearProject } from "./payload-intake";
+import { addPreviewItemToEditor, addStoredMediaToEditor, clearProject } from "./payload-intake";
 import { parseAllowedOrigins } from "./utils";
 
 export const useEditorPostMessage = (stateManager: StateManager) => {
@@ -36,6 +36,7 @@ export const useEditorPostMessage = (stateManager: StateManager) => {
 					responseCache: responseCacheRef.current,
 					maxCacheSize: MAX_RESPONSE_CACHE_SIZE,
 					addPreviewItem: (payload) => addPreviewItemToEditor(stateManager, payload),
+					addStoredMedia: (mediaId) => addStoredMediaToEditor(stateManager, mediaId),
 					clearProject: () => clearProject(stateManager),
 					postResponse,
 				},

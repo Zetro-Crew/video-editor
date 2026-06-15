@@ -1,5 +1,8 @@
 import cors from "@fastify/cors";
+import swagger from "@fastify/swagger";
+import swaggerUI from "@fastify/swagger-ui";
 import { fastifyLoggingPlugin } from "@ztube/observability/fastify";
+import { jsonSchemaTransform } from "fastify-type-provider-zod";
 import type { ApiEnvConfig } from "../config/env.ts";
 import { previewController } from "../features/preview/adapters/inbound/http/preview.controller.ts";
 import { renderController } from "../features/render/adapters/inbound/http/render.controller.ts";
@@ -19,7 +22,7 @@ export class Server {
 	}
 
 	async start(): Promise<void> {
-		this.app.get("/health", { config: { logHttp: false } }, async () => ({
+		this.app.get("/health", { config: { logHttp: false }, schema: { hide: true } }, async () => ({
 			status: "ok",
 		}));
 
@@ -29,6 +32,29 @@ export class Server {
 			logStarted: false,
 			logSuccess: true,
 		});
+
+		await this.app.register(swagger, {
+			openapi: {
+				openapi: "3.0.3",
+				info: {
+					title: "Video Editor Server",
+					version: this.config.SERVICE_VERSION,
+				},
+				servers: [
+					{
+						url: `${this.config.SERVER_BASE_URL}${this.config.SERVER_PUBLIC_PATH_PREFIX}`,
+					},
+				],
+			},
+			transform: jsonSchemaTransform,
+		});
+		await this.app.register(swaggerUI, { routePrefix: "/docs" });
+
+		this.app.get(
+			"/openapi.json",
+			{ config: { logHttp: false }, schema: { hide: true } },
+			async () => this.app.swagger(),
+		);
 
 		await this.app.register(uploadController, {
 			uploadUseCase: this.container.uploadUseCase,

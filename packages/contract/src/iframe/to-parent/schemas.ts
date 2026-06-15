@@ -11,12 +11,14 @@ const safeSrc = nonEmptyString.refine(safeMediaUrl, {
 export const editorPreviewItemAddedMessageSchema = z.strictObject({
 	type: z.literal("EDITOR_PREVIEW_ITEM_ADDED"),
 	requestId: requestIdSchema,
+	mediaId: nonEmptyString.optional(),
 	itemId: nonEmptyString,
 });
 
 export const editorPreviewItemRejectedMessageSchema = z.strictObject({
 	type: z.literal("EDITOR_PREVIEW_ITEM_REJECTED"),
 	requestId: requestIdSchema,
+	mediaId: nonEmptyString.optional(),
 	reason: nonEmptyString,
 });
 

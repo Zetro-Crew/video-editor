@@ -22,36 +22,6 @@ export const mockRecordingRangeHlsMessage: ParentToEditorMessage = {
 	},
 };
 
-export const mockMediaMp4Message: ParentToEditorMessage = {
-	type: "EDITOR_ADD_PREVIEW_ITEM",
-	requestId: "mock-media-mp4",
-	payload: {
-		kind: "media",
-		mediaId: "media-1001",
-		durationMs: 120000,
-		playback: {
-			kind: "mp4",
-			src: "https://example.com/media/mock-video.mp4",
-		},
-		posterSrc: "https://example.com/media/mock-video-poster.jpg",
-	},
-};
-
-export const mockMediaHlsMessage: ParentToEditorMessage = {
-	type: "EDITOR_ADD_PREVIEW_ITEM",
-	requestId: "mock-media-hls",
-	payload: {
-		kind: "media",
-		mediaId: "media-1002",
-		durationMs: 180000,
-		playback: {
-			kind: "hls",
-			src: "https://example.com/media/mock-video/index.m3u8",
-		},
-		posterSrc: "https://example.com/media/mock-video-hls-poster.jpg",
-	},
-};
-
 export const mockAudioRangeMessage: ParentToEditorMessage = {
 	type: "EDITOR_ADD_PREVIEW_ITEM",
 	requestId: "mock-audio-range",
@@ -80,6 +50,11 @@ export const mockRecordingRangeNoPlaybackMessage: ParentToEditorMessage = {
 		durationMs: mockDurationMs,
 		sourceOffsetMs: 6333,
 	},
+};
+
+export const mockAddMediaMessage: ParentToEditorMessage = {
+	type: "EDITOR_ADD_MEDIA",
+	mediaId: "img-001",
 };
 
 export const mockClearProjectMessage: EditorClearProjectMessage = {
