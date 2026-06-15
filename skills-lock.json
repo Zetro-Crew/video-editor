@@ -31,6 +31,24 @@
       "skillPath": "skills/productivity/handoff/SKILL.md",
       "computedHash": "1a78d774f8a59db5daa6e65e20a6596872fa8cde769f9a6e3a09b678dd5ae8cc"
     },
+    "hebrew-content-writer": {
+      "source": "skills-il/localization",
+      "sourceType": "github",
+      "skillPath": "hebrew-content-writer/SKILL.md",
+      "computedHash": "a96c9a8b28c2fc75ca3b8395e712de6811b5d7d30d64774ac7bd491b6287c289"
+    },
+    "hebrew-document-generator": {
+      "source": "skills-il/localization",
+      "sourceType": "github",
+      "skillPath": "hebrew-document-generator/SKILL.md",
+      "computedHash": "a8cfd7ad8fc6e14f8bb89b6b899eab4201ca7a7d4d05d49668fbd038424785a8"
+    },
+    "hebrew-rtl-best-practices": {
+      "source": "skills-il/localization",
+      "sourceType": "github",
+      "skillPath": "hebrew-rtl-best-practices/SKILL.md",
+      "computedHash": "e960bcb984eab68ec2ba4abe1cc21d847b6384be04b91d7e05b6eda1b2359fff"
+    },
     "hexagonal-architecture": {
       "source": "affaan-m/everything-claude-code",
       "sourceType": "github",

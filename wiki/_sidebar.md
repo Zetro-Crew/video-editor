@@ -1,30 +1,24 @@
-## קליטה
-- [תחילת עבודה](onboarding/getting-started)
-- [סיור במאגר](onboarding/repo-tour)
-- [הגדרת סביבת פיתוח](onboarding/dev-setup)
-- [תהליך עבודה](onboarding/workflow)
+## Dev
+- [סקירה](dev/home)
+- [תחילת עבודה](dev/getting-started)
+- [סיור במאגר](dev/repo-tour)
+- [תהליך עבודה](dev/workflow)
+- [ארכיטקטורה](dev/overview)
+- [מילון מונחים](dev/glossary)
+- [ADRs](dev/adr-index)
+- אפליקציות
+  - [frontend](dev/apps/frontend)
+  - [server](dev/apps/server)
+  - [contract](dev/apps/contract)
+  - [dev harness](dev/apps/dev-harness)
 
-## ארכיטקטורה
-- [סקירה כללית](architecture/overview)
-- [מילון מונחים](architecture/glossary)
-- [ADRs](architecture/adr/index)
-- אפליקציות וחבילות
-  - [frontend](architecture/apps/frontend)
-  - [server](architecture/apps/server)
-  - [iframe-demo](architecture/apps/iframe-demo)
-  - [core-mock](architecture/apps/core-mock)
-  - [mock-vod](architecture/apps/mock-vod)
-  - [contract](architecture/apps/contract)
+## Integrate
+- [סקירה](integrate/home)
+- [iframe](integrate/iframe)
+- [אירועי AMQP](integrate/events)
 
-## מתממשקים
-- [הטמעת iframe](integrators/iframe-integration)
-- [צרכני אירועים](integrators/event-consumers)
-
-## תפעול
-- [פריסה](ops/deployment)
-- [ניטור](ops/monitoring)
-- [Runbooks](ops/runbooks)
-
-## מוצר
-- [סקירת תכונות](product/feature-overview)
-- [מילון משתמש](product/user-glossary)
+## Operate
+- [סקירה](operate/home)
+- [פריסה](operate/deployment)
+- [ניטור](operate/monitoring)
+- [Runbooks](operate/runbooks)
