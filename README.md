@@ -6,6 +6,7 @@
 
 A full-stack, browser-based video editor built on [Remotion](https://www.remotion.dev/) and React 19. Compose scenes on a drag-and-drop timeline, apply transitions and overlays, then export to video — all from the browser.
 
+> [!NOTE]
 > **Deployment target:** Closed, air-gapped network environments. All infrastructure (MinIO, RabbitMQ, FFmpeg) is self-hosted. No public internet access is required or expected at runtime.
 
 ## Documentation
@@ -17,7 +18,7 @@ The `wiki/` folder mirrors the GitLab project wiki for closed-network deployment
 | App / Package | Description | Port |
 |---|---|---|
 | `apps/frontend` | Vite + React 19 SPA — the editor UI | 3000 |
-| `apps/server` | Fastify + Node.js. **API** (port 4001) handles uploads + enqueues render jobs; **Worker** (probe port 8081) consumes the queue + runs FFmpeg | 4001 / 8081 |
+| `apps/server` | Fastify + Node.js. **API** (port 4001, `pnpm dev`) handles uploads + enqueues render jobs; **Worker** (probe port 8081, `pnpm dev:worker`) consumes the queue + runs FFmpeg. The two are separate scripts; root `pnpm dev` only starts the API. | 4001 / 8081 |
 | `apps/iframe-demo` | Angular 21 harness for iframe integration testing | 8080 |
 | `apps/core-mock` | Dev-only Fastify mock of the upstream Core service | 8002 |
 | `apps/mock-vod` | Dev-only Fastify mock of the upstream VOD service | 5050 |
@@ -27,34 +28,67 @@ The `wiki/` folder mirrors the GitLab project wiki for closed-network deployment
 
 - Node.js 22.18+
 - pnpm 10+
-- Docker (for MinIO + RabbitMQ)
-- FFmpeg (installed automatically via `@ffmpeg-installer/ffmpeg`)
+- Git
+- Docker Desktop — must be **running** before `docker compose up`
 
 ## Getting Started
 
-**1. Install dependencies**
+Setup splits into two paths. Pick the one that matches your environment.
+
+### Path A — Open network (this GitHub repo)
+
+> [!IMPORTANT]
+> The sibling clone must be named exactly `observability-sdk` and sit at the same parent directory as `video-editor`. `pnpm-workspace.yaml` overrides `@ztube/observability` to `link:../observability-sdk` — the path is hard-coded.
 
 ```bash
+# 1. Clone both repos as siblings
+git clone https://github.com/Zetro-Crew/observability-sdk.git
+git clone https://github.com/Zetro-Crew/video-editor.git
+
+# 2. Build the observability SDK first — its exports require dist/
+cd observability-sdk
 pnpm install
+pnpm build
+
+# 3. Install + build video-editor — build is required because
+#    packages/contract emits dist/ and `pnpm dev` does not trigger
+#    upstream builds via Turborepo.
+cd ../video-editor
+pnpm install
+pnpm build
 ```
 
-**2. Start infrastructure**
+### Path B — Closed network
+
+> [!NOTE]
+> The closed-network repo ships a `pnpm-workspace.yaml` without the `@ztube/observability` override; the SDK is resolved from the internal registry.
 
 ```bash
-docker compose up -d
+git clone <internal-git>/video-editor.git
+cd video-editor
+pnpm install
+pnpm build
 ```
 
-This starts MinIO (S3-compatible storage, port 9000/9001) and RabbitMQ (port 5672, management UI 15672).
-
-**3. Configure the server**
-
-Copy and edit the server environment:
+### Run (both paths)
 
 ```bash
-cp apps/server/.env.example apps/server/.env
+# Infrastructure — make sure Docker Desktop is running
+docker compose up -d           # MinIO :9000 / :9001, RabbitMQ :5672 / :15672
+
+# Start API, frontend, iframe-demo, and the two mocks
+pnpm dev
+
+# In a second terminal, start the render worker
+# (root `pnpm dev` does not include it)
+cd apps/server && pnpm dev:worker
 ```
 
-Key variables (all have defaults for local dev):
+`apps/server/.env` is committed with working dev defaults; edit it in place to override values.
+
+### Server environment
+
+Key variables (all have defaults that work for local dev):
 
 | Variable | Default | Description |
 |---|---|---|
@@ -68,18 +102,24 @@ Key variables (all have defaults for local dev):
 
 See [apps/server/README.md](apps/server/README.md) for the full env schema.
 
-**4. Run everything**
+## Local Dev Networking
 
-```bash
-pnpm dev
-```
+The frontend dev server (Vite, port 3000) proxies API traffic to the server so the browser can use relative paths:
 
-This runs frontend, server, and iframe-demo in parallel via Turborepo.
+- `render`, `uploads`, `upload`, `cleanup`, `edit-video` → server (`http://localhost:4001`)
+- `/editor/preview-source`, `/editor/segment`, `/editor/demo-assets`, `/editor/export` → server
+- `/private/(media|users|channels|storage|videos)` → Core mock (`http://localhost:8002`)
+
+Uploads use the presigned-URL flow: the client requests a signed URL from `/upload/signed-url`, then `PUT`s the file directly to MinIO on `http://localhost:9000`. MinIO CORS in `docker-compose.yaml` allows `http://localhost:3000` and `http://localhost:8080`.
+
+**Optional frontend env:**
+
+- `VITE_EDITOR_PARENT_ORIGINS` — comma-separated allowed origins for iframe postMessage (required when embedding the editor in an iframe).
 
 ## Workspace Commands
 
 ```bash
-pnpm dev          # Run all apps in parallel
+pnpm dev          # Run all apps in parallel (worker excluded — see above)
 pnpm build        # Build all apps
 pnpm lint         # Lint all apps (Biome)
 pnpm format       # Format all apps (Biome)
