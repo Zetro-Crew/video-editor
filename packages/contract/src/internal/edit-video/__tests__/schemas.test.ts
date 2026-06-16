@@ -120,7 +120,6 @@ describe("overlay id accepts non-UUID strings", () => {
 		});
 		assert.equal(result.success, true);
 	});
-
 });
 
 describe("audioSourceSchema volume default", () => {

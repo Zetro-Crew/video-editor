@@ -158,18 +158,44 @@ export const previewController: FastifyPluginAsync<PreviewControllerOptions> = a
 				useCaseSource = { type: "media-id", mediaId: source.mediaId };
 			}
 
+			request.log.info(
+				{
+					kind: source.type,
+					mediaId: source.type === "media-id" ? source.mediaId : undefined,
+					channelId: source.type === "channel-range" ? source.channelId : undefined,
+					startTimeMs: source.type === "channel-range" ? source.startTimeMs : undefined,
+					endTimeMs: source.type === "channel-range" ? source.endTimeMs : undefined,
+				},
+				"preview-source request",
+			);
+
 			const ztubeToken = parseZtubeTokenCookie(request.headers.cookie ?? "");
 			const previewSource = new HttpPreviewSourceAdapter({
 				coreBaseUrl: config.CORE_BASE_URL,
 				serverBaseUrl: config.SERVER_BASE_URL,
 				authCookie: ztubeToken,
+				logger: request.log,
 			});
 
 			try {
-				const result = await generatePreviewUseCase.execute({
-					source: useCaseSource,
-					previewSource,
-				});
+				const result = await generatePreviewUseCase.execute(
+					{
+						source: useCaseSource,
+						previewSource,
+					},
+					{ logger: request.log },
+				);
+
+				request.log.info(
+					{
+						kind: source.type,
+						durationMs: result.durationMs,
+						sourceOffsetMs: result.sourceOffsetMs,
+						width: result.width,
+						height: result.height,
+					},
+					"preview-source ok",
+				);
 
 				return reply.status(HttpStatus.OK).send({ type: "hls", ...result });
 			} catch (err) {

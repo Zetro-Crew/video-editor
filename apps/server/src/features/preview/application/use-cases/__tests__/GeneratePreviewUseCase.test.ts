@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import type { ApiEnvConfig } from "../../../../../config/env.ts";
+import { silentLogger } from "../../../../../infrastructure/fastify/__tests__/silent-logger.ts";
 import { InMemoryStorageAdapter } from "../../../../../infrastructure/storage/__tests__/InMemoryStorageAdapter.ts";
 import type {
+	FetchManifestContext,
 	MediaPlayResult,
 	PreviewPlayResult,
 	PreviewSourcePort,
@@ -39,7 +41,11 @@ function makeConfig(): ApiEnvConfig {
 type SpyableSource = PreviewSourcePort & {
 	playCalls: Array<{ channelId: string; start: number; end: number }>;
 	playMediaCalls: string[];
-	fetchCalls: Array<{ mpdUrl: string; token: string | undefined }>;
+	fetchCalls: Array<{
+		mpdUrl: string;
+		token: string | undefined;
+		context: FetchManifestContext | undefined;
+	}>;
 };
 
 function makePreviewSource(): SpyableSource {
@@ -66,8 +72,8 @@ function makePreviewSource(): SpyableSource {
 				durationMs: 15_000,
 			};
 		},
-		async fetchManifest(mpdUrl, token) {
-			fetchCalls.push({ mpdUrl, token });
+		async fetchManifest(mpdUrl, token, context) {
+			fetchCalls.push({ mpdUrl, token, context });
 			return FIXTURE_MPD;
 		},
 	};
@@ -79,21 +85,28 @@ describe("GeneratePreviewUseCase channel-range", () => {
 		const previewSource = makePreviewSource();
 		const uc = new GeneratePreviewUseCase(storage, makeConfig());
 
-		const out = await uc.execute({
-			source: {
-				type: "channel-range",
-				channelId: "ch-001",
-				startTimeMs: SEG_START,
-				endTimeMs: SEG_START + 15_000,
+		const out = await uc.execute(
+			{
+				source: {
+					type: "channel-range",
+					channelId: "ch-001",
+					startTimeMs: SEG_START,
+					endTimeMs: SEG_START + 15_000,
+				},
+				previewSource,
 			},
-			previewSource,
-		});
+			{ logger: silentLogger },
+		);
 
 		expect(previewSource.playCalls).toEqual([
 			{ channelId: "ch-001", start: SEG_START, end: SEG_START + 15_000 },
 		]);
 		expect(previewSource.fetchCalls).toEqual([
-			{ mpdUrl: "http://mock-vod/vod/demo-recording/manifest.mpd", token: "vod-token-xyz" },
+			{
+				mpdUrl: "http://mock-vod/vod/demo-recording/manifest.mpd",
+				token: "vod-token-xyz",
+				context: { kind: "channel-range", channelId: "ch-001" },
+			},
 		]);
 
 		expect(out.durationMs).toBe(15_000);
@@ -119,14 +132,21 @@ describe("GeneratePreviewUseCase media-id", () => {
 		const previewSource = makePreviewSource();
 		const uc = new GeneratePreviewUseCase(storage, makeConfig());
 
-		const out = await uc.execute({
-			source: { type: "media-id", mediaId: "clip-001" },
-			previewSource,
-		});
+		const out = await uc.execute(
+			{
+				source: { type: "media-id", mediaId: "clip-001" },
+				previewSource,
+			},
+			{ logger: silentLogger },
+		);
 
 		expect(previewSource.playMediaCalls).toEqual(["clip-001"]);
 		expect(previewSource.fetchCalls).toEqual([
-			{ mpdUrl: "http://core.example/private/storage/clip-001/mpd", token: undefined },
+			{
+				mpdUrl: "http://core.example/private/storage/clip-001/mpd",
+				token: undefined,
+				context: { kind: "media-id", mediaId: "clip-001" },
+			},
 		]);
 
 		expect(out.durationMs).toBe(15_000);

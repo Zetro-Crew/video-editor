@@ -1,9 +1,13 @@
 import type { ApiEnvConfig } from "../../../../config/env.ts";
 import type { StoragePort } from "../../../../shared/application/ports/outbound/StoragePort.ts";
-import type { PreviewSourcePort } from "../ports/outbound/PreviewSourcePort.ts";
+import type { PreviewLogger, PreviewSourcePort } from "../ports/outbound/PreviewSourcePort.ts";
 import { generateHlsPlaylist } from "../services/mpd-to-hls.service.ts";
 import { storePreviewPlaylist } from "../services/preview-job.service.ts";
 import { type SrcKind, signUrl } from "../services/url-signing.ts";
+
+export interface GeneratePreviewContext {
+	logger: PreviewLogger;
+}
 
 export type GeneratePreviewSource =
 	| {
@@ -76,8 +80,12 @@ export class GeneratePreviewUseCase {
 		this.config = config;
 	}
 
-	async execute(input: GeneratePreviewInput): Promise<GeneratePreviewOutput> {
+	async execute(
+		input: GeneratePreviewInput,
+		ctx: GeneratePreviewContext,
+	): Promise<GeneratePreviewOutput> {
 		const { source, previewSource } = input;
+		const { logger } = ctx;
 
 		const proxyBase = `${this.config.SERVER_BASE_URL}${this.config.SERVER_PUBLIC_PATH_PREFIX}/editor/segment`;
 
@@ -87,7 +95,11 @@ export class GeneratePreviewUseCase {
 				source.startTimeMs,
 				source.endTimeMs,
 			);
-			const mpdXml = await previewSource.fetchManifest(mpdUrl, token);
+			logger.debug({ kind: source.type, mpdUrl, segmentStartTimeMs }, "preview-source resolved");
+			const mpdXml = await previewSource.fetchManifest(mpdUrl, token, {
+				kind: "channel-range",
+				channelId: source.channelId,
+			});
 
 			const {
 				playlist: rawPlaylist,
@@ -118,6 +130,11 @@ export class GeneratePreviewUseCase {
 				this.config.PREVIEW_JOB_TTL_SECONDS,
 			);
 
+			logger.debug(
+				{ kind: source.type, playlistByteLen: playlist.length },
+				"preview-source playlist stored",
+			);
+
 			return {
 				playlistUrl,
 				durationMs: source.endTimeMs - source.startTimeMs,
@@ -129,7 +146,11 @@ export class GeneratePreviewUseCase {
 
 		// source.type === "media-id"
 		const { mpdUrl, mediaCreatedAtMs, durationMs } = await previewSource.playMedia(source.mediaId);
-		const mpdXml = await previewSource.fetchManifest(mpdUrl);
+		logger.debug({ kind: source.type, mpdUrl, mediaCreatedAtMs }, "preview-source resolved");
+		const mpdXml = await previewSource.fetchManifest(mpdUrl, undefined, {
+			kind: "media-id",
+			mediaId: source.mediaId,
+		});
 
 		const requestedStartMs = mediaCreatedAtMs;
 		const requestedEndMs = mediaCreatedAtMs + durationMs;
@@ -164,6 +185,11 @@ export class GeneratePreviewUseCase {
 			this.config.S3_PREVIEW_PREFIX,
 			this.storage,
 			this.config.PREVIEW_JOB_TTL_SECONDS,
+		);
+
+		logger.debug(
+			{ kind: source.type, playlistByteLen: playlist.length },
+			"preview-source playlist stored",
 		);
 
 		return {

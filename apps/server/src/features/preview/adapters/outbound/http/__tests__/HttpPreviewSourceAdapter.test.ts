@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { silentLogger } from "../../../../../../infrastructure/fastify/__tests__/silent-logger.ts";
 import { HttpPreviewSourceAdapter } from "../HttpPreviewSourceAdapter.ts";
 
 type FetchSpy = ReturnType<typeof vi.fn>;
@@ -38,6 +39,7 @@ describe("HttpPreviewSourceAdapter.play", () => {
 		const adapter = new HttpPreviewSourceAdapter({
 			coreBaseUrl: CORE,
 			serverBaseUrl: SERVER,
+			logger: silentLogger,
 		});
 		const out = await adapter.play("ch-001", 1000, 2000);
 
@@ -63,6 +65,7 @@ describe("HttpPreviewSourceAdapter.play", () => {
 		const adapter = new HttpPreviewSourceAdapter({
 			coreBaseUrl: "http://localhost:8002/private",
 			serverBaseUrl: "http://localhost:4001",
+			logger: silentLogger,
 		});
 		const out = await adapter.play("ch", 5_000, 6_000);
 		expect(out.mpdUrl).toBe("http://localhost:5050/vod/demo-recording/manifest.mpd");
@@ -74,6 +77,7 @@ describe("HttpPreviewSourceAdapter.play", () => {
 			coreBaseUrl: CORE,
 			serverBaseUrl: SERVER,
 			authCookie: "abc",
+			logger: silentLogger,
 		});
 		await adapter.play("ch", 0, 1);
 		const callOpts = fetchSpy.mock.calls[0][1] as { headers: Record<string, string> };
@@ -85,6 +89,7 @@ describe("HttpPreviewSourceAdapter.play", () => {
 		const adapter = new HttpPreviewSourceAdapter({
 			coreBaseUrl: CORE,
 			serverBaseUrl: SERVER,
+			logger: silentLogger,
 		});
 		await adapter.play("ch", 0, 1);
 		const callOpts = fetchSpy.mock.calls[0][1] as { headers: Record<string, string> };
@@ -96,6 +101,7 @@ describe("HttpPreviewSourceAdapter.play", () => {
 		const adapter = new HttpPreviewSourceAdapter({
 			coreBaseUrl: CORE,
 			serverBaseUrl: SERVER,
+			logger: silentLogger,
 		});
 		await expect(adapter.play("ch", 0, 1)).rejects.toBeInstanceOf(RangeError);
 	});
@@ -107,6 +113,7 @@ describe("HttpPreviewSourceAdapter.play", () => {
 		const adapter = new HttpPreviewSourceAdapter({
 			coreBaseUrl: CORE,
 			serverBaseUrl: SERVER,
+			logger: silentLogger,
 		});
 		await expect(adapter.play("ch", 0, 1)).rejects.toThrow(/malformed timeRanges/i);
 	});
@@ -125,6 +132,7 @@ describe("HttpPreviewSourceAdapter.play", () => {
 		const adapter = new HttpPreviewSourceAdapter({
 			coreBaseUrl: CORE,
 			serverBaseUrl: SERVER,
+			logger: silentLogger,
 		});
 		await expect(adapter.play("ch", 0, 3)).rejects.toThrow(/multi-range/);
 	});
@@ -134,6 +142,7 @@ describe("HttpPreviewSourceAdapter.play", () => {
 		const adapter = new HttpPreviewSourceAdapter({
 			coreBaseUrl: CORE,
 			serverBaseUrl: SERVER,
+			logger: silentLogger,
 		});
 		await expect(adapter.play("ch", 0, 1)).rejects.toThrow(/500/);
 	});
@@ -143,6 +152,7 @@ describe("HttpPreviewSourceAdapter.play", () => {
 		const adapter = new HttpPreviewSourceAdapter({
 			coreBaseUrl: CORE,
 			serverBaseUrl: SERVER,
+			logger: silentLogger,
 		});
 		await expect(adapter.play("ch", 0, 1)).rejects.toThrow(/no token/);
 	});
@@ -170,6 +180,7 @@ describe("HttpPreviewSourceAdapter.playMedia", () => {
 		const adapter = new HttpPreviewSourceAdapter({
 			coreBaseUrl: CORE,
 			serverBaseUrl: SERVER,
+			logger: silentLogger,
 		});
 		const out = await adapter.playMedia("clip-001");
 
@@ -193,6 +204,7 @@ describe("HttpPreviewSourceAdapter.playMedia", () => {
 			coreBaseUrl: CORE,
 			serverBaseUrl: SERVER,
 			authCookie: "abc",
+			logger: silentLogger,
 		});
 		await adapter.playMedia("clip-001");
 		const callOpts = fetchSpy.mock.calls[0][1] as { headers: Record<string, string> };
@@ -205,6 +217,7 @@ describe("HttpPreviewSourceAdapter.playMedia", () => {
 		const adapter = new HttpPreviewSourceAdapter({
 			coreBaseUrl: CORE,
 			serverBaseUrl: SERVER,
+			logger: silentLogger,
 		});
 		await expect(adapter.playMedia("bogus")).rejects.toBeInstanceOf(RangeError);
 	});
@@ -214,6 +227,7 @@ describe("HttpPreviewSourceAdapter.playMedia", () => {
 		const adapter = new HttpPreviewSourceAdapter({
 			coreBaseUrl: CORE,
 			serverBaseUrl: SERVER,
+			logger: silentLogger,
 		});
 		await expect(adapter.playMedia("x")).rejects.toThrow(/500/);
 	});
@@ -231,6 +245,7 @@ describe("HttpPreviewSourceAdapter.playMedia", () => {
 		const adapter = new HttpPreviewSourceAdapter({
 			coreBaseUrl: CORE,
 			serverBaseUrl: SERVER,
+			logger: silentLogger,
 		});
 		await expect(adapter.playMedia("x")).rejects.toThrow(/multi-range/);
 	});
@@ -240,6 +255,7 @@ describe("HttpPreviewSourceAdapter.playMedia", () => {
 		const adapter = new HttpPreviewSourceAdapter({
 			coreBaseUrl: CORE,
 			serverBaseUrl: SERVER,
+			logger: silentLogger,
 		});
 		await expect(adapter.playMedia("x")).rejects.toThrow(/timeRanges/);
 	});
@@ -260,6 +276,7 @@ describe("HttpPreviewSourceAdapter.fetchManifest", () => {
 		const adapter = new HttpPreviewSourceAdapter({
 			coreBaseUrl: CORE,
 			serverBaseUrl: SERVER,
+			logger: silentLogger,
 		});
 		const body = await adapter.fetchManifest("https://vod/x.mpd", "tok");
 		expect(body).toBe("<MPD/>");
@@ -274,6 +291,7 @@ describe("HttpPreviewSourceAdapter.fetchManifest", () => {
 			coreBaseUrl: CORE,
 			serverBaseUrl: SERVER,
 			authCookie: "abc",
+			logger: silentLogger,
 		});
 		await adapter.fetchManifest("https://core/storage/clip-001/mpd");
 		const opts = fetchSpy.mock.calls[0][1] as { headers: Record<string, string> };
@@ -287,6 +305,7 @@ describe("HttpPreviewSourceAdapter.fetchManifest", () => {
 			coreBaseUrl: CORE,
 			serverBaseUrl: SERVER,
 			authCookie: "abc",
+			logger: silentLogger,
 		});
 		await adapter.fetchManifest("https://vod/x.mpd", "tok");
 		const opts = fetchSpy.mock.calls[0][1] as { headers: Record<string, string> };
@@ -298,6 +317,7 @@ describe("HttpPreviewSourceAdapter.fetchManifest", () => {
 		const adapter = new HttpPreviewSourceAdapter({
 			coreBaseUrl: CORE,
 			serverBaseUrl: SERVER,
+			logger: silentLogger,
 		});
 		await expect(adapter.fetchManifest("https://vod/x.mpd", "tok")).rejects.toThrow(/401/);
 	});
