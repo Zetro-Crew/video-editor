@@ -1,5 +1,6 @@
 import { initTelemetry, Logger } from "@ztube/observability";
 import { parseWorkerEnv } from "./config/env.ts";
+import { renderHistogramViews } from "./features/render/observability/histogram-views.ts";
 
 const config = parseWorkerEnv();
 
@@ -9,6 +10,7 @@ if (config.OTEL_ENDPOINT) {
 		serviceVersion: config.SERVICE_VERSION,
 		otelEndpoint: config.OTEL_ENDPOINT,
 		logLevel: config.LOG_LEVEL,
+		histogramViews: renderHistogramViews,
 	});
 }
 

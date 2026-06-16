@@ -20,7 +20,13 @@ interface VideoPlayResponse {
 const FETCH_TIMEOUT_MS = 10_000;
 const BODY_SNIPPET_MAX = 200;
 
+// Bound body read by Content-Length when present so a pathological multi-MB
+// error page doesn't buffer the whole response just to fish out a snippet.
 async function readBodySnippet(res: Response): Promise<string> {
+	const len = Number(res.headers.get("content-length"));
+	if (Number.isFinite(len) && len > 64 * 1024) {
+		return "[body too large to snippet]";
+	}
 	try {
 		const text = await res.clone().text();
 		return text.slice(0, BODY_SNIPPET_MAX);
@@ -70,10 +76,17 @@ export class HttpPreviewSourceAdapter implements PreviewSourcePort {
 				{ err, playUrl, channelId, coreBaseUrl: this.coreBaseUrl },
 				"core play failed",
 			);
-			throw new Error("core play failed", { cause: err });
+			// Rethrow the original error — preserves AbortError/TimeoutError class
+			// identity so the controller can map upstream timeouts to 504 instead of
+			// flattening every transport failure to opaque 500.
+			throw err;
 		}
 
 		if (res.status === 404) {
+			this.logger.info(
+				{ playUrl, channelId, startTimeMs, endTimeMs, status: res.status },
+				"core play 404 range unavailable",
+			);
 			throw new RangeError(
 				`Channel play API returned 404 for channel ${channelId} (range [${startTimeMs}, ${endTimeMs}] unavailable)`,
 			);
@@ -108,6 +121,7 @@ export class HttpPreviewSourceAdapter implements PreviewSourcePort {
 			throw new Error("Channel play API returned no url");
 		}
 
+		// play.url may be relative (prod: "/api/vod/generate" → resolved against serverBaseUrl)
 		// play.url may be relative (prod: "/api/vod/generate" → resolved against serverBaseUrl)
 		const mpdUrl = new URL(play.url, this.serverBaseUrl).toString();
 
@@ -144,10 +158,14 @@ export class HttpPreviewSourceAdapter implements PreviewSourcePort {
 				{ err, playUrl, mediaId, coreBaseUrl: this.coreBaseUrl },
 				"core videos play failed",
 			);
-			throw new Error("core videos play failed", { cause: err });
+			throw err;
 		}
 
 		if (res.status === 404) {
+			this.logger.info(
+				{ playUrl, mediaId, status: res.status },
+				"core videos play 404 media not found",
+			);
 			throw new RangeError(`Video play API returned 404 for media ${mediaId}`);
 		}
 		if (!res.ok) {
@@ -187,6 +205,7 @@ export class HttpPreviewSourceAdapter implements PreviewSourcePort {
 			throw new Error("Video play API returned no url");
 		}
 
+		// play.url may be relative (prod: "/api/vod/generate" → resolved against serverBaseUrl)
 		const mpdUrl = new URL(play.url, this.serverBaseUrl).toString();
 		const durationMs = range[1] - range[0];
 
@@ -232,7 +251,7 @@ export class HttpPreviewSourceAdapter implements PreviewSourcePort {
 			});
 		} catch (err) {
 			this.logger.error({ err, mpdUrl, ...ctxFields }, "vod fetchManifest failed");
-			throw new Error("vod fetchManifest failed", { cause: err });
+			throw err;
 		}
 
 		if (!res.ok) {

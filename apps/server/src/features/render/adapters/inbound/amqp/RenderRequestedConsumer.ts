@@ -1,4 +1,8 @@
-import { Logger } from "@ztube/observability";
+import { performance } from "node:perf_hooks";
+import { addCustomSpan, Logger, metricsService } from "@ztube/observability";
+
+type HistogramAttrs = Record<string, string | number | boolean>;
+
 import type { ConsumeMessage } from "amqplib";
 import type { MonitorFactory } from "../../../../../infrastructure/messaging/MonitorFactory.ts";
 import type { ExportEventPublisherPort } from "../../../../../infrastructure/messaging/RabbitMQPublisher.ts";
@@ -9,6 +13,26 @@ import {
 import type { StoragePort } from "../../../../../shared/application/ports/outbound/StoragePort.ts";
 import type { VideoRenderUseCase } from "../../../application/use-cases/VideoRenderUseCase.ts";
 import { getRenderOutputKey, getRenderProbeKey } from "../../../domain/output-key.ts";
+import type { PhaseOutcome, RenderOutcome } from "../../../domain/render-outcome.ts";
+
+async function timed<T>(
+	metricName: string,
+	baseAttrs: HistogramAttrs,
+	fn: () => Promise<T>,
+): Promise<T> {
+	const start = performance.now();
+	let outcome: PhaseOutcome = "failed";
+	try {
+		const result = await fn();
+		outcome = "completed";
+		return result;
+	} finally {
+		metricsService.recordHistogram(metricName, performance.now() - start, {
+			...baseAttrs,
+			outcome,
+		});
+	}
+}
 
 export interface AckChannel {
 	ack(msg: ConsumeMessage): void;
@@ -124,44 +148,94 @@ export class RenderRequestedConsumer {
 		const outputKey = getRenderOutputKey(this.s3OutputPrefix, jobId, data.format);
 		const probeKey = getRenderProbeKey(this.s3OutputPrefix, jobId, data.format);
 
+		const jobStart = performance.now();
+		let outcome: RenderOutcome = "failed";
 		try {
-			const alreadyDone = await this.storage.exists(probeKey);
-			if (alreadyDone) {
-				const url = await this.storage.getPresignedUrl(outputKey, this.renderUrlExpirySeconds);
-				await this.exportPublisher.publishExportCompleted({
-					jobId,
-					url,
-					exportType: data.exportType,
+			await addCustomSpan("render.job", async (span) => {
+				span.setAttributes({
+					"render.job_id": jobId,
+					"render.format": data.format,
+					"render.export_type": data.exportType,
+					"amqp.delivery_count": deliveryCount,
 				});
-				monitor.logSuccess();
-				channel.ack(msg);
-				return;
-			}
 
-			// Skip export.started on redelivery so retries don't fan out duplicate
-			// "started" events. quorum queues bump x-delivery-count on every requeue.
-			if (data.saveMetadata && deliveryCount === 0) {
-				await this.exportPublisher.publishExportStarted({
-					jobId,
-					exportType: data.exportType,
-					mediaId: data.saveMetadata.mediaId,
-					mediaName: data.saveMetadata.mediaName,
-					downloadToComputer: data.saveMetadata.downloadToComputer,
-					saveToPersonalChannel: data.saveMetadata.saveToPersonalChannel,
-					selectedUnitChannelIds: data.saveMetadata.selectedUnitChannelIds,
-					items: data.saveMetadata.items,
-				});
-			}
+				try {
+					const alreadyDone = await timed("render.idempotency_probe.duration_ms", {}, () =>
+						addCustomSpan("render.idempotency_probe", async (probeSpan) => {
+							probeSpan.setAttribute("s3.key", probeKey);
+							const hit = await this.storage.exists(probeKey);
+							probeSpan.setAttribute("result.hit", hit);
+							return hit;
+						}),
+					);
 
-			const result = await this.videoRenderUseCase.execute(toRenderInput(data), outputKey);
+					if (alreadyDone) {
+						const url = await this.storage.getPresignedUrl(outputKey, this.renderUrlExpirySeconds);
+						await timed("render.publish.duration_ms", { event: "export.completed" }, () =>
+							addCustomSpan("render.publish.export_completed", async (pubSpan) => {
+								pubSpan.setAttributes({
+									"messaging.message.name": "export.completed",
+									"render.idempotent_hit": true,
+								});
+								await this.exportPublisher.publishExportCompleted({
+									jobId,
+									url,
+									exportType: data.exportType,
+								});
+							}),
+						);
+						channel.ack(msg);
+						outcome = "idempotent_hit";
+						monitor.logSuccess();
+						return;
+					}
 
-			await this.exportPublisher.publishExportCompleted({
-				jobId,
-				url: result.url,
-				exportType: data.exportType,
+					// Skip export.started on redelivery so retries don't fan out duplicate
+					// "started" events. quorum queues bump x-delivery-count on every requeue.
+					const saveMetadata = data.saveMetadata;
+					if (saveMetadata && deliveryCount === 0) {
+						await timed("render.publish.duration_ms", { event: "export.started" }, () =>
+							addCustomSpan("render.publish.export_started", async (pubSpan) => {
+								pubSpan.setAttribute("messaging.message.name", "export.started");
+								await this.exportPublisher.publishExportStarted({
+									jobId,
+									exportType: data.exportType,
+									mediaId: saveMetadata.mediaId,
+									mediaName: saveMetadata.mediaName,
+									downloadToComputer: saveMetadata.downloadToComputer,
+									saveToPersonalChannel: saveMetadata.saveToPersonalChannel,
+									selectedUnitChannelIds: saveMetadata.selectedUnitChannelIds,
+									items: saveMetadata.items,
+								});
+							}),
+						);
+					}
+
+					const result = await this.videoRenderUseCase.execute(toRenderInput(data), outputKey);
+
+					await timed("render.publish.duration_ms", { event: "export.completed" }, () =>
+						addCustomSpan("render.publish.export_completed", async (pubSpan) => {
+							pubSpan.setAttributes({
+								"messaging.message.name": "export.completed",
+								"render.idempotent_hit": false,
+							});
+							await this.exportPublisher.publishExportCompleted({
+								jobId,
+								url: result.url,
+								exportType: data.exportType,
+							});
+						}),
+					);
+					channel.ack(msg);
+					outcome = "completed";
+					monitor.logSuccess();
+				} finally {
+					// Recorded even on throw so the span carries the outcome attribute
+					// for trace-side filtering; the histogram outcome is recorded by the
+					// outer finally below.
+					span.setAttribute("render.outcome", outcome);
+				}
 			});
-			monitor.logSuccess();
-			channel.ack(msg);
 		} catch (err) {
 			const error = err instanceof Error ? err : new Error(String(err));
 			Logger.logError("[render-consumer] render failed — nack with requeue", error, {
@@ -170,6 +244,10 @@ export class RenderRequestedConsumer {
 			});
 			monitor.logRetry(error);
 			channel.nack(msg, false, true);
+		} finally {
+			metricsService.recordHistogram("render.job.duration_ms", performance.now() - jobStart, {
+				outcome,
+			});
 		}
 	}
 }
