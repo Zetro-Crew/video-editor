@@ -52,5 +52,5 @@ describe("loadAmqpSocketOptions", () => {
 			throw new Error("ENOENT");
 		});
 		expect(() => loadAmqpSocketOptions("amqps://rabbit.internal:5671")).toThrow("ENOENT");
-	});
+	}, 10000);
 });

@@ -184,7 +184,7 @@ export class FfmpegRunner {
 			const ffmpegPath = getFfmpegPath();
 			const fullArgs = [...args, FFMPEG_FLAG.PIPE_OUTPUT];
 
-			console.log("[ffmpeg]", ffmpegPath, fullArgs.join(" "));
+			Logger.logInfo(`[ffmpeg] Path: ${ffmpegPath}, Args: ${fullArgs.join(" ")}`);
 			const proc = spawn(ffmpegPath, fullArgs);
 
 			const ffmpegPromise = new Promise<void>((resolve, reject) => {
@@ -263,7 +263,7 @@ export class FfmpegRunner {
 				const ffmpegPath = getFfmpegPath();
 				const fullArgs = [...args, outputPath];
 
-				console.log("[ffmpeg]", ffmpegPath, fullArgs.join(" "));
+				Logger.logInfo(`[ffmpeg] Path: ${ffmpegPath}, Args: ${fullArgs.join(" ")}`);
 				const proc = spawn(ffmpegPath, fullArgs);
 
 				const { onData, getBuffer } = makeStderrHandler(totalDuration, onProgress);
