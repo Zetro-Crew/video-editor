@@ -17,16 +17,18 @@ TypeScript רץ ישירות ב-Node 22.18+. אין `tsx`, אין `ts-node`, א�
 docker compose up -d        # MinIO + RabbitMQ
 pnpm install
 cd apps/server
-pnpm dev                    # node --watch על src/index.ts
-node --env-file=.env src/worker.ts   # ה-Worker מול אותו .env
+pnpm dev                    # node --watch על src/index.ts (API)
+pnpm dev:worker             # node --watch על src/worker.ts (טרמינל שני)
 ```
 
 ```bash
-pnpm dev          # API ב-watch
-pnpm start        # node src/index.ts (ייצור)
-pnpm test         # vitest run
-pnpm type-check   # tsc --noEmit
-pnpm lint         # biome check . --write
+pnpm dev           # API ב-watch (src/index.ts)
+pnpm dev:worker    # Worker ב-watch (src/worker.ts)
+pnpm start         # node src/index.ts (ייצור, API)
+pnpm start:worker  # node src/worker.ts (ייצור, Worker)
+pnpm test          # vitest run
+pnpm type-check    # tsc --noEmit
+pnpm lint          # biome check . --write
 ```
 
 ## API

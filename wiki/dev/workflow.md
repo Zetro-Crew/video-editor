@@ -26,12 +26,13 @@ pnpm knip
 ## הרצה לכל אפליקציה
 
 ```bash
-cd apps/frontend    && pnpm dev   # Vite, פורט 3000
-cd apps/server      && pnpm dev   # Node --watch על src/index.ts, פורט 4001
-cd apps/iframe-demo && pnpm dev   # Angular dev server, פורט 8080
+cd apps/frontend    && pnpm dev          # Vite, פורט 3000
+cd apps/server      && pnpm dev          # Node --watch על src/index.ts, פורט 4001 (API)
+cd apps/server      && pnpm dev:worker    # Node --watch על src/worker.ts, probe 8081
+cd apps/iframe-demo && pnpm dev          # Angular dev server, פורט 8080
 ```
 
-`pnpm dev` מהשורש מריץ הכל במקביל דרך Turborepo.
+`pnpm dev` מהשורש מריץ הכל במקביל דרך Turborepo — **חוץ מה-worker**. הרץ אותו בנפרד: `cd apps/server && pnpm dev:worker`. בלעדיו פקודות רינדור נכנסות לתור אבל אף אחד לא צורך אותן.
 
 ## רשת סגורה
 
