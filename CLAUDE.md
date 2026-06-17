@@ -152,7 +152,7 @@ Current major **`0.2.0`** (bumped when the from-parent union dropped `imagePaylo
 - **Remotion** — video composition engine. `@remotion/player` renders the canvas preview in the browser.
 - **`@ffmpeg-installer/ffmpeg`** — bundled FFmpeg binary (no system install needed). Server uses raw `spawn` for all FFmpeg processing.
 - **`@fastify/multipart`** — file upload handling (500 MB limit).
-- **`@ztube/observability`** — external package (separate repo, installed from the internal registry) providing OpenTelemetry tracing/metrics, Pino structured logging, and Pyroscope profiling for server + worker.
+- **`@ztube/observability`** — external package (separate repo, installed from the internal registry) providing OpenTelemetry tracing/metrics, Pino structured logging, and Pyroscope profiling for server + worker. Open-network GitHub CI cannot reach the internal registry (and does not clone the sibling SDK), so `.github/workflows/ci.yml` copies a no-op stub (`tools/observability-stub`) into the `link:` path before install. Closed-network builds use the real package; keep the stub's exported surface in sync with the SDK API this repo consumes.
 
 ## Wiki
 

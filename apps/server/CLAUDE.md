@@ -3,6 +3,8 @@
 > **Closed network deployment:** This server runs in air-gapped environments. All FFmpeg binaries and S3 (MinIO) must be self-hosted. Do not introduce dependencies that phone home or fetch from public URLs at runtime.
 >
 > **Keep this file updated:** Update whenever features, dependencies, or architecture change.
+>
+> **Observability dependency:** This is the only consumer of `@ztube/observability` (`Logger`, `metricsService`, `addCustomSpan`, `createZMonitor`, `initTelemetry`, `HistogramView`, and `/fastify`'s `HttpError` + `fastifyLoggingPlugin`). Open-network GitHub CI substitutes the no-op `tools/observability-stub` (real package is internal-registry-only). If you import a new export or change a consumed signature, update that stub or CI type-check breaks.
 
 Fastify + Node.js 22.18+. Two entrypoints share the same image and DI primitives:
 

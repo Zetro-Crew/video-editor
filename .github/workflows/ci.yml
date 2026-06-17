@@ -35,6 +35,9 @@ jobs:
           node-version: '22'
           cache: 'pnpm'
 
+      - name: Provision @ztube/observability stub (open-network CI only)
+        run: cp -R tools/observability-stub "$GITHUB_WORKSPACE/../observability-sdk"
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
@@ -72,6 +75,9 @@ jobs:
         with:
           node-version: '22'
           cache: 'pnpm'
+
+      - name: Provision @ztube/observability stub (open-network CI only)
+        run: cp -R tools/observability-stub "$GITHUB_WORKSPACE/../observability-sdk"
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile

@@ -1,0 +1,17 @@
+{
+  "name": "@ztube/observability",
+  "version": "0.3.0",
+  "private": true,
+  "type": "module",
+  "description": "No-op stand-in for the internal @ztube/observability package. Used ONLY by open-network GitHub CI, where the internal registry that hosts the real package is unreachable. Closed-network builds use the real package from the internal registry.",
+  "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "default": "./index.js"
+    },
+    "./fastify": {
+      "types": "./fastify.d.ts",
+      "default": "./fastify.js"
+    }
+  }
+}
