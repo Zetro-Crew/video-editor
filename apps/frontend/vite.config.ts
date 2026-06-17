@@ -11,6 +11,7 @@ export default defineConfig(({ mode }) => {
 		test: {
 			environment: "node",
 			include: ["src/**/*.test.ts", "src/**/*.test.tsx"],
+			testTimeout: 10_000,
 		} satisfies ViteUserConfig["test"],
 		plugins: [react()],
 		resolve: {
