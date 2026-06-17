@@ -9,6 +9,7 @@ import { buildRectangleOverlayFilter } from "./rectangle-overlay.service.ts";
 import { buildShapeOverlayFilter, prepareShapeOverlay } from "./shape-overlay.service.ts";
 import { buildTextOverlayFilter } from "./text-overlay.service.ts";
 import { buildVideoOverlayFilter, prepareVideoOverlay } from "./video-overlay.service.ts";
+import { initTelemetry, Logger } from "@ztube/observability";
 
 export interface PreparedOverlayInput {
 	overlayId: string;
@@ -204,9 +205,7 @@ export const buildOverlayFilters = (
 	);
 
 	const finalOutputStream = result.currentStream.replace(/^\[|\]$/g, "");
-	console.log(
-		`[buildOverlayFilters] Final output stream: ${finalOutputStream}, filter parts: ${result.filterParts.length}`,
-	);
+	Logger.logInfo(`[buildOverlayFilters] Final output stream: ${finalOutputStream}, filter parts: ${result.filterParts.length}`,);
 
 	return {
 		filterComplex: result.filterParts.join(";"),
