@@ -58,6 +58,9 @@ pnpm install
 pnpm build
 ```
 
+> [!NOTE]
+> **Open-network CI** (`.github/workflows/ci.yml`) does not clone the SDK. It copies a no-op stub (`tools/observability-stub`) into the `link:../observability-sdk` path before install, so checks run without the real package. This is CI-only and never ships. When server code consumes a new `@ztube/observability` export, update the stub.
+
 ### Path B — Closed network
 
 > [!NOTE]
