@@ -205,13 +205,10 @@ export const buildOverlayFilters = (
 	);
 
 	const finalOutputStream = result.currentStream.replace(/^\[|\]$/g, "");
-	Logger.logInfo(
-    '[buildOverlayFilters] Final output stream and filter parts length',
-    {
-        finalOutputStream,
-        filterPartsLength: result.filterParts.length
-    }
-);
+	Logger.logInfo("[buildOverlayFilters] Final output stream and filter parts length", {
+		finalOutputStream,
+		filterPartsLength: result.filterParts.length,
+	});
 
 	return {
 		filterComplex: result.filterParts.join(";"),

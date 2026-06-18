@@ -263,10 +263,9 @@ export class FfmpegRunner {
 				const ffmpegPath = getFfmpegPath();
 				const fullArgs = [...args, outputPath];
 
-				Logger.logInfo('[ffmpeg] path and arguments',
-				{
-                   ffmpegPath,
-				   args: fullArgs.join(" ")
+				Logger.logInfo("[ffmpeg] path and arguments", {
+					ffmpegPath,
+					args: fullArgs.join(" "),
 				});
 				const proc = spawn(ffmpegPath, fullArgs);
 
