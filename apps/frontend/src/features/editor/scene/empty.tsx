@@ -64,7 +64,7 @@ const SceneEmpty = ({ playerWidth, playerHeight }: SceneEmptyProps) => {
 								<Upload className="h-14 w-14" aria-hidden="true" />
 							</div>
 							<div className="flex flex-col gap-px">
-								<p className="text-2xl text-muted-foreground">לחץ להעלאה</p>
+								<p className="text-2xl">לחץ להעלאה</p>
 								<p className="text-lg text-muted-foreground/70">או גרור ושחרר קבצים לכאן</p>
 							</div>
 						</div>
