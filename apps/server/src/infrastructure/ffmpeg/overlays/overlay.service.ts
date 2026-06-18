@@ -1,5 +1,6 @@
 import type { Overlay } from "@video-editor/contract/internal/edit-video";
 import { OverlayType } from "@video-editor/contract/internal/shared";
+import { Logger } from "@ztube/observability";
 import type { CommonEnvConfig } from "../../../config/env.ts";
 import type { StoragePort } from "../../../shared/application/ports/outbound/StoragePort.ts";
 import type { FfmpegRunner } from "../ffmpeg.utils.ts";
@@ -204,9 +205,10 @@ export const buildOverlayFilters = (
 	);
 
 	const finalOutputStream = result.currentStream.replace(/^\[|\]$/g, "");
-	console.log(
-		`[buildOverlayFilters] Final output stream: ${finalOutputStream}, filter parts: ${result.filterParts.length}`,
-	);
+	Logger.logInfo("[buildOverlayFilters] Final output stream and filter parts length", {
+		finalOutputStream,
+		filterPartsLength: result.filterParts.length,
+	});
 
 	return {
 		filterComplex: result.filterParts.join(";"),

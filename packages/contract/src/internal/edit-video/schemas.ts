@@ -26,7 +26,7 @@ export const textOverlaySchema = z.object({
 export const imageOverlaySchema = z.object({
 	id: z.string().min(1),
 	type: z.literal(OverlayType.image),
-	imageUrl: z.string().url(),
+	imageUrl: z.url(),
 	start: z.number().min(0),
 	end: z.number().positive(),
 	trackOrder: z.number().optional(),
@@ -40,7 +40,7 @@ export const imageOverlaySchema = z.object({
 export const videoOverlaySchema = z.object({
 	id: z.string().min(1),
 	type: z.literal(OverlayType.video),
-	sourceUrl: z.string().url(),
+	sourceUrl: z.url(),
 	start: z.number().min(0),
 	end: z.number().positive(),
 	trackOrder: z.number().optional(),
