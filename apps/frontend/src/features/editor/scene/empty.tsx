@@ -60,7 +60,7 @@ const SceneEmpty = ({ playerWidth, playerHeight }: SceneEmptyProps) => {
 						}`}
 					>
 						<div className="flex flex-col items-center justify-center gap-4 pb-12">
-							<div className="hover:bg-primary-dark cursor-pointer rounded-md border border-dashed  p-2 text-forground transition-colors duration-200">
+							<div className="hover:bg-primary-dark cursor-pointer rounded-md border border-dashed p-2 text-foreground transition-colors duration-200">
 								<Upload className="h-14 w-14" aria-hidden="true" />
 							</div>
 							<div className="flex flex-col gap-px">
