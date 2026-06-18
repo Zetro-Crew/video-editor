@@ -123,7 +123,7 @@ export const editorClearProjectMessageSchema = z.strictObject({
 
 export const editorAddMediaMessageSchema = z.strictObject({
 	type: z.literal("EDITOR_ADD_MEDIA"),
-	mediaId: nonEmptyString,
+	mediaId: z.string().min(1).max(30),
 });
 
 export const parentToEditorMessageSchema = z.union([
