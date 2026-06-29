@@ -1,0 +1,4 @@
+[     385ms] [LOG] Angular is running in development mode. @ http://localhost:8080/@fs/C:/Users/Roni/Documents/apps/video-editor/apps/iframe-demo/.angular/cache/21.2.12/iframe-demo/vite/deps/chunk-QCI2IFTU.js?v=0bd84fcc:11198
+[     436ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:8080/favicon.ico:0
+[    1387ms] [LOG] {jsx: Object} @ http://localhost:3000/node_modules/.vite/deps/@interactify_toolkit.js?v=96b62814:2692
+[    1388ms] [LOG] JSHandle@node @ http://localhost:3000/node_modules/.vite/deps/@interactify_toolkit.js?v=96b62814:2698

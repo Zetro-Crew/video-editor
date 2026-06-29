@@ -1,0 +1,89 @@
+- generic [ref=e2]:
+  - generic [ref=e4]:
+    - link "דלג לתוכן" [ref=e5] [cursor=pointer]:
+      - /url: "#editor-main"
+    - banner [ref=e6]:
+      - generic:
+        - generic [ref=e7]:
+          - button "בטל פעולה" [active] [ref=e8] [cursor=pointer]:
+            - img
+          - button "בצע שוב" [ref=e9] [cursor=pointer]:
+            - img
+          - button "קיצורי דרך" [ref=e10] [cursor=pointer]:
+            - img
+        - textbox "שם פרויקט" [ref=e13]: RoniCut
+        - button "קנבס" [ref=e15] [cursor=pointer]
+    - main [ref=e16]:
+      - generic [ref=e17]:
+        - generic [ref=e20]:
+          - generic [ref=e23]:
+            - generic [ref=e24]:
+              - button "Upload files" [ref=e25]
+              - region "Droppable area for images, videos, and audio" [ref=e26]:
+                - generic [ref=e27]:
+                  - img [ref=e29] [cursor=pointer]
+                  - generic [ref=e32]:
+                    - paragraph [ref=e33]: לחץ להעלאה
+                    - paragraph [ref=e34]: או גרור ושחרר קבצים לכאן
+            - region "Droppable area for images, videos, and audio" [ref=e36]
+          - generic [ref=e40]:
+            - generic [ref=e41]: כלים
+            - generic [ref=e42]:
+              - button "טקסט" [ref=e43]: T
+              - generic [ref=e44]:
+                - button "ריבוע" [ref=e45]:
+                  - img [ref=e46]
+                - button "עיגול" [ref=e48]:
+                  - img [ref=e49]
+                - button "חץ" [ref=e51]:
+                  - img [ref=e52]
+                - button "משולש" [ref=e55]:
+                  - img [ref=e56]
+              - button "העלאה" [ref=e58]:
+                - img [ref=e59]
+        - complementary "לוח בקרה"
+      - generic [ref=e63]:
+        - generic [ref=e66]:
+          - generic [ref=e67]:
+            - button "מחק" [disabled]:
+              - img
+              - generic: מחק
+            - button "פצל" [disabled]:
+              - img
+              - generic: פצל
+            - button "שכפל" [disabled]:
+              - img
+              - generic: שכפל
+          - generic [ref=e68]:
+            - generic [ref=e69]:
+              - generic [ref=e70]: 00:01
+              - generic [ref=e71]: "|"
+              - generic [ref=e72]: 00:00
+              - generic [ref=e73]:
+                - button "הצג/הסתר רצועות וידאו" [ref=e74]:
+                  - img [ref=e75]
+                  - generic [ref=e78]: וידאו
+                  - img [ref=e80]
+                - button "הצג/הסתר רצועות שמע" [ref=e82]:
+                  - img [ref=e83]
+                  - generic [ref=e87]: שמע
+                  - img [ref=e89]
+            - generic [ref=e91]:
+              - button "קפוץ לסוף" [ref=e92] [cursor=pointer]:
+                - img
+              - button "נגן" [ref=e93] [cursor=pointer]:
+                - img
+              - button "קפוץ להתחלה" [ref=e94] [cursor=pointer]:
+                - img
+          - generic [ref=e96]:
+            - button "הקטן תצוגה" [ref=e97] [cursor=pointer]:
+              - img
+            - slider "Slider" [ref=e102]
+            - button "הגדל תצוגה" [ref=e103] [cursor=pointer]:
+              - img
+            - button "התאם לחלון" [ref=e104] [cursor=pointer]:
+              - img
+        - generic [ref=e119]:
+          - button "הפקת סרטון" [ref=e120]
+          - button "איפוס סרטון" [ref=e121]
+  - region "Notifications alt+T"

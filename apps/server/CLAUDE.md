@@ -200,6 +200,8 @@ All validated by Zod in `src/config/env.ts` — that file is the source of truth
 | `S3_UPLOAD_PREFIX` | `uploads` | Key prefix for direct-to-S3 uploads |
 | `UPLOAD_MAX_SIZE_BYTES` | `524288000` | Max accepted upload size (500 MB). Enforced server-side AND bound into the presigned PUT via signed Content-Length |
 | `S3_AUTO_CREATE_BUCKET` | `true` | Auto-create bucket on API startup |
+| `MONGODB_URI` | required | MongoDB connection string. Dev: `mongodb://localhost:27017` |
+| `MONGODB_DB_NAME` | `video-editor` | MongoDB database name |
 
 ### Worker-only
 

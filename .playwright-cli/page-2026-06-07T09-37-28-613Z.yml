@@ -1,0 +1,112 @@
+- generic [ref=e4]:
+  - iframe [ref=e7]:
+    - generic [ref=f1e2]:
+      - generic [ref=f1e3]:
+        - link "דלג לתוכן" [ref=f1e4] [cursor=pointer]:
+          - /url: "#editor-main"
+        - banner [ref=f1e5]:
+          - generic:
+            - generic [ref=f1e6]:
+              - button "בטל פעולה" [ref=f1e7] [cursor=pointer]:
+                - img
+              - button "בצע שוב" [ref=f1e8] [cursor=pointer]:
+                - img
+              - button "קיצורי דרך" [ref=f1e9] [cursor=pointer]:
+                - img
+            - textbox "שם פרויקט" [ref=f1e12]: RoniCut
+            - button "קנבס" [ref=f1e14] [cursor=pointer]
+        - main [ref=f1e15]:
+          - generic [ref=f1e16]:
+            - generic [ref=f1e19]:
+              - region "Droppable area for images, videos, and audio" [ref=f1e35]
+              - generic [ref=f1e39]:
+                - generic [ref=f1e40]: כלים
+                - generic [ref=f1e41]:
+                  - button "טקסט" [ref=f1e42]: T
+                  - generic [ref=f1e43]:
+                    - button "ריבוע" [ref=f1e44]:
+                      - img [ref=f1e45]
+                    - button "עיגול" [ref=f1e47]:
+                      - img [ref=f1e48]
+                    - button "חץ" [ref=f1e50]:
+                      - img [ref=f1e51]
+                    - button "משולש" [ref=f1e54]:
+                      - img [ref=f1e55]
+                  - button "העלאה" [ref=f1e57]:
+                    - img [ref=f1e58]
+            - complementary "לוח בקרה"
+          - generic [ref=f1e62]:
+            - generic [ref=f1e65]:
+              - generic [ref=f1e66]:
+                - button "מחק" [disabled]:
+                  - img
+                  - generic: מחק
+                - button "פצל" [disabled]:
+                  - img
+                  - generic: פצל
+                - button "שכפל" [disabled]:
+                  - img
+                  - generic: שכפל
+              - generic [ref=f1e67]:
+                - generic [ref=f1e68]:
+                  - generic [ref=f1e69]: 00:30
+                  - generic [ref=f1e70]: "|"
+                  - generic [ref=f1e71]: 00:00
+                  - generic [ref=f1e72]:
+                    - button "הצג/הסתר רצועות וידאו" [ref=f1e73]:
+                      - img [ref=f1e74]
+                      - generic [ref=f1e77]: וידאו
+                      - img [ref=f1e79]
+                    - button "הצג/הסתר רצועות שמע" [ref=f1e81]:
+                      - img [ref=f1e82]
+                      - generic [ref=f1e86]: שמע
+                      - img [ref=f1e88]
+                - generic [ref=f1e90]:
+                  - button "קפוץ לסוף" [ref=f1e91] [cursor=pointer]:
+                    - img
+                  - button "נגן" [ref=f1e92] [cursor=pointer]:
+                    - img
+                  - button "קפוץ להתחלה" [ref=f1e93] [cursor=pointer]:
+                    - img
+              - generic [ref=f1e95]:
+                - button "הקטן תצוגה" [ref=f1e96] [cursor=pointer]:
+                  - img
+                - slider "Slider" [ref=f1e101]
+                - button "הגדל תצוגה" [ref=f1e102] [cursor=pointer]:
+                  - img
+                - button "התאם לחלון" [ref=f1e103] [cursor=pointer]:
+                  - img
+            - generic [ref=f1e118]:
+              - button "הפקת סרטון" [ref=f1e119]
+              - button "איפוס סרטון" [ref=f1e120]
+      - region "Notifications alt+T"
+  - complementary [ref=e8]:
+    - generic [ref=e9]:
+      - heading "הדגמת מסגרת" [level=1] [ref=e10]
+      - paragraph [ref=e11]: שלח הודעות postMessage לעורך המוטמע. פריטים שנוספו מדף המדיה נשלחים אוטומטית עם ההגעה.
+    - generic [ref=e12]:
+      - group "טווח הקלטה" [ref=e13]:
+        - generic [ref=e14]: טווח הקלטה
+        - generic [ref=e15]:
+          - generic [ref=e16]: שם
+          - textbox "שם" [ref=e17]
+        - generic [ref=e18]:
+          - generic [ref=e19]: מזהה ערוץ
+          - textbox "מזהה ערוץ" [ref=e20]: demo-recording
+        - generic [ref=e21]:
+          - generic [ref=e22]: זמן התחלה (ms)
+          - spinbutton "זמן התחלה (ms)" [ref=e23]: "1778412270000"
+        - generic [ref=e24]:
+          - generic [ref=e25]: זמן סיום (ms)
+          - spinbutton "זמן סיום (ms)" [ref=e26]: "1778412300000"
+      - generic [ref=e27]:
+        - button "הוסף הקלטה" [active] [ref=e28] [cursor=pointer]
+        - button "נקה פרויקט" [ref=e29] [cursor=pointer]
+    - generic [ref=e30]:
+      - generic [ref=e31]: מצב מסגרת
+      - group "מצב מסגרת" [ref=e32]:
+        - button "ניתן לשינוי גודל" [ref=e33] [cursor=pointer]
+        - button "מסך מלא" [ref=e34] [cursor=pointer]
+    - generic [ref=e35]:
+      - generic [ref=e36]: תגובה / שליחה
+      - generic [ref=e37]: "{ \"outgoing\": { \"type\": \"EDITOR_ADD_PREVIEW_ITEM\", \"requestId\": \"0bca70b2-a7fc-4db2-b005-186de77f0221\", \"payload\": { \"kind\": \"recording-range\", \"channelId\": \"demo-recording\", \"startTimeMs\": 1778412270000, \"endTimeMs\": 1778412300000, \"durationMs\": 30000 } }, \"lastResponse\": { \"type\": \"EDITOR_PREVIEW_ITEM_ADDED\", \"requestId\": \"0bca70b2-a7fc-4db2-b005-186de77f0221\", \"itemId\": \"dCndjBWBI1Miqk8\" } }"

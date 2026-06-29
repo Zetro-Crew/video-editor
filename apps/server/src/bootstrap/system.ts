@@ -16,14 +16,28 @@ export class System {
 
 	async start(): Promise<void> {
 		let publisherConnected = false;
+		let mongoConnected = false;
 		try {
 			Logger.logInfo("[startup] connecting to RabbitMQ");
 			await this.container.exportEventPublisher.connect();
 			publisherConnected = true;
 			Logger.logInfo("[startup] RabbitMQ connected");
+			Logger.logInfo("[startup] connecting to MongoDB");
+			await this.container.mongoDb.connect();
+			mongoConnected = true;
 			await this.server.start();
 			await this.logFixtureWindowIfLocal();
 		} catch (err) {
+			if (mongoConnected) {
+				try {
+					await this.container.mongoDb.disconnect();
+				} catch (closeErr) {
+					Logger.logError(
+						"[startup] MongoDB disconnect failed during cleanup",
+						closeErr instanceof Error ? closeErr : new Error(String(closeErr)),
+					);
+				}
+			}
 			if (publisherConnected) {
 				try {
 					await this.container.exportEventPublisher.close();
@@ -62,6 +76,15 @@ export class System {
 		} catch (err) {
 			Logger.logError(
 				"[shutdown] server stop failed",
+				err instanceof Error ? err : new Error(String(err)),
+			);
+		}
+		try {
+			Logger.logInfo("[shutdown] disconnecting MongoDB");
+			await this.container.mongoDb.disconnect();
+		} catch (err) {
+			Logger.logError(
+				"[shutdown] MongoDB disconnect failed",
 				err instanceof Error ? err : new Error(String(err)),
 			);
 		}

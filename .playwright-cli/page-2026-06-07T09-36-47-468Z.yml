@@ -1,0 +1,33 @@
+- generic [ref=e4]:
+  - iframe [ref=e7]:
+    
+  - complementary [ref=e8]:
+    - generic [ref=e9]:
+      - heading "הדגמת מסגרת" [level=1] [ref=e10]
+      - paragraph [ref=e11]: שלח הודעות postMessage לעורך המוטמע. פריטים שנוספו מדף המדיה נשלחים אוטומטית עם ההגעה.
+    - generic [ref=e12]:
+      - group "טווח הקלטה" [ref=e13]:
+        - generic [ref=e14]: טווח הקלטה
+        - generic [ref=e15]:
+          - generic [ref=e16]: שם
+          - textbox "שם" [ref=e17]
+        - generic [ref=e18]:
+          - generic [ref=e19]: מזהה ערוץ
+          - textbox "מזהה ערוץ" [ref=e20]: demo-recording
+        - generic [ref=e21]:
+          - generic [ref=e22]: זמן התחלה (ms)
+          - spinbutton "זמן התחלה (ms)" [ref=e23]: "1778412270000"
+        - generic [ref=e24]:
+          - generic [ref=e25]: זמן סיום (ms)
+          - spinbutton "זמן סיום (ms)" [ref=e26]: "1778412300000"
+      - generic [ref=e27]:
+        - button "הוסף הקלטה" [ref=e28] [cursor=pointer]
+        - button "נקה פרויקט" [ref=e29] [cursor=pointer]
+    - generic [ref=e30]:
+      - generic [ref=e31]: מצב מסגרת
+      - group "מצב מסגרת" [ref=e32]:
+        - button "ניתן לשינוי גודל" [ref=e33] [cursor=pointer]
+        - button "מסך מלא" [ref=e34] [cursor=pointer]
+    - generic [ref=e35]:
+      - generic [ref=e36]: תגובה / שליחה
+      - generic [ref=e37]: "{ \"outgoing\": null, \"lastResponse\": null }"

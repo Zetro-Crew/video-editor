@@ -1,6 +1,7 @@
 import cors from "@fastify/cors";
 import { fastifyLoggingPlugin } from "@ztube/observability/fastify";
 import type { ApiEnvConfig } from "../config/env.ts";
+import { draftController } from "../features/draft/adapters/inbound/http/draft.controller.ts";
 import { previewController } from "../features/preview/adapters/inbound/http/preview.controller.ts";
 import { renderController } from "../features/render/adapters/inbound/http/render.controller.ts";
 import { uploadController } from "../features/upload/adapters/inbound/http/upload.controller.ts";
@@ -21,7 +22,7 @@ export class Server {
 	async start(): Promise<void> {
 		this.app.get("/health", async () => ({ status: "ok" }));
 
-		await this.app.register(cors, { origin: true });
+		await this.app.register(cors, { origin: true, credentials: true });
 		await this.app.register(fastifyLoggingPlugin, {
 			enableByDefault: true,
 			logStarted: false,
@@ -39,6 +40,11 @@ export class Server {
 		await this.app.register(previewController, {
 			storage: this.container.storage,
 			config: this.config,
+		});
+
+		await this.app.register(draftController, {
+			saveDraftUseCase: this.container.saveDraftUseCase,
+			loadDraftUseCase: this.container.loadDraftUseCase,
 		});
 
 		if (this.config.S3_AUTO_CREATE_BUCKET) {

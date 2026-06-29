@@ -1,6 +1,7 @@
 import Fastify from "fastify";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ApiEnvConfig } from "../../../../../../config/env.ts";
+import { signUrl } from "../../../../application/services/url-signing.ts";
 import { InMemoryStorageAdapter } from "../../../../../../infrastructure/storage/__tests__/InMemoryStorageAdapter.ts";
 import { previewController } from "../preview.controller.ts";
 
@@ -14,6 +15,93 @@ function makeConfig(): ApiEnvConfig {
 		PREVIEW_SIGNING_SECRET: "test-secret-for-url-signing-32characters",
 	} as unknown as ApiEnvConfig;
 }
+
+const SECRET = "test-secret-for-url-signing-32characters";
+
+function makeSegmentQuery(targetUrl: string, token: string) {
+	const encoded = Buffer.from(targetUrl).toString("base64url");
+	const sig = signUrl(SECRET, targetUrl, token);
+	return `/editor/segment?url=${encoded}&token=${encodeURIComponent(token)}&sig=${sig}`;
+}
+
+describe("previewController GET /editor/segment — ztube-token forwarding", () => {
+	let app: ReturnType<typeof Fastify>;
+
+	beforeEach(async () => {
+		app = Fastify({ logger: false });
+		await app.register(previewController, { storage: new InMemoryStorageAdapter(), config: makeConfig() });
+		vi.stubGlobal("fetch", vi.fn());
+	});
+
+	afterEach(async () => {
+		await app.close();
+		vi.unstubAllGlobals();
+	});
+
+	const targetUrl = "https://vod.example.com/seg.m4s";
+	const vodToken = "vod-tok";
+
+	it("forwards ztube-token header when cookie is present", async () => {
+		const fetchSpy = globalThis.fetch as unknown as ReturnType<typeof vi.fn>;
+		fetchSpy.mockResolvedValueOnce(
+			new Response(new Uint8Array([1, 2, 3]), { status: 200, headers: { "content-type": "video/mp4" } }),
+		);
+
+		const res = await app.inject({
+			method: "GET",
+			url: makeSegmentQuery(targetUrl, vodToken),
+			headers: { cookie: "ztube-token=zt-abc123" },
+		});
+
+		expect(res.statusCode).toBe(200);
+		const init = fetchSpy.mock.calls[0][1] as { headers: Record<string, string> };
+		expect(init.headers["ztube-token"]).toBe("zt-abc123");
+		expect(init.headers["vod-token"]).toBe(vodToken);
+	});
+
+	it("omits ztube-token header when cookie is absent", async () => {
+		const fetchSpy = globalThis.fetch as unknown as ReturnType<typeof vi.fn>;
+		fetchSpy.mockResolvedValueOnce(
+			new Response(new Uint8Array([1, 2, 3]), { status: 200, headers: { "content-type": "video/mp4" } }),
+		);
+
+		const res = await app.inject({
+			method: "GET",
+			url: makeSegmentQuery(targetUrl, vodToken),
+		});
+
+		expect(res.statusCode).toBe(200);
+		const init = fetchSpy.mock.calls[0][1] as { headers: Record<string, string> };
+		expect(init.headers["ztube-token"]).toBeUndefined();
+		expect(init.headers["vod-token"]).toBe(vodToken);
+	});
+
+	it("URL-decodes ztube-token cookie value", async () => {
+		const fetchSpy = globalThis.fetch as unknown as ReturnType<typeof vi.fn>;
+		fetchSpy.mockResolvedValueOnce(
+			new Response(new Uint8Array([1]), { status: 200, headers: { "content-type": "video/mp4" } }),
+		);
+
+		await app.inject({
+			method: "GET",
+			url: makeSegmentQuery(targetUrl, vodToken),
+			headers: { cookie: "other=x; ztube-token=ab%3Dcd; foo=1" },
+		});
+
+		const init = fetchSpy.mock.calls[0][1] as { headers: Record<string, string> };
+		expect(init.headers["ztube-token"]).toBe("ab=cd");
+	});
+
+	it("returns 400 when ztube-token cookie has malformed percent encoding", async () => {
+		const res = await app.inject({
+			method: "GET",
+			url: makeSegmentQuery(targetUrl, vodToken),
+			headers: { cookie: "ztube-token=%ZZ" },
+		});
+		expect(res.statusCode).toBe(400);
+		expect(JSON.parse(res.body)).toEqual({ error: "Invalid ztube-token cookie" });
+	});
+});
 
 describe("previewController POST /editor/preview-source", () => {
 	let app: ReturnType<typeof Fastify>;

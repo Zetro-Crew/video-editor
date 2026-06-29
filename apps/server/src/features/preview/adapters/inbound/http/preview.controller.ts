@@ -68,10 +68,24 @@ export const previewController: FastifyPluginAsync<PreviewControllerOptions> = a
 		request.raw.once("aborted", onAborted);
 		const upstreamSignal = AbortSignal.any([clientAbort.signal, AbortSignal.timeout(30_000)]);
 
+		const cookieHeader = request.headers.cookie ?? "";
+		const cookieMatch = cookieHeader.match(/(?:^|;\s*)ztube-token=([^;]+)/);
+		let ztubeToken = "";
+		if (cookieMatch) {
+			try {
+				ztubeToken = decodeURIComponent(cookieMatch[1]);
+			} catch (err) {
+				if (err instanceof URIError) {
+					return reply.status(HttpStatus.BAD_REQUEST).send({ error: "Invalid ztube-token cookie" });
+				}
+				throw err;
+			}
+		}
+
 		let upstream: Response;
 		try {
 			upstream = await fetch(decoded, {
-				headers: { "vod-token": token },
+				headers: { "vod-token": token, ...(ztubeToken && { "ztube-token": ztubeToken }) },
 				signal: upstreamSignal,
 			});
 		} catch (err) {

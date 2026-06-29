@@ -3,6 +3,11 @@
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 **Closed network deployment:** Production runs in closed, air-gapped network environments with no public internet access. All dependencies must be self-hosted or bundled. Do not introduce external CDN links, public API calls, or any runtime fetches to public URLs.
+** Developer Rules for Closed Network Migration:**
+ 1. **Strict Configuration:** All infrastructure URLs, hostnames, IPs, and ports must be strictly managed via environment variables. Never hardcode these values anywhere in the codebase. Always enforce and register them within the dedicated configuration/validation files of the respective application or service (e.g., Zod schemas, env.ts, or config.ts files within that specific package).
+  2. **Migration Tags:** When adding new infrastructure or network-dependent logic, always place a structured comment: 
+     `// TODO (Requires-Network-Change): <what needs to change>` 
+     This ensures we can easily audit what needs to be changed/configured during deployment from the civilian to the closed network.
 
 **Keep this file updated:** Whenever you add features, change architecture, add/remove dependencies, or modify config — update this file and the relevant per-app `CLAUDE.md` to reflect the current state. The `README.md` must also be updated to stay accurate.
 
@@ -147,6 +152,7 @@ Root export (`@video-editor/contract`) re-exports `iframe` + shared `SavedMediaI
 - **`@ffmpeg-installer/ffmpeg`** — bundled FFmpeg binary (no system install needed). Server uses raw `spawn` for all FFmpeg processing.
 - **`@fastify/multipart`** — file upload handling (500 MB limit).
 - **`@ztube/observability`** — internal package providing OpenTelemetry tracing/metrics, Pino structured logging, and Pyroscope profiling for server + worker.
+- **`mongodb`** — official MongoDB Node.js driver (server only). Used to persist editor draft state (`drafts` collection). Connection configured via `MONGODB_URI` + `MONGODB_DB_NAME` env vars.
 
 ## Agent skills
 

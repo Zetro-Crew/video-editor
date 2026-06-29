@@ -1,6 +1,9 @@
 import { readFileSync } from "node:fs";
 import { createZMonitor, Logger } from "@ztube/observability";
 import type { ApiEnvConfig, CommonEnvConfig, WorkerEnvConfig } from "../config/env.ts";
+import { MongoDraftAdapter } from "../features/draft/adapters/outbound/mongodb/MongoDraftAdapter.ts";
+import { LoadDraftUseCase } from "../features/draft/application/use-cases/LoadDraftUseCase.ts";
+import { SaveDraftUseCase } from "../features/draft/application/use-cases/SaveDraftUseCase.ts";
 import { GeneratePreviewUseCase } from "../features/preview/application/use-cases/GeneratePreviewUseCase.ts";
 import { RenderDLQConsumer } from "../features/render/adapters/inbound/amqp/RenderDLQConsumer.ts";
 import { RenderRequestedConsumer } from "../features/render/adapters/inbound/amqp/RenderRequestedConsumer.ts";
@@ -11,6 +14,7 @@ import { UploadUseCase } from "../features/upload/application/use-cases/UploadUs
 import { FfmpegVideoProcessingAdapter } from "../infrastructure/ffmpeg/FfmpegVideoProcessingAdapter.ts";
 import { FfmpegRunner } from "../infrastructure/ffmpeg/ffmpeg.utils.ts";
 import { RabbitMQPublisher } from "../infrastructure/messaging/RabbitMQPublisher.ts";
+import { MongoDbConnection } from "../infrastructure/mongodb/MongoDbConnection.ts";
 import { S3StorageAdapter } from "../infrastructure/storage/S3StorageAdapter.ts";
 import type { StoragePort } from "../shared/application/ports/outbound/StoragePort.ts";
 
@@ -60,6 +64,9 @@ export interface ApiContainer {
 	generatePreviewUseCase: GeneratePreviewUseCase;
 	exportEventPublisher: RabbitMQPublisher;
 	renderCommandPort: RenderCommandPort;
+	mongoDb: MongoDbConnection;
+	saveDraftUseCase: SaveDraftUseCase;
+	loadDraftUseCase: LoadDraftUseCase;
 }
 
 export function buildApiContainer(config: ApiEnvConfig): ApiContainer {
@@ -74,12 +81,23 @@ export function buildApiContainer(config: ApiEnvConfig): ApiContainer {
 	const generatePreviewUseCase = new GeneratePreviewUseCase(storage, config);
 	const renderCommandPort = new RabbitMQRenderCommandAdapter(exportEventPublisher);
 
+	const mongoDb = new MongoDbConnection({
+		uri: config.MONGODB_URI,
+		dbName: config.MONGODB_DB_NAME,
+	});
+	const draftAdapter = new MongoDraftAdapter(mongoDb);
+	const saveDraftUseCase = new SaveDraftUseCase(draftAdapter);
+	const loadDraftUseCase = new LoadDraftUseCase(draftAdapter);
+
 	return {
 		storage,
 		uploadUseCase,
 		generatePreviewUseCase,
 		exportEventPublisher,
 		renderCommandPort,
+		mongoDb,
+		saveDraftUseCase,
+		loadDraftUseCase,
 	};
 }
 

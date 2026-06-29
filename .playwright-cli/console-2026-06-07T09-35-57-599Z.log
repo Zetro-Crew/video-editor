@@ -1,0 +1,3 @@
+[     143ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:3000/node_modules/.vite/deps/react-dom_client.js?v=96b62814:20102
+[     583ms] [LOG] {jsx: Object} @ http://localhost:3000/node_modules/.vite/deps/@interactify_toolkit.js?v=96b62814:2692
+[     584ms] [LOG] JSHandle@node @ http://localhost:3000/node_modules/.vite/deps/@interactify_toolkit.js?v=96b62814:2698

@@ -53,6 +53,10 @@ const apiEnvSchema = commonEnvSchema.extend({
 	// Server bind
 	PORT: z.coerce.number().default(4001),
 	HOST: z.string().default("127.0.0.1"),
+	// MongoDB — draft persistence
+	// TODO (Requires-Network-Change): MONGODB_URI must point to the internal MongoDB instance
+	MONGODB_URI: z.string(),
+	MONGODB_DB_NAME: z.string().default("video-editor"),
 	// Preview source (MPD → HLS).
 	// CORE_BASE_URL includes the "/private" prefix because real Core groups auth-required
 	// endpoints there — the preview adapter appends `/channels/:id/play` to it.

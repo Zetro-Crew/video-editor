@@ -10,6 +10,7 @@ export interface GeneratePreviewInput {
 	startTimeMs: number;
 	endTimeMs: number;
 	previewSource: PreviewSourcePort;
+	ztubeToken?: string;
 }
 
 export interface GeneratePreviewOutput {
