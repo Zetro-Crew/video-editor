@@ -76,6 +76,9 @@ const apiEnvSchema = commonEnvSchema.extend({
 	UPLOAD_MAX_SIZE_BYTES: z.coerce.number().int().positive().default(524_288_000),
 	// Bootstrap-only
 	S3_AUTO_CREATE_BUCKET: boolEnv(true),
+	// MongoDB
+	MONGO_URL: z.string(),
+	MONGO_DB_NAME: z.string().default("video-editor"),
 });
 
 const workerEnvSchema = commonEnvSchema.extend({

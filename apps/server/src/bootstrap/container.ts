@@ -2,6 +2,10 @@ import { readFileSync } from "node:fs";
 import { createZMonitor, Logger } from "@ztube/observability";
 import amqplib, { type credentials } from "amqplib";
 import type { ApiEnvConfig, CommonEnvConfig, WorkerEnvConfig } from "../config/env.ts";
+import { MongoProjectRepository } from "../features/project/adapters/outbound/mongo/MongoProjectRepository.ts";
+import { GetProjectUseCase } from "../features/project/application/use-cases/GetProjectUseCase.ts";
+import { ListProjectsUseCase } from "../features/project/application/use-cases/ListProjectsUseCase.ts";
+import { SaveProjectUseCase } from "../features/project/application/use-cases/SaveProjectUseCase.ts";
 import { GeneratePreviewUseCase } from "../features/preview/application/use-cases/GeneratePreviewUseCase.ts";
 import { RenderDLQConsumer } from "../features/render/adapters/inbound/amqp/RenderDLQConsumer.ts";
 import { RenderRequestedConsumer } from "../features/render/adapters/inbound/amqp/RenderRequestedConsumer.ts";
@@ -11,6 +15,7 @@ import { VideoRenderUseCase } from "../features/render/application/use-cases/Vid
 import { UploadUseCase } from "../features/upload/application/use-cases/UploadUseCase.ts";
 import { FfmpegVideoProcessingAdapter } from "../infrastructure/ffmpeg/FfmpegVideoProcessingAdapter.ts";
 import { FfmpegRunner } from "../infrastructure/ffmpeg/ffmpeg.utils.ts";
+import { getMongoClient } from "../infrastructure/database/MongoClientFactory.ts";
 import { RabbitMQPublisher } from "../infrastructure/messaging/RabbitMQPublisher.ts";
 import { S3StorageAdapter } from "../infrastructure/storage/S3StorageAdapter.ts";
 import type { StoragePort } from "../shared/application/ports/outbound/StoragePort.ts";
@@ -66,6 +71,9 @@ export interface ApiContainer {
 	generatePreviewUseCase: GeneratePreviewUseCase;
 	exportEventPublisher: RabbitMQPublisher;
 	renderCommandPort: RenderCommandPort;
+	saveProjectUseCase: SaveProjectUseCase;
+	getProjectUseCase: GetProjectUseCase;
+	listProjectsUseCase: ListProjectsUseCase;
 }
 
 export function buildApiContainer(config: ApiEnvConfig): ApiContainer {
@@ -80,12 +88,22 @@ export function buildApiContainer(config: ApiEnvConfig): ApiContainer {
 	const generatePreviewUseCase = new GeneratePreviewUseCase(storage, config);
 	const renderCommandPort = new RabbitMQRenderCommandAdapter(exportEventPublisher);
 
+	const mongoClient = getMongoClient(config.MONGO_URL);
+	const mongoDb = mongoClient.db(config.MONGO_DB_NAME);
+	const projectRepo = new MongoProjectRepository(mongoDb);
+	const saveProjectUseCase = new SaveProjectUseCase(projectRepo);
+	const getProjectUseCase = new GetProjectUseCase(projectRepo);
+	const listProjectsUseCase = new ListProjectsUseCase(projectRepo);
+
 	return {
 		storage,
 		uploadUseCase,
 		generatePreviewUseCase,
 		exportEventPublisher,
 		renderCommandPort,
+		saveProjectUseCase,
+		getProjectUseCase,
+		listProjectsUseCase,
 	};
 }
 

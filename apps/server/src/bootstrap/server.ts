@@ -5,6 +5,7 @@ import { fastifyLoggingPlugin } from "@ztube/observability/fastify";
 import { jsonSchemaTransform } from "fastify-type-provider-zod";
 import type { ApiEnvConfig } from "../config/env.ts";
 import { previewController } from "../features/preview/adapters/inbound/http/preview.controller.ts";
+import { projectController } from "../features/project/adapters/inbound/http/project.controller.ts";
 import { renderController } from "../features/render/adapters/inbound/http/render.controller.ts";
 import { uploadController } from "../features/upload/adapters/inbound/http/upload.controller.ts";
 import { createFastifyInstance, type TypedFastify } from "../infrastructure/fastify/fastify.ts";
@@ -67,6 +68,12 @@ export class Server {
 		await this.app.register(previewController, {
 			storage: this.container.storage,
 			config: this.config,
+		});
+
+		await this.app.register(projectController, {
+			saveProjectUseCase: this.container.saveProjectUseCase,
+			getProjectUseCase: this.container.getProjectUseCase,
+			listProjectsUseCase: this.container.listProjectsUseCase,
 		});
 
 		if (this.config.S3_AUTO_CREATE_BUCKET) {

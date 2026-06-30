@@ -1,5 +1,6 @@
 import { Logger } from "@ztube/observability";
 import type { ApiEnvConfig } from "../config/env.ts";
+import { closeMongoClient } from "../infrastructure/database/MongoClientFactory.ts";
 import { type ApiContainer, buildApiContainer } from "./container.ts";
 import { Server } from "./server.ts";
 
@@ -80,6 +81,15 @@ export class System {
 		} catch (err) {
 			Logger.logError(
 				"[shutdown] publisher close failed",
+				err instanceof Error ? err : new Error(String(err)),
+			);
+		}
+		try {
+			Logger.logInfo("[shutdown] closing MongoDB client");
+			await closeMongoClient();
+		} catch (err) {
+			Logger.logError(
+				"[shutdown] MongoDB close failed",
 				err instanceof Error ? err : new Error(String(err)),
 			);
 		}
